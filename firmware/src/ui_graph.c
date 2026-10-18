@@ -981,6 +981,334 @@ static void graph_fx(const track_t *t, uint16_t c)
     }
 }
 
+static inline uint32_t fx_isqrt(uint32_t n)
+{
+    uint32_t root = 0, bit = 1u << 30;
+    while (bit > n) bit >>= 2;
+    while (bit != 0) {
+        if (n >= root + bit) {
+            n -= root + bit;
+            root = (root >> 1) + bit;
+        } else {
+            root >>= 1;
+        }
+        bit >>= 2;
+    }
+    return root;
+}
+
+static uint16_t fx_tone_color(uint16_t base, int32_t tone)
+{
+    uint32_t r = (base >> 11) & 0x1F;
+    uint32_t g = (base >> 5) & 0x3F;
+    uint32_t b = base & 0x1F;
+    if (tone < 0) {
+        int32_t num = 64 + (tone * 36) / 64;
+        if (num < 18) num = 18;
+        r = (r * (uint32_t)num) >> 6;
+        g = (g * (uint32_t)num) >> 6;
+        b = (b * (uint32_t)num) >> 6;
+    } else if (tone > 0) {
+        uint32_t add_r = (31u - r) * (uint32_t)tone / 64u;
+        uint32_t add_g = (63u - g) * (uint32_t)tone / 64u;
+        uint32_t add_b = (31u - b) * (uint32_t)tone / 64u;
+        r += add_r; g += add_g; b += add_b;
+    }
+    return (uint16_t)((r << 11) | (g << 5) | b);
+}
+
+/* REVERB visualizer: Cave with cave size, stalactite damping, tone brightness, and 4 reverb types */
+static void graph_reverb(uint16_t c)
+{
+    (void)c;
+    int32_t rtype = clamp(song.g[G_RTYPE], 0, 3);
+    int32_t size = clamp(song.g[G_RSIZE], 0, 127);
+    int32_t damp = clamp(song.g[G_RDAMP], 0, 127);
+    int32_t tone = clamp(song.g[G_RTONE], -64, 63);
+
+    static const uint16_t BASE_COLS[4] = {
+        0xE509, /* 0 ROOM: Amber limestone RGB(225, 160, 75) */
+        0x36B7, /* 1 SPRING: Surf teal RGB(55, 215, 190) */
+        0x9B5E, /* 2 HALL: Cathedral deep royal violet RGB(155, 105, 245) */
+        0xBA9F  /* 3 SPACE: Cosmic purple RGB(190, 85, 255) */
+    };
+    uint16_t col = fx_tone_color(BASE_COLS[rtype], tone);
+    uint16_t dim_col = fx_tone_color(BASE_COLS[rtype], -50);
+    uint16_t dark_fill = fx_tone_color(BASE_COLS[rtype], -60);
+
+    int32_t xc = 120;
+    int32_t y_floor = 112;
+    int32_t r_cave = 45 + (size * 60) / 127; /* 45 .. 105 */
+    int32_t h_cave = 35 + (size * 62) / 127; /* 35 .. 97 */
+
+    /* 1. Cavern interior fill and roof arch */
+    int32_t prev_x = xc - r_cave, prev_y = y_floor;
+    for (int32_t x = xc - r_cave; x <= xc + r_cave; x++) {
+        int32_t dx = x - xc;
+        int32_t num = r_cave * r_cave - dx * dx;
+        if (num < 0) num = 0;
+        int32_t arch_h = (int32_t)fx_isqrt((uint32_t)num) * h_cave / r_cave;
+        int32_t rough = ((((x * 37) ^ 0x55) & 7) - 3) * 3 / 4;
+        int32_t y_roof = y_floor - arch_h + rough;
+        if (y_roof < 8) y_roof = 8;
+        if (y_roof > y_floor) y_roof = y_floor;
+
+        if (y_floor > y_roof)
+            cv_line(x, y_roof, x, y_floor, dark_fill);
+
+        if (x > xc - r_cave)
+            cv_line(prev_x, prev_y, x, y_roof, col);
+        prev_x = x;
+        prev_y = y_roof;
+    }
+
+    /* 2. Cavern floor */
+    cv_line(xc - r_cave - 8, y_floor, xc + r_cave + 8, y_floor, dim_col);
+    for (int32_t rx = xc - r_cave + 10; rx <= xc + r_cave - 10; rx += 18) {
+        cv_line(rx - 3, y_floor, rx, y_floor - 3, dim_col);
+        cv_line(rx, y_floor - 3, rx + 3, y_floor, dim_col);
+    }
+
+    /* 3. Stalactites (Damping: more stalactites = higher damp) */
+    int32_t nstals = 2 + (damp * 12) / 127; /* 2 .. 14 */
+    int32_t span = (r_cave * 15) / 10;
+    int32_t step = span / (nstals + 1);
+    for (int32_t s = 0; s < nstals; s++) {
+        int32_t sx = xc - (span / 2) + (s + 1) * step;
+        int32_t dx = sx - xc;
+        int32_t num = r_cave * r_cave - dx * dx;
+        if (num < 0) num = 0;
+        int32_t arch_h = (int32_t)fx_isqrt((uint32_t)num) * h_cave / r_cave;
+        int32_t sy = y_floor - arch_h;
+        if (sy < 8) sy = 8;
+        int32_t slen = 7 + ((s * 7 + 13) % 15); /* 7 .. 21 px */
+        cv_line(sx - 2, sy, sx, sy + slen, col);
+        cv_line(sx + 2, sy, sx, sy + slen, col);
+        cv_line(sx - 1, sy, sx + 1, sy, col);
+        cv_pset(sx, sy + slen, col);
+    }
+
+    /* 4. Twinkling Cyan & White Crystals in SPACE mode */
+    if (rtype == 3) {
+        static const int8_t CX_OFF[10] = {-38, -25, -15, -6, 4, 12, 22, 32, -45, 42};
+        static const int8_t CY_OFF[10] = {18, 12, 22, 14, 20, 15, 24, 18, 30, 28};
+        uint16_t c_cyan = RGB(0, 240, 255);
+        uint16_t c_white = RGB(255, 255, 255);
+        for (int32_t k = 0; k < 10; k++) {
+            int32_t kx = xc + (CX_OFF[k] * r_cave) / 60;
+            int32_t ky = y_floor - h_cave + CY_OFF[k];
+            if (ky >= y_floor - 2) ky = y_floor - 4;
+            if (ky < 12) ky = 12;
+            int32_t twinkle = (ui.frame / 4u + (uint32_t)k * 3u) & 7u;
+            uint16_t crys_col = (twinkle == 0 || twinkle == 1) ? c_white :
+                                (twinkle == 2 || twinkle == 3) ? c_cyan : dim_col;
+            cv_pset(kx, ky, crys_col);
+            cv_pset(kx - 1, ky, crys_col);
+            cv_pset(kx + 1, ky, crys_col);
+            cv_pset(kx, ky - 1, crys_col);
+            cv_pset(kx, ky + 1, crys_col);
+        }
+    }
+
+    /* 5. Type badge */
+    const char *tname = N_RTYPE[rtype];
+    cv_rrect(10, 8, 48, 15, 2, T_SURF, T_BG);
+    cv_rect(10, 8, 48, 15, col);
+    cv_text_in(10, 8 + CAP_IN(S, 15), 48, &AF_S, tname, T_INK, col);
+}
+
+/* CHORUS visualizer: Emoji singing face with stacked voice silhouettes and right-side sine wave */
+static void graph_chorus(uint16_t c)
+{
+    (void)c;
+    int32_t rate = clamp(song.g[G_CRATE], 0, 127);
+    int32_t depth = clamp(song.g[G_CDEPTH], 0, 127);
+    int32_t tone = clamp(song.g[G_CTONE], -64, 63);
+    int32_t voices = clamp(song.g[G_CVOICE], 0, 3) + 1; /* 1..4 */
+
+    uint16_t col;
+    if (tone < 0) {
+        int32_t t = (tone + 64);
+        int32_t r = 30 - (t * 10) / 64;
+        int32_t g = 32 + (t * 28) / 64;
+        int32_t b = 6 + (t * 25) / 64;
+        col = (uint16_t)((r << 11) | (g << 5) | b);
+    } else {
+        int32_t t = tone;
+        int32_t r = 20 - (t * 12) / 63;
+        int32_t g = 60 + (t * 3) / 63;
+        int32_t b = 31;
+        col = (uint16_t)((r << 11) | (g << 5) | b);
+    }
+    uint16_t dim_col = fx_tone_color(col, -40);
+
+    int32_t x0 = 54, y0 = 60, R = 24;
+
+    /* 1. Stacked voice outlines behind and to the left */
+    for (int32_t v = voices - 1; v >= 1; v--) {
+        int32_t vx = x0 - v * 10;
+        int32_t vy = y0 - v * 7;
+        uint16_t vcol = fx_tone_color(col, -25 - v * 14);
+        int32_t prev_vx = 0, prev_vy = 0;
+        for (int32_t a = 0; a <= 360; a += 10) {
+            uint32_t ph = (uint32_t)a * 0x01249249u;
+            int32_t px = vx + (osc_sine(ph) * R >> 15);
+            int32_t py = vy + (osc_sine(ph + 0x40000000u) * R >> 15);
+            if (a > 0)
+                cv_line(prev_vx, prev_vy, px, py, vcol);
+            prev_vx = px;
+            prev_vy = py;
+        }
+    }
+
+    /* 2. Main singing face: solid circular fill to occlude background circles */
+    for (int32_t dy = -R; dy <= R; dy++) {
+        int32_t num = R * R - dy * dy;
+        if (num < 0) continue;
+        int32_t dx = (int32_t)fx_isqrt((uint32_t)num);
+        cv_line(x0 - dx, y0 + dy, x0 + dx, y0 + dy, T_SURF);
+    }
+
+    /* Main face outline */
+    int32_t prev_fx = 0, prev_fy = 0;
+    for (int32_t a = 0; a <= 360; a += 10) {
+        uint32_t ph = (uint32_t)a * 0x01249249u;
+        int32_t px = x0 + (osc_sine(ph) * R >> 15);
+        int32_t py = y0 + (osc_sine(ph + 0x40000000u) * R >> 15);
+        if (a > 0)
+            cv_line(prev_fx, prev_fy, px, py, col);
+        prev_fx = px;
+        prev_fy = py;
+    }
+
+    /* Singing arched eyes (^ ^) */
+    int32_t ex1 = x0 - 9, ex2 = x0 + 9, ey = y0 - 7;
+    cv_line(ex1 - 4, ey + 2, ex1, ey - 2, col);
+    cv_line(ex1, ey - 2, ex1 + 4, ey + 2, col);
+    cv_line(ex2 - 4, ey + 2, ex2, ey - 2, col);
+    cv_line(ex2, ey - 2, ex2 + 4, ey + 2, col);
+
+    /* Singing open mouth (vertical oval) */
+    int32_t mx0 = x0, my0 = y0 + 7, mrx = 6, mry = 9;
+    for (int32_t my = -mry; my <= mry; my++) {
+        int32_t num = mry * mry - my * my;
+        if (num < 0) continue;
+        int32_t mw = (int32_t)fx_isqrt((uint32_t)num) * mrx / mry;
+        cv_line(mx0 - mw, my0 + my, mx0 + mw, my0 + my, T_BG);
+    }
+    int32_t prev_mx = 0, prev_my = 0;
+    for (int32_t a = 0; a <= 360; a += 15) {
+        uint32_t ph = (uint32_t)a * 0x01249249u;
+        int32_t px = mx0 + (osc_sine(ph) * mrx >> 15);
+        int32_t py = my0 + (osc_sine(ph + 0x40000000u) * mry >> 15);
+        if (a > 0)
+            cv_line(prev_mx, prev_my, px, py, col);
+        prev_mx = px;
+        prev_my = py;
+    }
+    cv_line(mx0 - 3, my0 + 5, mx0 + 3, my0 + 5, dim_col);
+
+    /* 3. Sine wave on right side (exact 1.0 to 5.0 full cycles) */
+    int32_t x_start = 98, x_end = 226, wave_w = x_end - x_start;
+    int32_t amp = 3 + (depth * 32) / 127;
+    uint32_t lfo_inc = 0x02000000u + ((uint32_t)rate * 0x08000000u) / 127u;
+    uint32_t ph_anim = (ui.frame * 0x04000000u);
+    int32_t prev_wx = x_start, prev_wy = y0;
+    for (int32_t x = x_start; x <= x_end; x++) {
+        uint32_t ph = ph_anim + (uint32_t)(x - x_start) * lfo_inc;
+        int32_t rel = (x - x_start);
+        int32_t cur_amp = rel < 12 ? (amp * rel) / 12 : amp;
+        int32_t wy = y0 + (osc_sine(ph) * cur_amp >> 15);
+        if (x > x_start) {
+            cv_line(prev_wx, prev_wy, x, wy, col);
+            cv_line(prev_wx, prev_wy + 1, x, wy + 1, col);
+        }
+        prev_wx = x;
+        prev_wy = wy;
+    }
+
+    /* 4. Voices badge */
+    char vbuf[12];
+    vbuf[0] = (char)('0' + voices);
+    str_cpy(vbuf + 1, voices == 1 ? " VOICE" : " VOICES", sizeof vbuf - 1);
+    cv_rrect(10, 8, 54, 15, 2, T_SURF, T_BG);
+    cv_rect(10, 8, 54, 15, col);
+    cv_text_in(10, 8 + CAP_IN(S, 15), 54, &AF_S, vbuf, T_INK, col);
+}
+
+/* DELAY visualizer: Bouncy trampoline line, wobble thickness/waviness, dots bouncing at delay time,
+ * feedback count, and cross angle splitting into +/-45 degree lines */
+static void graph_delay(uint16_t c)
+{
+    (void)c;
+    int32_t time_val = clamp(song.g[G_DTIME], 0, 102);
+    int32_t fdbk = clamp(song.g[G_DFDBK], 0, 120);
+    int32_t tape = clamp(song.g[G_DCOLOR], 0, 127);
+    int32_t cross = clamp(song.g[G_DMIX], 0, 127);
+
+    uint16_t col_trampoline = RGB(255, 175, 50); /* Warm tape amber */
+    uint16_t col_dot = RGB(80, 240, 120);        /* Glowing green */
+    uint16_t col_core = RGB(255, 255, 255);
+
+    int32_t xc = 120, yc = 61;
+    int32_t half_len = 92 - (cross * 26) / 127; /* 92 down to 66 at 45 deg to fit canvas */
+    int32_t thickness = 1 + (tape * 3) / 127;    /* 1..4 px */
+    int32_t wobble_amp = (tape * 7) / 127;       /* 0..7 px */
+    int32_t n_dots = 2 + (fdbk * 6) / 120;       /* 2..8 dots */
+
+    int32_t sin_t = (cross * 23170) / 127;
+    int32_t cos_t = 32768 - (cross * 9598) / 127;
+
+    int32_t n_lines = (cross > 4) ? 2 : 1;
+
+    for (int32_t l = 0; l < n_lines; l++) {
+        int32_t s_ang = (l == 0) ? sin_t : -sin_t;
+        int32_t c_ang = cos_t;
+
+        int32_t prev_x = 0, prev_y = 0;
+        for (int32_t u = -half_len; u <= half_len; u += 2) {
+            int32_t wob = 0;
+            if (wobble_amp > 0)
+                wob = (osc_sine((uint32_t)(u * 0x01800000u) + ui.frame * 0x04000000u) * wobble_amp) >> 15;
+            int32_t x = xc + ((u * c_ang - wob * s_ang) >> 15);
+            int32_t y = yc + ((u * s_ang + wob * c_ang) >> 15);
+            if (u > -half_len) {
+                for (int32_t t = 0; t < thickness; t++)
+                    cv_line(prev_x, prev_y + t, x, y + t, col_trampoline);
+            } else {
+                cv_rect(x - 2, y - 2, 4, 4, T_RAISE);
+            }
+            prev_x = x;
+            prev_y = y;
+        }
+        cv_rect(prev_x - 2, prev_y - 2, 4, 4, T_RAISE);
+
+        uint32_t bounce_inc = ((uint32_t)(105 - time_val) * 0x00800000u) + 0x01000000u;
+        int32_t bounce_h = 24;
+        for (int32_t d = 0; d < n_dots; d++) {
+            int32_t u_dot = -half_len * 7 / 10 + (d * (half_len * 14 / 10)) / (n_dots > 1 ? (n_dots - 1) : 1);
+            uint32_t phase = (ui.frame * bounce_inc) + (uint32_t)d * (0x100000000u / (uint32_t)n_dots);
+            int32_t h = (osc_sine(phase) * bounce_h) >> 15;
+            if (h < 0) h = -h;
+
+            int32_t dot_x = xc + ((u_dot * c_ang - h * s_ang) >> 15);
+            int32_t dot_y = yc + ((u_dot * s_ang - h * c_ang) >> 15);
+
+            int32_t c_x = xc + ((u_dot * c_ang) >> 15);
+            int32_t c_y = yc + ((u_dot * s_ang) >> 15);
+            cv_pset(c_x, c_y, T_RAISE);
+
+            cv_rect(dot_x - 1, dot_y - 2, 3, 5, col_dot);
+            cv_rect(dot_x - 2, dot_y - 1, 5, 3, col_dot);
+            cv_pset(dot_x, dot_y, col_core);
+        }
+    }
+
+    cv_rrect(10, 8, 48, 15, 2, T_SURF, T_BG);
+    cv_rect(10, 8, 48, 15, col_trampoline);
+    cv_text_in(10, 8 + CAP_IN(S, 15), 48, &AF_S, "ECHO", T_INK, col_trampoline);
+}
+
 /* SIDECHAIN visualizer: ducking envelope curve, 0 dB / floor guides, live GR meter, and trigger badge */
 static void graph_sidechain(uint16_t c)
 {
@@ -2614,6 +2942,21 @@ static uint32_t graph_signature(void)
              (uint32_t)song.sc[2] * 127u + (uint32_t)song.sc[3] * 257u;
         h ^= (uint32_t)(fx_sidechain_env() >> 7) * 1009u;
     }
+    if (pg->graph == GR_DELAY) {
+        h ^= (uint32_t)song.g[G_DTIME] * 31u + (uint32_t)song.g[G_DFDBK] * 71u +
+             (uint32_t)song.g[G_DCOLOR] * 127u + (uint32_t)song.g[G_DMIX] * 257u +
+             (ui.frame / 2u);
+    }
+    if (pg->graph == GR_REVERB) {
+        h ^= (uint32_t)song.g[G_RTYPE] * 31u + (uint32_t)song.g[G_RSIZE] * 71u +
+             (uint32_t)song.g[G_RDAMP] * 127u + (uint32_t)song.g[G_RTONE] * 257u +
+             (song.g[G_RTYPE] == 3 ? (ui.frame / 4u) : 0u);
+    }
+    if (pg->graph == GR_CHORUS) {
+        h ^= (uint32_t)song.g[G_CRATE] * 31u + (uint32_t)song.g[G_CDEPTH] * 71u +
+             (uint32_t)song.g[G_CTONE] * 127u + (uint32_t)song.g[G_CVOICE] * 257u +
+             (ui.frame / 2u);
+    }
     if ((ui.home || pg->scope == SC_ENGINE) && ENGINES[t->eng_req % NENGINES] == &ENG_WAVETABLE) {
         h ^= (uint32_t)t->p[P_E0] * 7u + (uint32_t)t->p[P_E1] * 13u + (uint32_t)t->p[P_E2] * 31u;
     }
@@ -3737,6 +4080,18 @@ static void draw_graph(void)
             break;
         case GR_SIDECHAIN:
             graph_sidechain(c);
+            break;
+        case GR_DELAY:
+            cv_oy = 0;
+            graph_delay(c);
+            break;
+        case GR_REVERB:
+            cv_oy = 0;
+            graph_reverb(c);
+            break;
+        case GR_CHORUS:
+            cv_oy = 0;
+            graph_chorus(c);
             break;
         case GR_MOD:
             cv_oy = 0;

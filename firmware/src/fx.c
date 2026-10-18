@@ -587,6 +587,98 @@ static __attribute__((noinline)) void rev_hall(const int32_t *rev_in, int32_t *o
     hl.side = 1;
 }
 
+/* SPACE (G_RTYPE 3): Lush, deep modulated cosmic reverb with multi-rate LFO detuning
+ * across all lines and massive atmospheric wash */
+static __attribute__((noinline)) void rev_space(const int32_t *rev_in, int32_t *out, uint32_t n)
+{
+    int16_t *b = rev_comb, *a = rev_ap;
+    uint32_t i, k, s, m, d;
+    int32_t kd = HL_KD(song.g[G_RDAMP]);
+    int32_t xp = hl.x, hp = hl.hp, he = hl.he, mp = hl.m, sp = hl.s;
+    (void)n;
+    if (hl.sz != (int16_t)(-(song.g[G_RSIZE] + 1))) {
+        /* Space gains: slower decay / higher retention for massive ambient wash */
+        uint32_t q = exp2_neg((uint32_t)song.g[G_RSIZE] * 65536u / 36u);
+        for (k = 0; k < HL_NL; k++) {
+            uint32_t g = exp2_neg((HL_LEN[k] * 46u * q) >> 15);
+            hl.g[k] = (int16_t)(((g > 32600u ? 32600u : g) * 6193u) >> 15);
+        }
+        hl.sz = (int16_t)(-(song.g[G_RSIZE] + 1));
+    }
+    for (i = 0; i < HL_NC; i++) {
+        int32_t x = (xp + 2 * rev_in[2u * i] + rev_in[2u * i + 1u]) >> 2, v;
+        xp = rev_in[2u * i + 1u];
+        x = mulq15(clamp(x, -262143, 262143), 2580);
+        v = x - hp + he;
+        he = v & 31;
+        hp += v >> 5;
+        hl.bx[i] = x - hp;
+    }
+    hl.x = xp, hl.hp = hp, hl.he = he;
+    for (k = 0; k < HL_NAP; k++) {
+        d = hl.d[k];
+        HL_RUNS(d, HL_AP[k], m, s, hall_ap(a + d, HL_APG[k], hl.bx + s, m));
+        hl.d[k] = (uint16_t)d;
+        a += HL_AP[k];
+    }
+    hl.ph += HL_LFO * 2u; /* Rich multi-phase pitch modulation */
+    for (k = 0; k < HL_NL; k++) {
+        int32_t g = hl.g[k], f = 0, lo;
+        uint32_t mod_depth = (HL_MOD * 5) / 2;
+        uint32_t r = (uint32_t)(((mod_depth + 2) << 8) +
+                                ((osc_sine(hl.ph * (1u + (k & 3u)) + k * 0x3A000000u) * (int32_t)mod_depth) >> 7));
+        f = (int32_t)(r & 255u);
+        d = hl.i[k] + (r >> 8);
+        d = d >= HL_LEN[k] ? d - HL_LEN[k] : d;
+        s = d + HL_LEN[k] / 2u;
+        s = s >= HL_LEN[k] ? s - HL_LEN[k] : s;
+        lo = (b[d] < 0 ? -b[d] : b[d]) + (b[s] < 0 ? -b[s] : b[s]) < HL_LOUD;
+        if ((HL_LPM >> k) & 1u) {
+            HL_RUNS(d, HL_LEN[k], m, s, hall_end_lp(b + d, hl.y[k] + s, m, g, lo, &hl.lp[k], &hl.le[k], kd));
+        } else {
+            HL_RUNS(d, HL_LEN[k], m, s, hall_end(b + d, f, hl.y[k] + s, m, g, lo));
+        }
+        b += HL_LEN[k] + 1u;
+    }
+    for (i = 0; i < HL_NC; i++) {
+        int32_t y0 = hl.y[0][i], y1 = hl.y[1][i], y2 = hl.y[2][i], y3 = hl.y[3][i];
+        int32_t y4 = hl.y[4][i], y5 = hl.y[5][i], y6 = hl.y[6][i], y7 = hl.y[7][i], x = hl.bx[i];
+        int32_t t, p0, p1, p2, p3, p4, p5, p6;
+        hl.l[i] = y0 + y3 + y4 - y7;
+        hl.r[i] = y1 + y2 + y5 + y6;
+        t = y1 + y2 + y3 + y4 + y5 + y6 + y7;
+        p0 = y2 + y3 + y5, p1 = y3 + y4 + y6, p2 = y4 + y5 + y7, p3 = y5 + y6 + y1;
+        p4 = y6 + y7 + y2, p5 = y7 + y1 + y3, p6 = y1 + y2 + y4;
+        y0 += t;
+        hl.y[0][i] = (int16_t)clamp(t + x, -32768, 32767);
+        hl.y[1][i] = (int16_t)clamp(2 * p0 + y1 - y0 + x, -32768, 32767);
+        hl.y[2][i] = (int16_t)clamp(2 * p1 + y2 - y0 + x, -32768, 32767);
+        hl.y[3][i] = (int16_t)clamp(2 * p2 + y3 - y0 + x, -32768, 32767);
+        hl.y[4][i] = (int16_t)clamp(2 * p3 + y4 - y0 + x, -32768, 32767);
+        hl.y[5][i] = (int16_t)clamp(2 * p4 + y5 - y0 + x, -32768, 32767);
+        hl.y[6][i] = (int16_t)clamp(2 * p5 + y6 - y0 + x, -32768, 32767);
+        hl.y[7][i] = (int16_t)clamp(2 * p6 + y7 - y0 - x, -32768, 32767);
+    }
+    b = rev_comb;
+    for (k = 0; k < HL_NL; k++) {
+        d = hl.i[k];
+        HL_RUNS(d, HL_LEN[k], m, s, for (i = 0; i < m; i++) b[d + i] = hl.y[k][s + i]; if (!d) b[HL_LEN[k]] = b[0]);
+        hl.i[k] = (uint16_t)d;
+        b += HL_LEN[k] + 1u;
+    }
+    for (i = 0; i < HL_NC; i++) {
+        int32_t mm = (hl.l[i] + hl.r[i]) * HL_OUT, ss = (hl.l[i] - hl.r[i]) * HL_OUT;
+        out[2u * i] += (mp + mm) >> 1;
+        out[2u * i + 1u] += mm;
+        rev_side[2u * i] = (sp + ss) >> 1;
+        rev_side[2u * i + 1u] = ss;
+        mp = mm;
+        sp = ss;
+    }
+    hl.m = mp, hl.s = sp;
+    hl.side = 1;
+}
+
 /* the reverb's buffers and states to silence (the model changed) */
 static void rev_clear(void)
 {
@@ -613,7 +705,9 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
     uint32_t i;
     for (i = 0; i < n; i++)
         t[i] = 0;
-    if (fx.rtype == 2u)
+    if (fx.rtype == 3u)
+        rev_space(rev_in, t, n);
+    else if (fx.rtype == 2u)
         rev_hall(rev_in, t, n);
     else if (fx.rtype)
         rev_spring(rev_in, t, n);
@@ -621,7 +715,7 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
         rev_room(rev_in, t, n);
     for (i = 0; i < n; i++, g -= d) {
         wet[i] += mulq16(t[i], (uint32_t)g);
-        rev_side[i] = mulq16(rev_side[i], (uint32_t)g);   /* (HALL only: hl.side set) */
+        rev_side[i] = mulq16(rev_side[i], (uint32_t)g);   /* (HALL/SPACE only: hl.side set) */
     }
     rev_clear();
     fx.rtype = (uint8_t)rt;
@@ -731,10 +825,12 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     for (i = 0; i < n; i++) base_wet[i] = wet[i];
 
     rt = song.g[G_RTYPE];
-    rt = rt == 1 || rt == 2 ? rt : 0;
+    rt = rt == 1 || rt == 2 || rt == 3 ? rt : 0;
     hl.side = 0;
     if (rt != fx.rtype)
         rev_switch(rev_in, wet, n, rt);
+    else if (rt == 3)
+        rev_space(rev_in, wet, n);
     else if (rt == 2)
         rev_hall(rev_in, wet, n);
     else if (rt)
@@ -758,7 +854,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             }
             wet[i] = base_wet[i] + rev_only;
         }
-        if (rt == 2) {
+        if (rt == 2 || rt == 3) {
             static int32_t rev_side_lp = 0;
             for (i = 0; i < n; i++) {
                 if (rtone < 0) {

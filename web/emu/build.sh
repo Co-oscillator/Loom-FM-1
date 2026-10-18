@@ -22,6 +22,7 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
 [ "${EMU_PREVIEW:-1}" = 0 ] && PREVIEW='' || PREVIEW=' (preview)'
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > build/emu/index.html
 cp web/emu/worklet.js build/emu/
+[ -d web/emu/img ] && cp -r web/emu/img build/emu/
 cp web/editor.html web/fm1pkg.js web/fm1ota.js web/fm1backup.js build/emu/
 [ -f web/fukiai.ttf ] && cp web/fukiai.ttf build/emu/
 [ -f web/FUKIAI-LICENSE.txt ] && cp web/FUKIAI-LICENSE.txt build/emu/
