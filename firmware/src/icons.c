@@ -210,7 +210,7 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
         return ICON_SLICE;                    /* SLICE: SLCS is the slicing, MODE the gate, REV the direction */
     if (d->names == N_SLC_MODE)
         return ICON_GATE;
-    if (d->names == N_SLC_REV)
+    if (d->names == N_SLC_DIR)
         return ICON_ORDER;
 #endif
     if (d == &ENG_GRAIN.edit[6])

@@ -75,7 +75,7 @@ static void slice_view(uint32_t *a, uint32_t *b, uint32_t *len)
         *b = *a + 1u;
 }
 
-/* the edit table of the selected part's slot, the first time from the slices shown (DIV becomes MAN); 0 = BREAK,
+/* the edit table of the selected part's slot, the first time from the slices shown; 0 = BREAK,
  * PIANO or an empty slot: nothing to edit (says so) */
 static slc_man_t *slice_edit_begin(uint32_t *k)
 {
@@ -88,18 +88,13 @@ static slc_man_t *slice_edit_begin(uint32_t *k)
         return 0;
     }
     *k = src - 1u;
-    if (div != SLC_DIV_MAN && slc_man_of(s)) {       /* the slot has slices set by hand: those, not the grid; this */
-        TSEL->p[P_E1] = SLC_DIV_MAN;                 /* touch only shows them (its marker was another one) */
-        ui_message("DIV MAN");
-        return 0;
-    }
     m = slc_man_begin(*k);
-    if (m && div != SLC_DIV_MAN) {                   /* the slices shown (4..32 equal, AUTO) become the MAN table */
-        n = slc_count(s, div);
+    if (m && (!slc_man_of(s) || m->n != div)) {       /* the slices shown become the MAN table */
+        n = div;
         m->n = 0;
         m->end = 0;
         for (i = 0; i < n; i++) {
-            slc_bounds(s, div, i, &a, &b, &st);
+            slc_bounds(s, n, i, &a, &b, &st);
             if (a < s->len && s->len - a >= SLC_MIN && (!m->n || a - m->pos[m->n - 1u] >= SLC_MIN)) {
                 m->pos[m->n] = a;
                 m->st[m->n++] = st;
@@ -115,9 +110,9 @@ static slc_man_t *slice_edit_begin(uint32_t *k)
 static void slice_edit_end(uint32_t k)
 {
     slc_man_commit(k);
-    if (TSEL->p[P_E1] != SLC_DIV_MAN) {
-        TSEL->p[P_E1] = SLC_DIV_MAN;                 /* (the editor sees it as any change of the value) */
-        ui_message("DIV MAN");
+    const slc_man_t *m = &slc_man[k][slc_man_cur[k] & 1u];
+    if (m && m->n) {
+        TSEL->p[P_E1] = (int16_t)clamp(m->n, 1, 16);
     }
     slc_man_save |= (uint8_t)(1u << k);              /* to flash when the page is left (slice_store.c) */
 }

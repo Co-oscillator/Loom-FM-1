@@ -70,7 +70,7 @@ static const char *const N_SLC_SRC[] = {"BREAK", "USR1", "USR2", "USR3", "PIANO"
 #define SLC_SINE 7u                  /* a voice's source when it has no material: the sine */
 static const char *const N_SLC_DIV[] = {"4", "8", "16", "32", "AUTO", "MAN"};
 static const char *const N_SLC_MODE[] = {"ONE", "GATE", "LOOP"};
-static const char *const N_SLC_REV[] = {"OFF", "ON"};
+static const char *const N_SLC_DIR[] = {"FWD", "REV", "PING"};
 enum { SLC_ONE, SLC_GATE, SLC_LOOP };
 #define SLC_DIV_AUTO 4u
 #define SLC_DIV_MAN 5u               /* the slice starts set by hand (the SLICES page); none yet: the AUTO ones */
@@ -167,7 +167,9 @@ static uint32_t slc_state_at(const slc_src_t *s, uint32_t pos);
 
 static uint32_t slc_count(const slc_src_t *s, uint32_t slcs)
 {
-    (void)s;
+    const slc_man_t *m = s ? slc_man_of(s) : 0;
+    if (m && m->n && m->n == slcs)
+        return m->n;
     return (uint32_t)clamp(slcs, 1, 16);
 }
 /* the slice a note plays (n slices): note - C4 - ROOT, mod n */
@@ -217,6 +219,15 @@ static void slc_calc_slice_point(const slc_src_t *s, uint32_t n_slices, uint32_t
 /* slice j of n_slices: [*a, *b), *st the state at *a */
 static void slc_bounds(const slc_src_t *s, uint32_t slcs, uint32_t j, uint32_t *a, uint32_t *b, uint32_t *st)
 {
+    const slc_man_t *m = s ? slc_man_of(s) : 0;
+    if (m && m->n && m->n == slcs) {
+        uint32_t n = m->n;
+        j = j < n ? j : n - 1u;
+        *a = m->pos[j];
+        *b = (j + 1u < n) ? m->pos[j + 1u] : slc_man_end(s, m);
+        *st = m->st[j];
+        return;
+    }
     uint32_t n = (uint32_t)clamp(slcs, 1, 16);
     j = j < n ? j : n - 1u;
     uint32_t p0, st0, p1, st1;
@@ -469,7 +480,8 @@ static int16_t *slc_rb(track_t *t, voice_t *v)
 static void slice_note_on(track_t *t, voice_t *v)
 {
     const int16_t *p = t->p;
-    uint32_t src = slc_src_of(p), slcs = (uint32_t)clamp(p[P_E1], 1, 16), rev = p[P_E6] != 0;
+    uint32_t src = slc_src_of(p), slcs = (uint32_t)clamp(p[P_E1], 1, 16);
+    uint32_t dir = (uint32_t)clamp(p[P_E6], 0, 2), rev = (dir == 1), is_ping = (dir == 2);
     uint32_t a, b, st, j;
     const slc_src_t *s = slc_get(src);
     v->ph[1] = 0;
@@ -486,9 +498,9 @@ static void slice_note_on(track_t *t, voice_t *v)
     }
     j = slc_note_slice(p, v->note, slc_count(s, slcs));
     slc_bounds(s, slcs, j, &a, &b, &st);
-    if (b <= a || (rev && !slc_rb(t, v)))
+    if (b <= a || ((rev || is_ping) && !slc_rb(t, v)))
         return;
-    v->s[4] = (int32_t)(src | (st >> 24) << 3 | rev << 7 | j << 8 | slcs << 16);
+    v->s[4] = (int32_t)(src | (st >> 24) << 3 | rev << 7 | j << 8 | slcs << 16 | (is_ping ? (1u << 21) : 0u));
     v->s[6] = 0;
     if (rev) {
         v->ph[0] = b;
@@ -608,11 +620,12 @@ static void slice_tempo_sync(track_t *t, int sync_idx)
 static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
-    uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 7) & 1u, stepq, stepq_adv, rem;
+    uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 7) & 1u, is_ping = (pk >> 21) & 1u, stepq, stepq_adv, rem;
     int32_t lp = 4000 + ((clamp((127 << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15), x;
     int loop = p[P_E5] == SLC_LOOP && v->gate;
+    uint32_t mode = (uint32_t)p[P_E5] % 3u;
     const slc_src_t *s = v->s[6] == 2 || (pk & 7u) == SLC_SINE ? 0 : slc_get(pk & 7u);
-    int16_t *rb = slc_rb(t, v);
+    int16_t *rb = (rev || is_ping) ? slc_rb(t, v) : 0;
     slc_dec_t d;
     if ((pk & 7u) == SLC_SINE && v->s[6] != 2) {        /* no material: the sine at the key's pitch + PTCH */
         smp_sine(out, n, m, p[P_E2] * 16, lp, &v->ph[0], &v->s[7]);
@@ -641,7 +654,7 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         v->s[6] = 1;
     }
     rem = rev ? v->ph[0] - v->ph[2] : v->ph[2] - d.pos;
-    if (v->s[6] == 1 && !loop && rem < ((stepq_adv * 3u * n) >> 16))
+    if (v->s[6] == 1 && !loop && !is_ping && rem < ((stepq_adv * 3u * n) >> 16))
         v->s[6] = 3;                                    /* the next block fades to 0 (slice_amp) */
     for (i = 0; i < n; i++) {
         int32_t y;
@@ -649,10 +662,42 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         while (frac >= 65536u) {
             frac -= 65536u;
             v->s[2] = v->s[3];
-            if (!(rev ? slc_rev(s, v, rb, loop, &x) : slc_fwd(s, v, &d, loop, &x))) {
-                v->s[6] = 2;                            /* the slice ended */
-                v->s[3] = 0;
-                break;
+            if (rev) {
+                if (!slc_rev(s, v, rb, loop, &x)) {
+                    if (is_ping && (loop || (mode != SLC_ONE && v->gate))) {
+                        /* Ping-pong: bounce off slice start, play forward */
+                        rev = 0;
+                        v->s[4] &= ~(1u << 7);
+                        uint32_t a, b, st;
+                        slc_bounds_v(s, v, &a, &b, &st);
+                        slc_dec_at(&d, a, st);
+                        v->ph[0] = a;
+                        v->ph[2] = b;
+                        if (!slc_fwd(s, v, &d, 0, &x)) {
+                            v->s[6] = 2; v->s[3] = 0; break;
+                        }
+                    } else {
+                        v->s[6] = 2; v->s[3] = 0; break;
+                    }
+                }
+            } else {
+                if (!slc_fwd(s, v, &d, is_ping ? 0 : loop, &x)) {
+                    if (is_ping) {
+                        /* Ping-pong: bounce off slice end, play reverse */
+                        rev = 1;
+                        v->s[4] |= (1u << 7);
+                        uint32_t a, b, st;
+                        slc_bounds_v(s, v, &a, &b, &st);
+                        v->ph[0] = b;
+                        v->ph[2] = a;
+                        v->s[0] = 0x7FFFFFFF;
+                        if (!slc_rev(s, v, rb, 0, &x)) {
+                            v->s[6] = 2; v->s[3] = 0; break;
+                        }
+                    } else {
+                        v->s[6] = 2; v->s[3] = 0; break;
+                    }
+                }
             }
             v->s[3] = x;
         }
@@ -667,7 +712,7 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         v->ph[0] = d.pos;
         v->s[0] = d.pred;
         v->s[1] = d.idx;
-        v->s[4] = (int32_t)((pk & ~(15u << 3)) | d.seg << 3);
+        v->s[4] = (int32_t)((v->s[4] & ~(15u << 3)) | d.seg << 3);
     }
 }
 
@@ -696,7 +741,7 @@ static const engine_t ENG_SLICE = {
         {"SPEED", F_PCT, 10, 400, 100, 0, 0},
         {"STRCH", F_PCT, 25, 400, 100, 0, 0},
         {"MODE", F_ENUM, 0, 2, 0, N_SLC_MODE, 0},
-        {"REV", F_ENUM, 0, 1, 0, N_SLC_REV, 0},
+        {"DIR", F_ENUM, 0, 2, 0, N_SLC_DIR, 0},
         {"SYNC", F_ENUM, 0, 7, 0, N_SLC_SYNC, 0},
     },
     .presets = SLICE_PRESETS,

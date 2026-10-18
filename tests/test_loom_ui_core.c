@@ -599,13 +599,18 @@ static void test_engine_edit_pages(void)
     assert(strcmp(N_SMP_MODE[0], "ONE") == 0);
     assert(strcmp(N_SMP_MODE[1], "SUS") == 0);
     assert(strcmp(N_SMP_MODE[2], "LOOP") == 0);
+    assert(strcmp(N_SMP_MODE[3], "REV") == 0);
+    assert(strcmp(N_SMP_MODE[4], "PING") == 0);
+    assert(ENG_SAMPLE.edit[1].max == 4);
     assert(ENG_SAMPLE.knob[0] == P_E2 && ENG_SAMPLE.knob[1] == P_E3 &&
            ENG_SAMPLE.knob[2] == P_E5 && ENG_SAMPLE.knob[3] == P_E6);
     TSEL->eng_req = ENGI_SAMPLE;
     TSEL->engine = ENGI_SAMPLE;
     TSEL->p[P_E0] = 0;   /* PIANO */
+    TSEL->p[P_E1] = 4;   /* PING mode */
     TSEL->p[P_E2] = 0;   /* Pitch 0 */
     TSEL->p[P_E3] = 100; /* Speed 100% */
+    TSEL->p[P_E4] = 100; /* Stretch 100% */
     TSEL->p[P_E5] = 0;   /* Start 0% */
     TSEL->p[P_E6] = 100; /* End 100% */
     song.g[G_BPM] = 120;
@@ -615,7 +620,7 @@ static void test_engine_edit_pages(void)
     assert(TSEL->p[P_E4] >= 25 && TSEL->p[P_E4] <= 400);
     cv_begin(240, 122, T_BG);
     graph_sample(T_THEME);
-    printf("  SAMPLE engine parameters (PLAY, TRIM, ONE/SUS/LOOP, PTCH/SPEED/STRCH, SYNC) and graph_sample verified (OK)\n");
+    printf("  SAMPLE engine parameters (PLAY, TRIM, ONE/SUS/LOOP/REV/PING, PTCH/SPEED/STRCH, SYNC) and graph_sample verified (OK)\n");
 
     /* Test SLICE parameters, home knobs, and graph_slices */
 #if FELUCCA_SLICE
@@ -628,7 +633,11 @@ static void test_engine_edit_pages(void)
     assert(strcmp(ENG_SLICE.edit[3].label, "SPEED") == 0);
     assert(strcmp(ENG_SLICE.edit[4].label, "STRCH") == 0);
     assert(strcmp(ENG_SLICE.edit[5].label, "MODE") == 0);
-    assert(strcmp(ENG_SLICE.edit[6].label, "REV") == 0);
+    assert(strcmp(ENG_SLICE.edit[6].label, "DIR") == 0);
+    assert(strcmp(N_SLC_DIR[0], "FWD") == 0);
+    assert(strcmp(N_SLC_DIR[1], "REV") == 0);
+    assert(strcmp(N_SLC_DIR[2], "PING") == 0);
+    assert(ENG_SLICE.edit[6].max == 2);
     assert(strcmp(ENG_SLICE.edit[7].label, "SYNC") == 0);
     assert(ENG_SLICE.knob[0] == P_E2 && ENG_SLICE.knob[1] == P_E3 &&
            ENG_SLICE.knob[2] == P_E4 && ENG_SLICE.knob[3] == P_E1);
@@ -682,6 +691,8 @@ static void test_engine_edit_pages(void)
     assert(trk[4].step[0].hit == (1u << 2));
     assert(ui.lane == 2);
     printf("  DRUM sequencer target: [K3] directly sequences drum voices (KICK, SNARE, CLAP...) on step (OK)\n");
+    fflush(stdout);
+
     ui.force = 1;
     ui_draw();
     dump_screen_raw("build/seq_drum_4x4.raw");
@@ -708,7 +719,38 @@ static void test_engine_edit_pages(void)
 
     cv_begin(240, 122, T_BG);
     graph_slices();
-    printf("  SLICE engine parameters (PTCH/SPEED/STRCH, SLCS 1..16, white keys) and graph_slices verified (OK)\n");
+
+    /* Test Manual Slice Editing preserves slice count (does not jump to 5) */
+    slc_man[0][0].n = 16;
+    slc_man_cur[0] = 0;
+    trk[0].p[P_E1] = 16;
+    slice_edit_end(0);
+    assert(trk[0].p[P_E1] == 16 && "slice_edit_end must preserve slice count without reverting to 5!");
+
+    /* Test ping-pong render for SLICE */
+    trk[0].p[P_E6] = 2; /* PING */
+    voice_t *v_slc = &trk[0].v[0];
+    memset(v_slc, 0, sizeof(*v_slc));
+    v_slc->note = 60;
+    v_slc->gate = 1;
+    v_slc->active = 1;
+    slice_note_on(&trk[0], v_slc);
+    int32_t slc_buf[32] = {0};
+    vmod_t mod_dummy = {0};
+    slice_render(&trk[0], v_slc, slc_buf, 32, &mod_dummy);
+
+    /* Test ping-pong render for SAMPLE */
+    trk[0].p[P_E1] = 4; /* PING */
+    voice_t *v_smp = &trk[0].v[1];
+    memset(v_smp, 0, sizeof(*v_smp));
+    v_smp->note = 60;
+    v_smp->gate = 1;
+    v_smp->active = 1;
+    sample_note_on(&trk[0], v_smp);
+    int32_t smp_buf[32] = {0};
+    sample_render(&trk[0], v_smp, smp_buf, 32, &mod_dummy);
+
+    printf("  SLICE engine parameters (PTCH/SPEED/STRCH, SLCS 1..16, white keys, manual slice edit, ping-pong) verified (OK)\n");
 #endif
 
     /* Test SCRUB parameters, home knobs, and graph_scrub */
@@ -721,8 +763,32 @@ static void test_engine_edit_pages(void)
     assert(strcmp(ENG_SCRUB.edit[3].label, "FRIC") == 0);
     assert(strcmp(ENG_SCRUB.edit[4].label, "SRC") == 0);
     assert(strcmp(ENG_SCRUB.edit[5].label, "LOOP") == 0);
+    assert(ENG_SCRUB.edit[5].max == 3);
+    assert(strcmp(N_SCRUB_LOOP[0], "OFF") == 0);
+    assert(strcmp(N_SCRUB_LOOP[1], "FWD") == 0);
+    assert(strcmp(N_SCRUB_LOOP[2], "REV") == 0);
+    assert(strcmp(N_SCRUB_LOOP[3], "PING") == 0);
     assert(strcmp(ENG_SCRUB.edit[6].label, "DRV") == 0);
     assert(strcmp(ENG_SCRUB.edit[7].label, "WOW") == 0);
+
+    /* Test ping-pong wrap for SCRUB */
+    scrb_part_t *sp = scrb_of(&trk[0]);
+    sp->pos = (int64_t)105 << 16;
+    sp->velocity = 65536;
+    int32_t cur_step = 65536;
+    scrb_wrap_pos(sp, 100, 3, &cur_step);
+    assert(sp->velocity == -65536 && "Ping-pong mode must reverse velocity on upper boundary overshoot!");
+    assert(cur_step == -65536);
+    assert(sp->pos == (int64_t)93 << 16); /* 2*99 - 105 = 93 */
+
+    /* Also test undershoot below 0 */
+    sp->pos = -(int64_t)(5 << 16);
+    sp->velocity = -65536;
+    cur_step = -65536;
+    scrb_wrap_pos(sp, 100, 3, &cur_step);
+    assert(sp->velocity == 65536 && "Ping-pong mode must reverse velocity on lower boundary undershoot!");
+    assert(cur_step == 65536);
+    assert(sp->pos == (int64_t)5 << 16);
     assert(ENG_SCRUB.knob[0] == P_E0 && ENG_SCRUB.knob[1] == P_E1 &&
            ENG_SCRUB.knob[2] == P_E2 && ENG_SCRUB.knob[3] == P_E3);
     assert(ENG_SCRUB.block != 0 && "SCRUB engine must have block hook for physics and reel rotation!");

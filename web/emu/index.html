@@ -380,7 +380,7 @@ footer small { font-size: 11px; opacity: .8; }
           <div class="mag-pill"><strong>INERT (Platter Inertia):</strong> Rotational momentum of the virtual 12" platter. High values produce smooth spin-up and gradual coasting to a stop; low values provide instant punchy scratching.</div>
           <div class="mag-pill"><strong>FRIC (Braking Friction):</strong> Surface drag and motor braking resistance. Controls how quickly the platter decelerates when released.</div>
           <div class="mag-pill"><strong>SRC (Audio Source):</strong> Selects built-in break/piano material or custom user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
-          <div class="mag-pill"><strong>LOOP (Loop Mode):</strong> Sets tape transport looping bounds (<code>OFF</code> plays once; <code>ON</code> seamlessly wraps buffer playback).</div>
+          <div class="mag-pill"><strong>LOOP (Loop Mode):</strong> Sets tape transport looping bounds (<code>OFF</code> plays once; <code>FWD</code> forward loop; <code>REV</code> reverse loop; <code>PING</code> bi-directional ping-pong platter bounce).</div>
           <div class="mag-pill"><strong>DRV (Tape Saturation):</strong> Preamp saturation drive adding warm magnetic tape harmonics and soft-clipping.</div>
           <div class="mag-pill"><strong>WOW (Wow &amp; Flutter):</strong> Subtle mechanical pitch drift and transport flutter for authentic vintage tape warmth.</div>
         </div>
@@ -398,7 +398,7 @@ footer small { font-size: 11px; opacity: .8; }
         <p>Direct chromatic sample playback across keyboard zones with independent tape-speed pitching, granular time-stretching, loop trim, and tempo sync:</p>
         <div class="mag-grid">
           <div class="mag-pill"><strong>SET (Sample Source):</strong> Built-in multi-sample sets (<code>PIANO</code>, <code>EP</code>, <code>FLUTE</code>, <code>SAX</code>) or user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
-          <div class="mag-pill"><strong>MODE (Trigger Mode):</strong> Playback gating — <code>ONE</code> (one-shot plays full sample), <code>SUS</code> (sustains while key is held), or <code>LOOP</code> (loops within trim boundaries).</div>
+          <div class="mag-pill"><strong>MODE (Trigger &amp; Direction):</strong> Playback mode and direction — <code>ONE</code> (forward one-shot), <code>SUS</code> (forward sustain), <code>LOOP</code> (forward loop), <code>REV</code> (reverse playback), or <code>PING</code> (bi-directional ping-pong bounce between trim markers).</div>
           <div class="mag-pill"><strong>PTCH (Fine Pitch):</strong> Chromatic transposition (<code>-24</code> to <code>+24</code> semitones) without altering stretch length.</div>
           <div class="mag-pill"><strong>SPEED (Playback Speed):</strong> Varispeed motor rate (10% to 400%), shifting tape speed and playback pitch naturally.</div>
           <div class="mag-pill"><strong>STRCH (Time Stretch):</strong> Granular time-stretch length factor (25% to 400%). Automatically calculated when using <code>SYNC</code>.</div>
@@ -424,8 +424,8 @@ footer small { font-size: 11px; opacity: .8; }
           <div class="mag-pill"><strong>SPEED (Playback Speed):</strong> Playback time-stretch speed (10% to 400%) for extreme slow-motion chops or tempo matching.</div>
           <div class="mag-pill"><strong>STRCH (Time Stretch Length):</strong> Granular time-stretch length factor (25% to 400%) preserving transient punch.</div>
           <div class="mag-pill"><strong>MODE (Trigger Gate):</strong> Gate mode (<code>SHOT</code> plays slice to completion; <code>GATE</code> sounds only while held; <code>LOOP</code> continuously loops the slice).</div>
-          <div class="mag-pill"><strong>REV (Slice Reverse):</strong> Playback direction (<code>OFF</code> forward; <code>REV</code> reversed slice playback).</div>
-          <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps loop duration to song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> so slices divide evenly into the beat/bar length at the current BPM.</div>
+          <div class="mag-pill"><strong>DIR (Playback Direction):</strong> Playback direction across slice markers (<code>FWD</code> forward; <code>REV</code> reverse; <code>PING</code> bi-directional ping-pong slice bounce).</div>
+          <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps total loop playback duration to song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> so the overall loop matches the selected bar/beat length at the current BPM, while individual slice points preserve natural transient placement (averaging 1 step per slice across a 1-bar 16-slice break).</div>
         </div>
       </div>
     </div>

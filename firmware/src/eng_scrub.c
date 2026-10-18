@@ -45,17 +45,31 @@ static inline int32_t cubic_hermite_q15(int32_t y0, int32_t y1, int32_t y2, int3
     return (int32_t)(((int64_t)t * mu_q15) >> 15) + y1;
 }
 
-static inline void scrb_wrap_pos(scrb_part_t *sp, uint32_t len, int loop_on, int32_t *cur_step)
+static const char *const N_SCRUB_LOOP[] = {"OFF", "FWD", "REV", "PING"};
+
+static inline void scrb_wrap_pos(scrb_part_t *sp, uint32_t len, int loop_mode, int32_t *cur_step)
 {
     int64_t max_pos = (len > 1u) ? ((int64_t)(len - 1u) << 16) : 0;
     if (max_pos <= 0) {
         sp->pos = 0;
         return;
     }
-    if (loop_on) {
+    if (loop_mode == 3) { /* PING-PONG bounce */
+        if (sp->pos >= max_pos) {
+            sp->pos = 2 * max_pos - sp->pos;
+            if (sp->pos < 0) sp->pos = 0;
+            if (sp->velocity > 0) sp->velocity = -sp->velocity;
+            if (cur_step && *cur_step > 0) *cur_step = -*cur_step;
+        } else if (sp->pos < 0) {
+            sp->pos = -sp->pos;
+            if (sp->pos > max_pos) sp->pos = max_pos;
+            if (sp->velocity < 0) sp->velocity = -sp->velocity;
+            if (cur_step && *cur_step < 0) *cur_step = -*cur_step;
+        }
+    } else if (loop_mode != 0) { /* WRAP (FWD / REV) */
         while (sp->pos >= max_pos) sp->pos -= max_pos;
         while (sp->pos < 0) sp->pos += max_pos;
-    } else {
+    } else { /* OFF */
         if (sp->pos < 0) {
             sp->pos = 0;
             sp->velocity = 0;
@@ -97,10 +111,18 @@ static void scrb_fill_cache(const slc_src_t *s, scrb_part_t *sp, uint32_t start_
 }
 
 /* Retrieve an uncompressed PCM sample, refilling the cache window on miss */
-static int16_t scrb_sample_val(const slc_src_t *s, scrb_part_t *sp, int32_t idx, int loop_on)
+static int16_t scrb_sample_val(const slc_src_t *s, scrb_part_t *sp, int32_t idx, int loop_mode)
 {
     if (!s || !s->len) return 0;
-    if (loop_on) {
+    if (loop_mode == 3) { /* PING-PONG reflection */
+        if (idx < 0) {
+            idx = -idx;
+        } else if ((uint32_t)idx >= s->len) {
+            idx = (int32_t)(2 * (s->len - 1u) - (uint32_t)idx);
+        }
+        if (idx < 0) idx = 0;
+        else if ((uint32_t)idx >= s->len) idx = (int32_t)s->len - 1;
+    } else if (loop_mode != 0) {
         if (idx < 0) {
             idx = (int32_t)s->len - 1 + ((idx + 1) % (int32_t)s->len);
         } else if ((uint32_t)idx >= s->len) {
@@ -179,7 +201,7 @@ static void scrub_block(track_t *t)
     /* Motor target speed: -3.0x to +3.0x in Q16 (p[P_E1] in -30..30) */
     int32_t motor_speed = ((int32_t)p[P_E1] * 65536) / 10;
     if (p[P_E1] == 0 && (song.playing || (t->v[0].active && t->v[0].gate))) {
-        motor_speed = 65536; /* sequencer playing or held key drives tape forward at 1x if motor is STOP */
+        motor_speed = (p[P_E5] == 2) ? -65536 : 65536; /* REV runs in reverse at -1x */
     }
 
     if (sp->touch_timer > 0) {
@@ -236,7 +258,7 @@ static void scrub_block(track_t *t)
     if (!t->v[0].active) {
         int32_t step_q16 = (int32_t)(((int64_t)sp->velocity * (int64_t)s->rate) >> 16);
         sp->pos += (int64_t)step_q16 * (int64_t)CTL;
-        scrb_wrap_pos(sp, s->len, p[P_E5] != 0, 0);
+        scrb_wrap_pos(sp, s->len, p[P_E5], 0);
         sp->prev_step = step_q16;
     }
 
@@ -290,7 +312,7 @@ static void scrub_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     int32_t lp = clamp((user_cutoff * lp_scale_q15) >> 15, 4500, 32000);
 
     int32_t drv = p[P_E6];
-    int loop_on = (p[P_E5] != 0);
+    int loop_mode = p[P_E5];
 
     /* Keep audio full-level down to very slow scrub speeds (~0.02x), only fading to 0 at standstill */
     int32_t speed_scale_q15 = 0;
@@ -303,7 +325,7 @@ static void scrub_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     for (uint32_t i = 0; i < n; i++) {
         cur_sample_step += step_inc;
         sp->pos += cur_sample_step;
-        scrb_wrap_pos(sp, s->len, loop_on, &cur_sample_step);
+        scrb_wrap_pos(sp, s->len, loop_mode, &cur_sample_step);
 
         if (speed_scale_q15 <= 16) {
             sp->lp_state = (sp->lp_state * 31000) >> 15;
@@ -314,10 +336,10 @@ static void scrub_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         int32_t p1 = (int32_t)(sp->pos >> 16);
         int32_t frac_q15 = (int32_t)((sp->pos >> 1) & 0x7FFF);
 
-        int32_t y0 = scrb_sample_val(s, sp, p1 - 1, loop_on);
-        int32_t y1 = scrb_sample_val(s, sp, p1, loop_on);
-        int32_t y2 = scrb_sample_val(s, sp, p1 + 1, loop_on);
-        int32_t y3 = scrb_sample_val(s, sp, p1 + 2, loop_on);
+        int32_t y0 = scrb_sample_val(s, sp, p1 - 1, loop_mode);
+        int32_t y1 = scrb_sample_val(s, sp, p1, loop_mode);
+        int32_t y2 = scrb_sample_val(s, sp, p1 + 1, loop_mode);
+        int32_t y3 = scrb_sample_val(s, sp, p1 + 2, loop_mode);
 
         int32_t s_val = clamp(cubic_hermite_q15(y0, y1, y2, y3, frac_q15), -32768, 32767);
 
@@ -362,7 +384,7 @@ static const engine_t ENG_SCRUB = {
         {"INERT", F_PCT, 0, 100, 50, 0, 0},
         {"FRIC", F_PCT, 0, 100, 50, 0, 0},
         {"SRC", F_ENUM, 0, SLC_NSRC - 1, 0, N_SLC_SRC, 0},
-        {"LOOP", F_ONOFF, 0, 1, 0, 0, 0},
+        {"LOOP", F_ENUM, 0, 3, 0, N_SCRUB_LOOP, 0},
         {"DRV", F_PCT, 0, 127, 30, 0, 0},
         {"WOW", F_PCT, 0, 100, 10, 0, 0},
     },

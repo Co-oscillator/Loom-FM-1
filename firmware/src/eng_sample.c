@@ -165,7 +165,104 @@ static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
     return v->s[0];
 }
 
-static const char *const N_SMP_MODE[] = {"ONE", "SUS", "LOOP"};
+#define SMP_RB 64u
+#define SMP_GRID 128u
+typedef struct {
+    uint32_t grid[SMP_GRID];
+    uint32_t grid_zone;
+    uint32_t r_ws[NVOICE];
+    int16_t rbuf[NVOICE][SMP_RB];
+} smp_part_t;
+
+ENG_MEM_FITS("SAMPLE", sizeof(smp_part_t));
+
+static inline smp_part_t *smp_part_of(const track_t *t)
+{
+    uint32_t p = (uint32_t)(t - trk);
+    return p < NPART ? (smp_part_t *)ENG_MEM(p) : 0;
+}
+
+static void smp_ensure_grid(smp_part_t *sp, const smp_zone_t *z, uint32_t zi)
+{
+    if (sp->grid_zone == zi && sp->grid[0] != 0xFFFFFFFFu)
+        return;
+    sp->grid_zone = zi;
+    if (!z || !z->n)
+        return;
+    uint32_t pos = 0, k;
+    int32_t pred = 0, idx = 0;
+    for (k = 0; k < SMP_GRID; k++) {
+        uint32_t target = (uint32_t)(((uint64_t)k * z->n) >> 7);
+        while (pos < target && pos < z->n) {
+            uint32_t b = SMP_DATA[z->off + (pos >> 1)];
+            uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
+            int32_t step = IMA_STEP[(uint32_t)idx <= 88u ? idx : 88], vd = step >> 3;
+            if (code & 4u) vd += step;
+            if (code & 2u) vd += step >> 1;
+            if (code & 1u) vd += step >> 2;
+            pred = clamp(pred + ((code & 8u) ? -vd : vd), -32768, 32767);
+            idx = clamp(idx + IMA_IDX[code & 7u], 0, 88);
+            pos++;
+        }
+        sp->grid[k] = (uint32_t)(uint16_t)pred | ((uint32_t)idx << 16);
+    }
+}
+
+static void smp_fill_rbuf(smp_part_t *sp, const smp_zone_t *z, uint32_t vi, uint32_t ws, uint32_t n)
+{
+    if (!z || !z->n || vi >= NVOICE) return;
+    uint32_t k = (uint32_t)(((uint64_t)ws << 7) / z->n);
+    if (k >= SMP_GRID) k = SMP_GRID - 1u;
+    uint32_t pos = (uint32_t)(((uint64_t)k * z->n) >> 7);
+    int32_t pred = (int16_t)(sp->grid[k] & 0xFFFFu);
+    int32_t idx = (int32_t)((sp->grid[k] >> 16) & 127u);
+
+    while (pos < ws && pos < z->n) {
+        uint32_t b = SMP_DATA[z->off + (pos >> 1)];
+        uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
+        int32_t step = IMA_STEP[(uint32_t)idx <= 88u ? idx : 88], vd = step >> 3;
+        if (code & 4u) vd += step;
+        if (code & 2u) vd += step >> 1;
+        if (code & 1u) vd += step >> 2;
+        pred = clamp(pred + ((code & 8u) ? -vd : vd), -32768, 32767);
+        idx = clamp(idx + IMA_IDX[code & 7u], 0, 88);
+        pos++;
+    }
+
+    for (uint32_t i = 0; i < n && pos < z->n; i++) {
+        uint32_t b = SMP_DATA[z->off + (pos >> 1)];
+        uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
+        int32_t step = IMA_STEP[(uint32_t)idx <= 88u ? idx : 88], vd = step >> 3;
+        if (code & 4u) vd += step;
+        if (code & 2u) vd += step >> 1;
+        if (code & 1u) vd += step >> 2;
+        pred = clamp(pred + ((code & 8u) ? -vd : vd), -32768, 32767);
+        idx = clamp(idx + IMA_IDX[code & 7u], 0, 88);
+        sp->rbuf[vi][i] = (int16_t)pred;
+        pos++;
+    }
+    sp->r_ws[vi] = ws;
+}
+
+static inline int32_t sample_rev_next(const smp_zone_t *z, voice_t *v, smp_part_t *sp, uint32_t vi, uint32_t start_pos)
+{
+    uint32_t q = v->ph[0];
+    if (q <= start_pos) return 0;
+    q--;
+    if (!sp) {
+        v->ph[0] = q;
+        return 0;
+    }
+    uint32_t ws = sp->r_ws[vi];
+    if (ws == 0xFFFFFFFFu || q < ws || q >= ws + SMP_RB) {
+        ws = (q + 1u >= start_pos + SMP_RB) ? (q + 1u - SMP_RB) : start_pos;
+        smp_fill_rbuf(sp, z, vi, ws, SMP_RB);
+    }
+    v->ph[0] = q;
+    return sp->rbuf[vi][q - ws];
+}
+
+static const char *const N_SMP_MODE[] = {"ONE", "SUS", "LOOP", "REV", "PING"};
 static const char *const N_SMP_SYNC[] = {
     "--", "1 STEP", "2 STEPS", "1 BEAT", "2 BEATS", "1 BAR", "2 BARS", "4 BARS"
 };
@@ -239,8 +336,31 @@ static void sample_note_on(track_t *t, voice_t *v)
         v->s[4] = (int32_t)(zi == 0xFFFFu ? 0 : zi);
     }
     const smp_zone_t *z = smp_zone((uint32_t)v->s[4]);
+    uint32_t mode = (uint32_t)t->p[P_E1] % 5u;
     uint32_t start_pct = (uint32_t)clamp(t->p[P_E5], 0, 100);
-    v->ph[0] = z && z->n ? (uint32_t)((uint64_t)z->n * start_pct / 100u) : 0;
+    uint32_t end_pct = (uint32_t)clamp(t->p[P_E6], 0, 100);
+    if (end_pct <= start_pct) end_pct = 100u;
+    uint32_t start_pos = z && z->n ? (uint32_t)((uint64_t)z->n * start_pct / 100u) : 0;
+    uint32_t end_pos = z && z->n ? (uint32_t)((uint64_t)z->n * end_pct / 100u) : 0;
+    if (end_pos <= start_pos) end_pos = (start_pos + 1u <= (z ? z->n : 0)) ? start_pos + 1u : (z ? z->n : 0);
+
+    smp_part_t *sp = smp_part_of(t);
+    uint32_t vi = (uint32_t)(v - t->v);
+    if (sp && z && z->n && (mode == 3 || mode == 4)) {
+        smp_ensure_grid(sp, z, (uint32_t)v->s[4]);
+        sp->r_ws[vi] = 0xFFFFFFFFu;
+    }
+
+    if (mode == 3) { /* REV */
+        v->ph[0] = end_pos;
+        v->ph[2] = 1; /* 1 = playing backwards */
+    } else if (mode == 4) { /* PING */
+        v->ph[0] = start_pos;
+        v->ph[2] = 2; /* 2 = ping-pong, currently forward */
+    } else {
+        v->ph[0] = start_pos;
+        v->ph[2] = 0; /* forward */
+    }
     v->ph[1] = 0;
     v->s[0] = 0;
     v->s[1] = 0;
@@ -267,10 +387,15 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     uint32_t stepq_adv = (stepq * 100u) / strch_pct;
 
     int32_t lp = 4000 + ((clamp((127 << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
-    uint32_t mode = (uint32_t)p[P_E1] % 3u; /* 0=ONE, 1=SUS, 2=LOOP */
+    uint32_t mode = (uint32_t)p[P_E1] % 5u; /* 0=ONE, 1=SUS, 2=LOOP, 3=REV, 4=PING */
     uint32_t start_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E5], 0, 100) / 100u);
     uint32_t end_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E6], 0, 100) / 100u);
     if (end_pos <= start_pos) end_pos = (start_pos + 1u <= z->n) ? start_pos + 1u : z->n;
+
+    smp_part_t *sp = smp_part_of(t);
+    uint32_t vi = (uint32_t)(v - t->v);
+    uint32_t is_rev = v->ph[2] & 1u;
+    uint32_t is_ping = (mode == 4);
 
     if (v->s[6] == 2) {                               /* no sample data: the sine at the note's pitch + PTCH */
         smp_sine(out, n, m, p[P_E2] * 16, lp, &v->ph[0], &v->s[7]);
@@ -280,31 +405,68 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
         v->active = 0;
         return;
     }
-    if (v->ph[0] == 0 && v->ph[1] == 0 && v->s[3] == 0)
-        v->s[3] = sample_next(z, v, mode == 2);         /* prime the interpolator */
+    if (v->ph[1] == 0 && v->s[3] == 0) {
+        if (is_rev) {
+            v->s[3] = sample_rev_next(z, v, sp, vi, start_pos);
+        } else {
+            v->s[3] = sample_next(z, v, mode == 2);         /* prime the interpolator */
+        }
+    }
     for (i = 0; i < n; i++) {
         int32_t s;
         frac += stepq_adv;
         while (frac >= 65536u) {
             frac -= 65536u;
             v->s[2] = v->s[3];
-            if (v->ph[0] >= end_pos || v->ph[0] >= z->n) {                   /* reached end of sample or trim */
-                if (mode == 2 && v->gate) {                        /* LOOP mode: wrap to beginning or loop start */
-                    v->ph[0] = (z->looped && z->ls < z->le && z->ls >= start_pos && z->le <= end_pos) ? z->ls : start_pos;
-                    v->s[0] = z->looped ? z->pred : 0;
-                    v->s[1] = z->looped ? z->idx : 0;
-                    v->s[3] = sample_next(z, v, 1);
-                } else {
-                    v->s[6] = 1;
-                    v->s[3] = 0;
-                    if (frac >= 65536u) {                /* past the last sample-to-zero interval */
-                        v->s[2] = 0;
-                        frac &= 65535u;
+            if (is_rev) {
+                if (v->ph[0] <= start_pos) {
+                    if (is_ping && (v->gate || mode == 4)) {
+                        /* Ping-pong: bounce off start_pos, switch to forward */
+                        is_rev = 0;
+                        v->ph[2] &= ~1u;
+                        v->ph[0] = start_pos;
+                        v->s[0] = 0;
+                        v->s[1] = 0;
+                        v->s[3] = sample_next(z, v, 0);
+                    } else {
+                        v->s[6] = 1;
+                        v->s[3] = 0;
+                        if (frac >= 65536u) {
+                            v->s[2] = 0;
+                            frac &= 65535u;
+                        }
+                        break;
                     }
-                    break;
+                } else {
+                    v->s[3] = sample_rev_next(z, v, sp, vi, start_pos);
+                }
+            } else {
+                if (v->ph[0] >= end_pos || v->ph[0] >= z->n) {                   /* reached end of sample or trim */
+                    if (is_ping) {
+                        /* Ping-pong: bounce off end_pos, switch to reverse */
+                        is_rev = 1;
+                        v->ph[2] |= 1u;
+                        v->ph[0] = end_pos;
+                        if (sp) sp->r_ws[vi] = 0xFFFFFFFFu;
+                        v->s[3] = sample_rev_next(z, v, sp, vi, start_pos);
+                    } else if (mode == 2 && v->gate) {                        /* LOOP mode: wrap to beginning or loop start */
+                        v->ph[0] = (z->looped && z->ls < z->le && z->ls >= start_pos && z->le <= end_pos) ? z->ls : start_pos;
+                        v->s[0] = z->looped ? z->pred : 0;
+                        v->s[1] = z->looped ? z->idx : 0;
+                        v->s[3] = sample_next(z, v, 1);
+                    } else {
+                        v->s[6] = 1;
+                        v->s[3] = 0;
+                        if (frac >= 65536u) {                /* past the last sample-to-zero interval */
+                            v->s[2] = 0;
+                            frac &= 65535u;
+                        }
+                        break;
+                    }
+                } else {
+                    v->s[3] = sample_next(z, v, mode == 2);
                 }
             }
-            v->s[3] = sample_next(z, v, mode == 2);
         }
         s = v->s[2] + (((v->s[3] - v->s[2]) * (int32_t)(frac >> 1)) >> 15);
         v->s[7] += mulq15(s - v->s[7], lp);           /* gentle tone control (CUT) */
@@ -318,9 +480,9 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 static int32_t sample_amp(track_t *t, voice_t *v, int32_t adsr)
 {
     const int16_t *p = t->p;
-    uint32_t mode = (uint32_t)p[P_E1] % 3u;
-    if (mode == 0 && v->stage == 3u && v->s[6] == 0) {
-        v->stage = 2; /* ONE: note-off does not cut off the sample; plays to end */
+    uint32_t mode = (uint32_t)p[P_E1] % 5u;
+    if ((mode == 0 || mode == 3) && v->stage == 3u && v->s[6] == 0) {
+        v->stage = 2; /* ONE / REV: note-off does not cut off the sample; plays to end */
     }
     return adsr;
 }
@@ -337,7 +499,7 @@ static const engine_t ENG_SAMPLE = {
     .page_title = {"PLAY", "TRIM"},
     .edit = {
         {"SET", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES, 0},
-        {"MODE", F_ENUM, 0, 2, 1, N_SMP_MODE, 0},
+        {"MODE", F_ENUM, 0, 4, 1, N_SMP_MODE, 0},
         {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
         {"SPEED", F_PCT, 10, 400, 100, 0, 0},
         {"STRCH", F_PCT, 25, 400, 100, 0, 0},
@@ -352,4 +514,5 @@ static const engine_t ENG_SAMPLE = {
     .amp = sample_amp,
     .knob = {P_E2, P_E3, P_E5, P_E6},
     .sampled = 1,
+    .mem = sizeof(smp_part_t),
 };
