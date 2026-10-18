@@ -1468,7 +1468,24 @@ static void test_wavetable_and_effects(void)
         fx_buses(c_in, d_in, r_in, w_out, CTL);
     }
     assert(w_out[0] != 0 || w_out[16] != 0);
-    printf("  Loom Tape Echo, Multi-Voice Chorus (1..4v), and Reverb Tone DSP verified (OK)\n");
+
+    /* Test DELAY visualizer with 1 bouncing dot (0 fdbk) and 16 dots (120 fdbk) */
+    song.g[G_DFDBK] = 0;
+    ui.page = page_first(FAM_FX) + 4; /* TAPE DELAY */
+    assert(PAGES[ui.page].graph == GR_DELAY);
+    draw_graph();
+    song.g[G_DFDBK] = 120;
+    draw_graph();
+
+    /* Test REVERB and CHORUS visualizers */
+    ui.page = page_first(FAM_FX) + 5; /* REVERB */
+    assert(PAGES[ui.page].graph == GR_REVERB);
+    draw_graph();
+    ui.page = page_first(FAM_FX) + 6; /* CHORUS */
+    assert(PAGES[ui.page].graph == GR_CHORUS);
+    draw_graph();
+
+    printf("  Loom Tape Echo, Multi-Voice Chorus (1..4v), and Reverb Tone DSP and Visualizers (1..16 dots) verified (OK)\n");
 }
 
 static void test_sidechain_compression(void)

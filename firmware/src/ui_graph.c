@@ -1254,7 +1254,7 @@ static void graph_delay(uint16_t c)
     int32_t half_len = 92 - (cross * 26) / 127; /* 92 down to 66 at 45 deg to fit canvas */
     int32_t thickness = 1 + (tape * 3) / 127;    /* 1..4 px */
     int32_t wobble_amp = (tape * 7) / 127;       /* 0..7 px */
-    int32_t n_dots = 2 + (fdbk * 6) / 120;       /* 2..8 dots */
+    int32_t n_dots = 1 + (fdbk * 15) / 120;       /* 1..16 dots */
 
     int32_t sin_t = (cross * 23170) / 127;
     int32_t cos_t = 32768 - (cross * 9598) / 127;
@@ -1286,8 +1286,8 @@ static void graph_delay(uint16_t c)
         uint32_t bounce_inc = ((uint32_t)(105 - time_val) * 0x00800000u) + 0x01000000u;
         int32_t bounce_h = 24;
         for (int32_t d = 0; d < n_dots; d++) {
-            int32_t u_dot = -half_len * 7 / 10 + (d * (half_len * 14 / 10)) / (n_dots > 1 ? (n_dots - 1) : 1);
-            uint32_t phase = (ui.frame * bounce_inc) + (uint32_t)d * (0x100000000u / (uint32_t)n_dots);
+            int32_t u_dot = (n_dots == 1) ? 0 : (-half_len * 7 / 10 + (d * (half_len * 14 / 10)) / (n_dots - 1));
+            uint32_t phase = (ui.frame * bounce_inc) + (uint32_t)((0x100000000ULL * (uint64_t)d) / (uint64_t)n_dots);
             int32_t h = (osc_sine(phase) * bounce_h) >> 15;
             if (h < 0) h = -h;
 
