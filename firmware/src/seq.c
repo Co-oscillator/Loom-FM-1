@@ -32,7 +32,7 @@ static const uint16_t SCALE_MASK[] = {
     (1 << 0) | (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 8) | (1 << 9) | (1 << 11), /* DIMWH */
 };
 
-#define KB_SILENT 255u
+/* KB_SILENT defined in core.h */
 static uint32_t kb_prev;
 static volatile uint8_t kb_boot_hold;    /* #137: set from power-on to the end of the splash (main.c): the keys sound nothing,
                                           * and one held across its end stays silent until it is let go and pressed again */
@@ -67,15 +67,7 @@ static uint32_t trk_midi_ch(uint32_t i) { return (midi_base() > 0 ? (uint32_t)mi
 static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM; }
 
 /* the 27 keys from F: black or white, and the key's place among the keys of its colour (white 0..15, black
- * 0..10). The DRUM grid: white keys are steps, black keys 1..8 lanes, 9 ACC, 10 / 11 the page */
-static int key_black(uint32_t k) { return (int)((0x54Au >> ((k + 5u) % 12u)) & 1u); }
-static uint32_t key_place(uint32_t k)
-{
-    uint32_t i, n = 0;
-    for (i = 0; i < k; i++)
-        n += (uint32_t)(key_black(i) == key_black(k));
-    return n;
-}
+ * 0..10; defined in core.h). The DRUM grid: white keys are steps, black keys 1..8 lanes, 9 ACC, 10 / 11 the page */
 enum { GK_ACC = NLANE, GK_PGDN, GK_PGUP };       /* black keys 9..11 on the grid */
 /* the DRUM grid: key k's lane note (black keys 1..8), KB_SILENT for the rest. Out of line (1.5): called from the audio
  * ISR's key loop only on a key change; inlined there, its % 12 and key_place's loop sat in the ISR's static cost
@@ -157,6 +149,8 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
     return n >= 0 ? (uint32_t)n : kb_pitch(t, k, song.octave);
 }
 
+#include "loom_chord.c"
+#include "loom_arp.c"
 #include "chord.c"
 
 /* ------------------------------------------------------------- arp --- */
@@ -217,8 +211,14 @@ static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) &
  * CONV C G E (outside in); DIVG E G C (inside out); PINKY C G E G (the top note between the others); THUMB
  * C E C G (the bottom one); WALK a random step up or down the list (bouncing off its ends); CHORD all the held
  * notes together (the first 4), an octave higher each step through OCT */
-enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_RND, AM_ORD, AM_REPEAT, AM_DNUP, AM_UP8, AM_CONV, AM_DIVG, AM_PINKY,
-       AM_THUMB, AM_WALK, AM_CHORD };
+enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_STAG_UP, AM_STAG_DN, AM_RND, AM_RNDP, AM_BACH, AM_BROWN, AM_CONV, AM_DIVG, AM_COUNT };
+
+static uint8_t arp_rnd_pat[NTRK][16];
+static void arp_rnd_init(uint32_t trk_idx)
+{
+    for (uint32_t s = 0; s < 16u; s++)
+        arp_rnd_pat[trk_idx][s] = (uint8_t)(rng() & 0xFFu);
+}
 
 static void arp_forget(track_t *t)               /* (its notes ended otherwise: trk_all_off) */
 {
@@ -241,11 +241,14 @@ static __attribute__((noinline)) void arp_chord_off(track_t *t, int rec)   /* th
 
 static __attribute__((noinline)) void arp_chord(track_t *t, const uint32_t *list, uint32_t n)
 {
-    uint32_t i, nt, top = 0, o = t->arp_idx % (uint32_t)(t->p[P_AOCT] > 0 ? t->p[P_AOCT] : 1);
+    int32_t aoct = clamp(t->p[P_AOCT], -3, 3);
+    uint32_t span = (uint32_t)(aoct < 0 ? -aoct : aoct) + 1u;
+    int32_t o = (int32_t)(t->arp_idx % span) * (aoct < 0 ? -1 : 1);
+    uint32_t i, nt, top = 0;
     if (n > 4u)
         n = 4u;
-    for (i = 0; i < n; i++) {                       /* the held notes (sorted or as played), o octaves up */
-        nt = (uint32_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
+    for (i = 0; i < n; i++) {                       /* the held notes (sorted or as played), o octaves shifted */
+        nt = (uint32_t)clamp((int32_t)list[i] + 12 * o, 0, 127);
         if (nt == 127u && top++)
             continue;                               /* (notes clamped onto the top one: once) */
         if (!t->arp_note)
@@ -276,12 +279,10 @@ static void arp_off(track_t *t)                  /* the sounding arp note(s) end
     t->arp_note = 0;
 }
 
-/* the place in the note list (len notes) the step arp_idx plays (not inlined, as arp_chord); UP+8 adds its note */
+/* the place in the note list (len notes) the step arp_idx plays */
 static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, uint32_t len)
 {
     uint32_t i = t->arp_idx, m = (uint32_t)t->p[P_AMODE], cyc, k, w;
-    if (m == AM_UP8 && len < 64u)                   /* UP+8: the first note again over the top */
-        list[len++] = (uint32_t)clamp((int32_t)list[0] + 12 * t->p[P_AOCT], 0, 127);
     cyc = len > 1u ? 2u * len - 2u : 1u;
     k = i % cyc;
     switch (m) {
@@ -289,32 +290,56 @@ static __attribute__((noinline)) uint32_t arp_pick(track_t *t, uint32_t *list, u
         return len - 1u - i % len;
     case AM_UPDN:
         return k < len ? k : cyc - k;
-    case AM_DNUP:
-        return k < len ? len - 1u - k : k - (len - 1u);
+    case AM_STAG_UP: {
+        uint32_t step = i % (len > 1u ? (2u * len - 2u) : 1u);
+        uint32_t base = step / 2u;
+        if (step & 1u)
+            return (base + 2u < len) ? base + 2u : base;
+        return base < len ? base : 0u;
+    }
+    case AM_STAG_DN: {
+        uint32_t step = i % (len > 1u ? (2u * len - 2u) : 1u);
+        uint32_t base = step / 2u;
+        uint32_t rev_base = len > 0 ? (len - 1u - base) : 0u;
+        if (step & 1u)
+            return (rev_base >= 2u) ? rev_base - 2u : rev_base;
+        return rev_base < len ? rev_base : 0u;
+    }
     case AM_RND:
         return rng() % len;
+    case AM_RNDP: {
+        uint32_t trk_idx = trk_index(t);
+        return (uint32_t)arp_rnd_pat[trk_idx][i % 16u] % len;
+    }
+    case AM_BACH: {
+        uint32_t base_shift = i / 3u;
+        uint32_t internal_step = i % 3u;
+        return len > 0 ? ((base_shift + internal_step) % len) : 0u;
+    }
+    case AM_BROWN: {
+        w = t->arp_walk;
+        if (!i) {
+            w = 0;
+        } else if (w >= len) {
+            w = len - 1u;
+        } else if (len > 1u) {
+            int32_t move = ((int32_t)(rng() % 3u)) - 1; /* -1, 0, +1 */
+            int32_t nw = (int32_t)w + move;
+            if (nw < 0) nw = 0;
+            if (nw >= (int32_t)len) nw = (int32_t)len - 1;
+            w = (uint32_t)nw;
+        }
+        t->arp_walk = (uint8_t)w;
+        return w;
+    }
     case AM_CONV:
     case AM_DIVG:
         k = i % len;
         if (m == AM_DIVG)
             k = len - 1u - k;
         return (k & 1u) ? len - 1u - k / 2u : k / 2u;
-    case AM_PINKY:
-        return len < 2u ? 0u : (k & 1u) ? len - 1u : k / 2u;
-    case AM_THUMB:
-        return len < 2u ? 0u : (k & 1u) ? 1u + k / 2u : 0u;
-    case AM_WALK:
-        w = t->arp_walk;
-        if (!i)
-            w = 0;                                  /* (from the bottom) */
-        else if (w >= len)
-            w = len - 1u;                           /* (notes let go) */
-        else if (len > 1u)
-            w = !w ? 1u : w == len - 1u ? w - 1u : (rng() >> 7) & 1u ? w + 1u : w - 1u;
-        t->arp_walk = (uint8_t)w;
-        return w;
     default:
-        return i % len;
+        return i % len; /* UP */
     }
 }
 
@@ -355,6 +380,59 @@ static int click_wanted(void)                  /* CLICK REC: while a track is ar
 static uint32_t arp_list(const track_t *t, uint32_t *list, uint32_t *cnt)
 {
     uint32_t i, j, n = 0, x, s, last = 0, len = 0, o;
+
+    if (!t->nheld) {
+        *cnt = 0;
+        return 0;
+    }
+
+    /* Loom Chord Progression in Arp:
+     * When CHRD is set to PROG, the arpeggiator dynamically evolves through the Loom
+     * Chord Progression for the selected Scale, Mood, and Complexity, changing chords
+     * at the configured rate! */
+    if (t->p[P_CHRD] == CH_PROG) {
+        ensure_track_prog(t);
+        uint32_t trk_idx = trk_index(t);
+
+        static const uint8_t RATE_STEPS[6] = {8, 16, 32, 64, 16, 32};
+        uint32_t r_idx = (uint32_t)clamp(t->p[P_PRATE], 0, 5);
+        uint32_t steps_per_chord = RATE_STEPS[r_idx];
+        if (t->p[P_AHOLD] && steps_per_chord < 16u) steps_per_chord = 16u;
+
+        uint32_t harm_step = (t->arp_idx == 0xFFFFFFFFu) ? 0u : (t->arp_idx / steps_per_chord) % LOOM_CHORD_STEPS;
+        const loom_chord_t *ch = &trk_prog[trk_idx].chords[harm_step];
+        trk_prog[trk_idx].active_step = (uint8_t)harm_step;
+        chord_last[trk_idx].step = (uint8_t)harm_step;
+
+        /* Update chord_last for real-time display of chord name on CHORD screen */
+        chord_last[trk_idx].root = ch->notes[0];
+        chord_last[trk_idx].n = ch->count < CHORD_MAX ? ch->count : CHORD_MAX;
+        uint16_t cmask = 0;
+        for (i = 0; i < ch->count; i++) {
+            if (i < CHORD_MAX) chord_last[trk_idx].note[i] = ch->notes[i];
+            cmask |= (uint16_t)(1u << ((ch->notes[i] - ch->notes[0]) % 12));
+        }
+        chord_last[trk_idx].mask = cmask;
+        chord_last[trk_idx].gen++;
+
+        n = ch->count;
+        for (i = 0; i < n; i++) {
+            list[i] = ch->notes[i];
+        }
+        *cnt = n;
+
+        int32_t aoct = clamp(t->p[P_AOCT], -3, 3);
+        uint32_t span = (uint32_t)(aoct < 0 ? -aoct : aoct) + 1u;
+        int32_t dir = aoct < 0 ? -1 : 1;
+        for (o = 0; o < span; o++) {
+            int32_t shift = 12 * (int32_t)o * dir;
+            for (i = 0; i < n && len < 64u; i++) {
+                list[len++] = (uint32_t)clamp((int32_t)list[i] + shift, 0, 127);
+            }
+        }
+        return len;
+    }
+
     const uint8_t *hk = held_key[trk_index(t)];
     const int8_t *dt = held_dt[trk_index(t)];
     for (i = 0; i < t->nheld; i++) {
@@ -372,17 +450,23 @@ static uint32_t arp_list(const track_t *t, uint32_t *list, uint32_t *cnt)
             list[n++] = x;
     }
     *cnt = n;
-    if (!t->p[P_AORDER] && t->p[P_AMODE] != AM_ORD)   /* (ORD: as pressed, held[] keeps that order) */
+    if (!t->p[P_AORDER])
         for (i = 1; i < n; i++)
             for (j = i; j > 0 && list[j - 1] > list[j]; j--) {
                 x = list[j];
                 list[j] = list[j - 1];
                 list[j - 1] = x;
             }
-    for (o = 0; o < (uint32_t)t->p[P_AOCT]; o++)
-        for (i = 0; i < n && len < 64u; i++)
-            list[len++] = clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
-    if (n && t->p[P_AMODE] == AM_REPEAT) { list[0] = last; len = 1; } /* REPEAT: last played note, no octave traversal */
+    {
+        int32_t aoct = clamp(t->p[P_AOCT], -3, 3);
+        uint32_t span = (uint32_t)(aoct < 0 ? -aoct : aoct) + 1u;
+        int32_t dir = aoct < 0 ? -1 : 1;
+        for (o = 0; o < span; o++) {
+            int32_t shift = 12 * (int32_t)o * dir;
+            for (i = 0; i < n && len < 64u; i++)
+                list[len++] = (uint32_t)clamp((int32_t)list[i] + shift, 0, 127);
+        }
+    }
     return len;
 }
 
@@ -396,17 +480,25 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
             arp_off(t);
         return;
     }
+    if (t->p[P_AMODE] == AM_RNDP && !t->arp_idx) {
+        arp_rnd_init(trk_index(t));
+    }
     t->arp_idx++;
-    j = t->p[P_AMODE] == AM_CHORD ? 0u : arp_pick(t, list, len);
+    j = arp_pick(t, list, len);
     if (t->arp_note)
         arp_off(t);
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
         t->arp_off = period * (uint32_t)t->p[P_AGATE] / 128u;
-        if (t->p[P_AMODE] == AM_CHORD) {            /* CHORD: the first 4 notes, an octave up each step */
-            arp_chord(t, list, cnt);
-            return;
-        }
         t->arp_note = (uint8_t)list[j];
+        if (t->p[P_AWEIRD] > 0) {
+            uint32_t w = (uint32_t)t->p[P_AWEIRD];
+            /* Weirdness note mutations: playful octave jumps based on weirdness */
+            if ((rng() % 256u) < w) {
+                uint32_t r = rng() & 1u;
+                if (r == 0 && t->arp_note <= 115) t->arp_note += 12;
+                else if (r == 1 && t->arp_note >= 24) t->arp_note -= 12;
+            }
+        }
         if (rec_on(t))
             rec_note(t, t->arp_note, 100);           /* recording: what the arp plays */
         trk_note_on(t, t->arp_note, 100);
@@ -429,6 +521,19 @@ static void arp_step(track_t *t, uint32_t n, uint32_t gate_n)
         return;
     }
     period = div_samples((uint32_t)t->p[P_ARATE]);
+    if (t->p[P_AWEIRD] > 0) {
+        uint32_t w = (uint32_t)t->p[P_AWEIRD];
+        uint32_t step_in_bar = t->arp_idx & 7u;
+        /* Turnaround burst on step 7 of an 8-step measure if weirdness is high */
+        if (step_in_bar == 7u && ((rng() % 128u) < (w / 2u))) {
+            period /= 2u;
+        } else if ((rng() % 128u) < w) {
+            /* Organic rubato timing swing (-25% to +25%) */
+            int32_t warp = ((int32_t)(rng() % 51u) - 25) * (int32_t)w / 128;
+            period = (uint32_t)((int32_t)period * (100 + warp) / 100);
+            if (period < 256u) period = 256u;
+        }
+    }
     sw = t->p[P_ASWING] * (int32_t)period / 250;
     t->arp_pos += n;
     if (t->arp_pos < period + (uint32_t)((t->arp_idx & 1u) ? sw : -sw) && t->arp_pos != 0xFFFFFFF + n)
@@ -444,7 +549,19 @@ static void arp_tick(track_t *t, uint32_t n) { arp_step(t, n, n); }
  * and the odd ones shorter, so every odd step starts late */
 static uint32_t step_samples(const track_t *t, uint32_t period, uint32_t idx)
 {
-    return swing_step_len(t, period, idx);   /* core.h: own + global, at most 100 */
+    uint32_t len = swing_step_len(t, period, idx);   /* core.h: own + global, at most 100 */
+    int32_t human = t->p[P_SHUMAN];
+    if (human > 0) {
+        /* Max timing jitter at 100% humanize is +/- ~6% of step period */
+        int32_t max_jitter = (int32_t)(period * (uint32_t)human) / 1600;
+        if (max_jitter > 0) {
+            int32_t jitter = (int32_t)(rng() % (uint32_t)(2 * max_jitter + 1)) - max_jitter;
+            int32_t res = (int32_t)len + jitter;
+            if (res > (int32_t)(period / 4))
+                len = (uint32_t)res;
+        }
+    }
+    return len;
 }
 
 /* NUDGE (1.2, #162): a note `off` samples from the start of the step it goes into, in 1/NUDGE_DIV of the step (period),
@@ -698,9 +815,9 @@ static __attribute__((noinline)) void perf_key_remap(void)
  * holds already sounds: it is not started again (nor sent to MIDI OUT); the key keeps its notes */
 static void key_on(uint32_t k, track_t *t)
 {
+    in_key = (uint8_t)(k + 1u);                     /* (the arp and chord build keep the key) */
     uint32_t n = chord_build(t, kb_note[k], kb_chord[k]), i, mc = trk_midi_ch(trk_index(t));
     kb_chn[k] = 0;
-    in_key = (uint8_t)(k + 1u);                     /* (the arp keeps the key: arp_add) */
     for (i = 0; i < n; i++) {
         uint32_t x = kb_chord[k][i];
         if (midi_local_held(t, x))
@@ -879,6 +996,14 @@ static __attribute__((noinline)) void seq_step(track_t *t, const step_t *s, uint
 {
     uint32_t i, j, gate = period * (uint32_t)t->p[P_SGATE] / 128u;
     uint32_t vel = (s->flags & SF_ACCENT) ? 127u : (s->vel ? s->vel : 96u);
+    if (t->p[P_SHUMAN] > 0 && !(s->flags & SF_ACCENT)) {
+        /* Max velocity jitter: up to +/- 18 at 100% humanize */
+        int32_t max_vjit = (int32_t)t->p[P_SHUMAN] * 18 / 100;
+        if (max_vjit > 0) {
+            int32_t vjit = (int32_t)(rng() % (uint32_t)(2 * max_vjit + 1)) - max_vjit;
+            vel = (uint32_t)clamp((int32_t)vel + vjit, 1, 127);
+        }
+    }
     uint32_t slide_in = t->seq_hold && t->seq_n && !(skip & SEQ_REP);
     uint32_t len = t->p[P_SLEN] ? (uint32_t)t->p[P_SLEN] : 1u;
     uint32_t next_tie = seq_steps(t)[(idx + 1u) % len].time == ST_TIE;

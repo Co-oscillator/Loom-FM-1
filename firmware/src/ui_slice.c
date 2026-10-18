@@ -34,7 +34,7 @@ static const slc_src_t *slice_src(uint32_t *src, uint32_t *div)
     uint32_t k = slc_src_of(p);
     const slc_src_t *s = slc_get(k);
     *src = k;
-    *div = (uint32_t)clamp(p[P_E1], 0, SLC_DIV_MAN);
+    *div = (uint32_t)clamp(p[P_E1], 1, 16);
     return s;
 }
 

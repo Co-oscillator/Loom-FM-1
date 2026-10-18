@@ -71,6 +71,35 @@ if (typeof registerProcessor === "function") {
       else if (m.type === "master") ex.web_master(m.value | 0);
       else if (m.type === "midi") ex.web_midi(m.data[0] | 0, m.data[1] | 0, m.data[2] | 0);
       else if (m.type === "visible") this.period = m.on ? 1 / 30 : 1 / 4;
+      else if (m.type === "smp_slot") {
+        const k = m.slot | 0;
+        if (k >= 0 && k < 3) {
+          const base = 0xA0000 + k * 0x14000;
+          const nor = new Uint8Array(ex.memory.buffer, ex.web_nor(), ex.web_nor_size());
+          nor.fill(0xFF, base, base + 0x14000);
+          if (m.hdr && m.data) {
+            nor.set(new Uint8Array(m.hdr), base);
+            nor.set(new Uint8Array(m.data), base + 512);
+          }
+          if (ex.web_smp_reload) ex.web_smp_reload(k);
+          if (m.hdr && m.select && ex.web_smp_select_slot) ex.web_smp_select_slot(k);
+          this.publish();
+        }
+      } else if (m.type === "midi_seq_import") {
+        if (m.bpm && ex.web_set_bpm) ex.web_set_bpm(m.bpm | 0);
+        for (const tr of (m.tracks || [])) {
+          const ti = tr.track | 0;
+          if (ex.web_seq_clear_track) ex.web_seq_clear_track(ti, tr.len | 0, tr.poly ? 1 : 0);
+          for (const s of (tr.steps || [])) {
+            if (ex.web_seq_set_step) {
+              ex.web_seq_set_step(ti, s.step | 0, s.n | 0,
+                s.notes?.[0] | 0, s.notes?.[1] | 0, s.notes?.[2] | 0, s.notes?.[3] | 0,
+                s.time | 0, s.flags | 0, s.vel | 0, s.hit | 0, s.acc | 0);
+            }
+          }
+        }
+        this.publish();
+      }
     }
 
     publish() {

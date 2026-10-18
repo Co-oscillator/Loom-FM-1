@@ -8,6 +8,8 @@ static int project_save(uint32_t slot);
 static void panel_setup(void);
 static void project_load(uint32_t slot);
 static int project_used(uint32_t slot);
+static void project_save_init(void);
+static void project_reset_init(void);
 static uint32_t chain_prepare(void);
 static int up_used(uint32_t k);              /* user presets: upreset.c */
 static int up_load(uint32_t k);
@@ -195,14 +197,16 @@ static struct {
         uint8_t pick, trk, id;   /* a parameter picked (1): its track and P_* id */
         volatile uint8_t io[2];  /* midi_control.c ml_arm, ml_heard */
     } ml;
+    uint8_t seq_8x8;             /* Loom: 0 = 4x4 view (16-step bank), 1 = 8x8 view (64-step full matrix) */
     volatile uint8_t mpc[NTRK];  /* MIDI Program Change per track, 0x80 | program, 0 none (midi_control.c mpc_io: here
                                   * for the same reason as ml.io; midi_pc_poll) */
 } ui;
 
 enum { CF_NONE, CF_CLEAR_SEQ, CF_CLEAR_TRK, CF_OVR_PROJ, CF_OVR_USER, CF_LOAD_PAT,
-       CF_DEL_ROW, CF_CLEAR_SONG, CF_INIT_SOUND, CF_CLEAR_MOTION, CF_ERASE_USER };   /* ui.confirm: TOOLS' clears;
-                                   * SAVE over a used slot; a pattern over the user's steps;
-                                   * USER ERASE */
+       CF_DEL_ROW, CF_CLEAR_SONG, CF_INIT_SOUND, CF_CLEAR_MOTION, CF_ERASE_USER,
+       CF_SAVE_INIT, CF_RESET_INIT };   /* ui.confirm: TOOLS' clears;
+                                         * SAVE over a used slot; a pattern over the user's steps;
+                                         * USER ERASE; Loom: boot init save & factory reset */
 
 /* MENU > DISPLAY > SCREEN OFF (1.1.5): after a while with no input on the panel the screen goes dark (the backlight
  * stays on: lcd.c lcd_power)
@@ -401,6 +405,8 @@ static int page_visible(uint32_t i)
     if (PAGES[i].graph == GR_SLICES)
         return 0;
 #endif
+    if (PAGES[i].id[0] == P_VOICE && ENGINES[TSEL->eng_req % NENGINES] == &ENG_SCRUB)
+        return 0;
     return !(PAGES[i].fam == FAM_EDIT && PAGES[i].id[0] >= P_FM1_ATK &&
              PAGES[i].id[0] <= P_FM4_LEVEL) || (FELUCCA_FM4 && TSEL->eng_req % NENGINES == ENGI_DIGITAL);
 }
@@ -463,7 +469,7 @@ static void chain_play_ui(void)
 static int lock_page_ok(uint32_t i)
 {
     uint32_t k;
-    if (i >= NPAGES || (PAGES[i].scope != SC_TRACK && PAGES[i].scope != SC_ENGINE) || PAGES[i].graph == GR_MOD)
+    if (i >= NPAGES || (PAGES[i].scope != SC_TRACK && PAGES[i].scope != SC_ENGINE) || PAGES[i].graph == GR_MOD || PAGES[i].graph == GR_MACRO)
         return 0;
     for (k = 0; k < 4u; k++)
         if (PAGES[i].id[k] != 0xFFu && motion_param(PAGES[i].id[k]))
@@ -663,11 +669,6 @@ static void open_family(uint32_t fam)
             if (PAGES[i].fam == fam && page_visible(i)) break;
         }
         ui.page = (uint8_t)i;
-    } else if (fam == FAM_SAVE) {
-        uint32_t i;
-        for (i = 0; i < NPAGES; i++)
-            if (PAGES[i].graph == GR_USER) break;
-        ui.page = (uint8_t)i;                         /* SAVE enters the sound save screen directly */
     } else {
         uint32_t i = ui.fam_last[fam];
         ui.page = (uint8_t)(i && i < NPAGES && PAGES[i].fam == fam && page_visible(i) ? i : page_first(fam));
@@ -1250,6 +1251,11 @@ static void apply_preset_to(track_t *t, uint32_t pi)
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
 static void set_engine_of(track_t *t, uint32_t ei)
 {
+    if (trk_index(t) >= NPART) {
+        ei = ENGI_DRUM;
+    } else if (ei % NENGINES == ENGI_DRUM) {
+        return;                                      /* Melodic tracks cannot load DRUM */
+    }
     const engine_t *e = ENGINES[ei % NENGINES];
     uint32_t i;
 #if !FELUCCA_FM4
@@ -1334,7 +1340,8 @@ static void select_engine(uint32_t e)
 static uint32_t preset_all_pos(uint32_t *total)          /* list index of the selected track's preset */
 {
     uint32_t n = 0, cur = 0, e, r;
-    for (r = 0; r < NENG_SHOWN; r++) {                  /* (engines.c ENGINE_ORDER) */
+    uint32_t shown_count = song.sel >= NPART ? 1u : (NENG_SHOWN - 1u);
+    for (r = 0; r < shown_count; r++) {                  /* (engines.c ENGINE_ORDER) */
         const engine_t *en = ENGINES[e = eng_vis(r)];
         if (e == TSEL->eng_req)
             cur = n + preset_rank(en, preset_orig(en, TSEL->preset % (en->npresets ? en->npresets : 1u)));
@@ -1350,9 +1357,10 @@ static uint32_t preset_all_pos(uint32_t *total)          /* list index of the se
 static uint32_t preset_all_at(uint32_t n, uint32_t *k)
 {
     uint32_t e = 0, i, r;
-    for (r = 0; r < NENG_SHOWN && n >= preset_shown(eng_vis(r)); r++)
+    uint32_t shown_count = song.sel >= NPART ? 1u : (NENG_SHOWN - 1u);
+    for (r = 0; r < shown_count && n >= preset_shown(eng_vis(r)); r++)
         n -= preset_shown(eng_vis(r));
-    if (r == NENG_SHOWN) {
+    if (r == shown_count) {
         *k = up_nth(n);
         return NENGINES;
     }
@@ -1390,8 +1398,11 @@ static uint32_t track_cat(const track_t *t)
     return u < UP_SLOTS ? up_cat(u) : preset_cat(t->eng_req % NENGINES, t->preset);
 }
 
+static uint32_t eng_list_pos(uint32_t *total);
+
 static uint32_t preset_pos(uint32_t *total)
 {
+    if (trk_index(TSEL) >= NPART) return eng_list_pos(total);
     uint32_t all, current = preset_all_pos(&all), n = 0, pos = 0xFFFFFFFFu;
     if (!list_mode()) { *total = all; return current; }
     for (uint32_t i = 0; i < all; i++) {
@@ -1405,6 +1416,10 @@ static uint32_t preset_pos(uint32_t *total)
 }
 static uint32_t preset_at(uint32_t n, uint32_t *k)
 {
+    if (trk_index(TSEL) >= NPART) {
+        *k = n % (ENGINES[ENGI_DRUM]->npresets ? ENGINES[ENGI_DRUM]->npresets : 1u);
+        return ENGI_DRUM;
+    }
     uint32_t all;
     if (!list_mode()) return preset_all_at(n, k);
     preset_all_pos(&all);
@@ -1477,6 +1492,9 @@ static void preset_hinted(void)                     /* after a sound load: SAVE 
 static void preset_go(uint32_t n)                    /* load list index n into the selected track (the sound only) */
 {
     uint32_t k, e = preset_at(n, &k);
+    if (trk_index(TSEL) >= NPART && e != ENGI_DRUM) {
+        return;
+    }
     if (e == NENGINES) {
         up_load(k);
     } else {
@@ -1581,7 +1599,7 @@ static void track_select(uint32_t i)
 /* Pages whose purpose is an action (SAVE > USER, PHRASES, PROJECT, TOOLS, EDIT > SLICES, SEQ > AUTOMATION): the knobs pick,
  * OCT+ does it, OCT- cancels the picked action or goes HOME (ui_input.c). There OCT- / OCT+ do not
  * shift the octave */
-static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_CLRSEQ || id == G_INITSND; }
+static int go_id(uint32_t id) { return id == G_LOAD || id == G_SAVE || id == G_CLRSEQ || id == G_INITSND || id == G_SAVEINIT || id == G_RESETINIT; }
 
 static uint32_t act_cols(void)                   /* the columns that are actions, a bit each; 0 = not such a page */
 {
@@ -1620,7 +1638,7 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
     uint32_t id = cur_page()->id[c & 3u];
     if (cur_page()->graph == GR_EVENTS) return ev_act_name();
     if (cur_page()->graph == GR_TOOLS) {
-        static const char *const actions[] = {"CLEAR", "INIT", "DELETE", "CLEAR"};
+        static const char *const actions[] = {"CLEAR", "INIT", "SAVE INIT", "RESET"};
         return actions[c & 3u];
     }
     if (cur_page()->graph == GR_SONG)
@@ -1631,7 +1649,7 @@ static const char *act_name(uint32_t c)          /* column c's action (the foote
         return UP_GO[(c + 2u) % 3u];
     if (cur_page()->graph == GR_SLICES)
         return c == 3u ? "JOIN" : "SPLIT";
-    return id == G_CLRSEQ ? "CLEAR" : id == G_INITSND ? "INIT" : id == G_LOAD ? "LOAD" : "SAVE";
+    return id == G_CLRSEQ ? "CLEAR" : id == G_INITSND ? "INIT" : id == G_SAVEINIT ? "SAVE INIT" : id == G_RESETINIT ? "RESET" : id == G_LOAD ? "LOAD" : "SAVE";
 }
 
 /* the picked action would do something now (OCT+ breathes): another pattern, a used slot, stopped for
@@ -1642,9 +1660,8 @@ static int act_ready(void)
     if (!c--)
         return 0;
     if (cur_page()->graph == GR_EVENTS) return ev_act_ready();
-    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR PAT, INIT, DELETE ROW, CLEAR SONG */
-        return !chain_busy() && (c == 0u ? !seq_is_empty(TSEL) || motion_count(TSEL) : c == 1u ? 1 :
-                                 c == 2u ? ui.song_row < chain_config.count : chain_config.count != 0u);
+    if (cur_page()->graph == GR_TOOLS)                  /* one case per column: CLEAR SEQ, INIT SOUND, SAVE INIT, RESET */
+        return !chain_busy() && (c == 0u ? !seq_is_empty(TSEL) || motion_count(TSEL) : 1);
     if (cur_page()->graph == GR_SONG)
         return song.playing || chain_busy() || chain_config.count;
     if (cur_page()->graph == GR_PATS)
@@ -1661,6 +1678,8 @@ static int act_ready(void)
     if (id == G_SAVE)
         return !song.playing;
     if (id == G_CLRSEQ)
-        return !seq_is_empty(TSEL);
+        return !seq_is_empty(TSEL) || motion_count(TSEL);
+    if (id == G_SAVEINIT || id == G_RESETINIT || id == G_INITSND)
+        return !song.playing && !chain_busy();
     return 1;
 }

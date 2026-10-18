@@ -461,6 +461,14 @@ static int up_load(uint32_t k)
     if (!up_used(k))
         return 1;
     r = up_rec(k);
+    if (trk_index(t) >= NPART && r->engine != ENGI_DRUM) {
+        ui_message("DRUM TRACK ONLY");
+        return 1;
+    }
+    if (trk_index(t) < NPART && r->engine == ENGI_DRUM) {
+        ui_message("SYNTH TRACK ONLY");
+        return 1;
+    }
     up_values(r, v);
     load_begin(t, UNDO_SOUND);                          /* (ui.c: the copy for SAVE held = undo) */
     panic_req |= (uint8_t)(1u << song.sel);

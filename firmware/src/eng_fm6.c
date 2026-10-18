@@ -419,14 +419,14 @@ static const preset_t FM6_PRESETS[] = {
 
 static const engine_t ENG_FM6 = {
     .name = "FM6",
-    .page_title = {"OPS", "PATCH"},
+    .page_title = {"MACROS", "VOICE"},
     .edit = {
         {"ALG", F_INT, 0, 32, 0, N_FM6_ALG, 0},
-        {"FB", F_INT, -7, 7, 0, 0, 0},
-        {"MLVL", F_BIPCT, -64, 63, 0, 0, 0},
-        {"MRAT", F_INT, -16, 16, 0, 0, 0},
-        {"MEG", F_BIPCT, -64, 63, 0, 0, 0},
-        {"VMOD", F_INT, -7, 7, 0, 0, 0},
+        {"FDBK", F_INT, -7, 7, 0, 0, 0},
+        {"BRIT", F_BIPCT, -64, 63, 0, 0, 0},
+        {"HARM", F_INT, -16, 16, 0, 0, 0},
+        {"DECY", F_BIPCT, -64, 63, 0, 0, 0},
+        {"SENS", F_INT, -7, 7, 0, 0, 0},
         {"DTUN", F_PCT, 0, 127, 0, 0, 0},
         {"SLOT", F_INT, 0, FM6_OWN + FM6_NBANK, 0, N_FM6_PATCH, 0},
     },
@@ -434,7 +434,7 @@ static const engine_t ENG_FM6 = {
     .npresets = NELEM(FM6_PRESETS),
     .note_on = fm6_note_on,
     .render = fm6_render,
-    .knob = {P_E2, P_E3, P_E4, P_E7},
+    .knob = {P_E2, P_E1, P_E0, P_E7},   /* Loom HOME Macros: [K1] BRIT, [K2] FDBK, [K3] ALG, [K4] SLOT */
     .poly = FM6_POLY,
     .block = fm6_block,
     .ownenv = 1,

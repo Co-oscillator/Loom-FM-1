@@ -17,6 +17,10 @@ static union {                          /* ROOM's allpasses; SPRING's allpass ch
 static struct {
     uint32_t dly_w, cho_w, cho_ph;
     int32_t dly_lp;
+    uint32_t dly_wow_ph, dly_flutter_ph; /* Loom Tape Echo wow & flutter LFOs */
+    int32_t dly_cur;                     /* Tape Echo smoothed delay length */
+    int32_t cho_lp;                      /* Chorus Tone filter */
+    int32_t rev_tone_lp;                 /* Reverb Tone filter */
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
     uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL) */
@@ -89,27 +93,123 @@ static struct {                          /* HALL's state (in the pool: no .bss) 
 } hl __attribute__((section(".pool")));
 #define rev_side (hl.sd)
 
-/* DIST: low cut -> drive (1x..8x, exponential) -> asymmetric soft clip
- * (a little bias = even harmonics) -> tone low-pass that closes with drive ->
- * make-up gain (straight into tanh over the full band, it would sound like a
- * broken digital fuzz). State per part (track_t dist_*). */
-static void track_dist(track_t *t, int32_t *b, uint32_t n)
+/* Sidechain Ducker: keyed to dedicated drum track (trk[4] / ENGI_DRUM).
+ * DUCK (P_DUCK): per-track ducking depth 0..100% (gain reduction up to -inf).
+ * Dedicated drum track is the trigger source and is NEVER ducked.
+ * Master Send FX Ducking: ducks Reverb and Tape Delay send returns (song.sc[2]).
+ * Trigger Source: KICK (0), K+SN (1), K+TM (2), ALL (3).
+ * Attack time (song.sc[1]): 0..50 (0 = instant, ~0.5ms..25ms).
+ * Release time (song.sc[0]): 10..100 (~20ms..600ms). */
+static struct {
+    int32_t env;        /* 0..32768: current ducking gain reduction envelope */
+    int32_t prev_env;   /* envelope at start of current block (smooth linear interp) */
+    int32_t target;     /* target peak level from hit trigger */
+} sc_state;
+
+void fx_sidechain_trigger(uint32_t lane, uint32_t vel)
 {
-    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0;
-    if (!d)
-        return;                                         /* states kept: switching on does not click */
-    g = 4096 + d * d * 2;                                /* Q12: 1x .. ~9x, gentle at first */
-    k = 32000 - d * 95;                                  /* tone: transparent at low drive .. ~3 kHz, Q15 */
-    mk = 30000 - d * 120;                                /* make-up */
-    b0 = softclip(bias);
-    for (i = 0; i < (int32_t)n; i++) {
-        int32_t x = b[i], y;
-        t->dist_hp += (x - t->dist_hp + 64) >> 7;           /* ~55 Hz low cut: keep the bass out of the clipper */
-        x = clamp(x - t->dist_hp, -230000, 230000);         /* (x >> 2) * g fits 32 bits; the clip is flat out there */
-        y = softclip((((x >> 2) * g) >> 10) + bias) - b0;   /* >> 2 first: no overflow for loud poly */
-        t->dist_lp1 += mulq15(y - t->dist_lp1, k);         /* two poles: tames the fizz */
-        t->dist_lp2 += mulq15(t->dist_lp1 - t->dist_lp2, k);
-        b[i] = mulq15(t->dist_lp2, mk);
+    if (!vel)
+        return;
+    uint32_t src = (uint32_t)song.sc[3] & 3u;
+    int match = 0;
+    switch (src) {
+    case 0: /* KICK */
+        match = (lane == 0u);
+        break;
+    case 1: /* K+SN */
+        match = (lane == 0u || lane == 1u);
+        break;
+    case 2: /* K+TM */
+        match = (lane == 0u || lane == 5u || lane == 6u || lane == 7u);
+        break;
+    case 3: /* ALL */
+        match = 1;
+        break;
+    }
+    if (!match)
+        return;
+
+    int32_t peak = ((int32_t)vel * 32768) / 127;
+    if (peak > 32768)
+        peak = 32768;
+    if (song.sc[1] == 0) {
+        /* Instant attack */
+        sc_state.env = peak;
+        sc_state.target = 0;
+    } else {
+        sc_state.target = peak;
+    }
+}
+
+int32_t fx_sidechain_env(void)
+{
+    return sc_state.env;
+}
+
+static void sidechain_tick(uint32_t n)
+{
+    (void)n;
+    sc_state.prev_env = sc_state.env;
+
+    int32_t atk = clamp(song.sc[1], 0, 50);
+    int32_t rel = clamp(song.sc[0], 10, 100);
+
+    /* Release coefficient: rel 10 (~20ms) .. 100 (~600ms) */
+    int32_t k_rel = 32768 - (327680 / (rel * 6 + 10));
+
+    if (sc_state.target > sc_state.env) {
+        /* Attack phase */
+        if (atk == 0) {
+            sc_state.env = sc_state.target;
+            sc_state.target = 0;
+        } else {
+            int32_t atk_step = 32768 / (atk * 2 + 1);
+            sc_state.env += atk_step;
+            if (sc_state.env >= sc_state.target) {
+                sc_state.env = sc_state.target;
+                sc_state.target = 0;
+            }
+        }
+    } else {
+        /* Release phase */
+        sc_state.target = 0;
+        sc_state.env = (sc_state.env * k_rel) >> 15;
+        if (sc_state.env < 8)
+            sc_state.env = 0;
+    }
+}
+
+static void track_duck(track_t *t, int32_t *b, uint32_t n)
+{
+    /* Dedicated drum track (trk[4]) is the trigger, never ducked */
+    if (t == &trk[4] || !t->p[P_DUCK] || (!sc_state.prev_env && !sc_state.env))
+        return;
+    int32_t d = t->p[P_DUCK];
+    int32_t e_start = sc_state.prev_env;
+    int32_t e_end = sc_state.env;
+    uint32_t i;
+    for (i = 0; i < n; i++) {
+        int32_t e = e_start + (((e_end - e_start) * (int32_t)i) >> 6);
+        int32_t red = (d * e) >> 7;
+        int32_t gain = 32768 - red;
+        b[i] = (b[i] * gain) >> 15;
+    }
+}
+
+static void track_duck_spread(track_t *t, int32_t *b, int32_t *d, uint32_t n)
+{
+    if (t == &trk[4] || !t->p[P_DUCK] || (!sc_state.prev_env && !sc_state.env))
+        return;
+    int32_t depth = t->p[P_DUCK];
+    int32_t e_start = sc_state.prev_env;
+    int32_t e_end = sc_state.env;
+    uint32_t i;
+    for (i = 0; i < n; i++) {
+        int32_t e = e_start + (((e_end - e_start) * (int32_t)i) >> 6);
+        int32_t red = (depth * e) >> 7;
+        int32_t gain = 32768 - red;
+        b[i] = (b[i] * gain) >> 15;
+        d[i] = (d[i] * gain) >> 15;
     }
 }
 
@@ -229,14 +329,13 @@ static uint32_t div_samples(uint32_t div)
 #include "perform.c"                                 /* the FX hold layer's effects (the master) */
 #include "click.c"                                   /* the metronome's click (after the master: audio.c) */
 
-/* the delay's TIME (params.c N_DTIME): N_DIV's ten (div_samples), then 1.5.1's dotted 1/8D 1/16D 1/4D (10, 11, 12: 3/4,
- * 3/8, 3/2 of a quarter); at most DLY_LEN - 1 samples (1.486 s): 1/4D clamps at 60 BPM and below (1/2 below 81) */
-static const uint8_t DIV_DOT[3] = {2, 3, 1};           /* 3 quarters >> this */
+/* Loom Tape Echo continuous delay time: maps 0..102 smoothly from 1 ms to 1400 ms */
 static uint32_t delay_samples(void)
 {
-    uint32_t d = (uint32_t)song.g[G_DTIME];
-    uint32_t s = d - 10u < 3u ? (beat_samples() * 3u) >> DIV_DOT[d - 10u] : div_samples(d);
-    return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
+    uint32_t v = (uint32_t)clamp(song.g[G_DTIME], 0, 102);
+    uint32_t ms10 = TIME_MS_X10[v];
+    uint32_t s = (ms10 * 441u) / 100u;
+    return s < 32u ? 32u : s >= DLY_LEN - 2u ? DLY_LEN - 2u : s;
 }
 
 /* ROOM (G_RTYPE 0): 4 damped combs + 2 allpasses (Freeverb-like, mono), added to out */
@@ -532,36 +631,105 @@ static __attribute__((noinline)) void rev_switch(const int32_t *rev_in, int32_t 
 static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t *rev_in, int32_t *wet,
                      uint32_t n)
 {
+    if (n > CTL) n = CTL;
     uint32_t i, dl = delay_samples();
-    int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
+    int32_t fb = clamp(song.g[G_DFDBK], 0, 120) * 180;
+    int32_t tape_amt = clamp(song.g[G_DCOLOR], 0, 127); /* TAPE knob: 0..127 */
+    int32_t col = 32000 - (tape_amt * 120); /* tape head high-cut damping */
+    int32_t sat_gain = 4096 + (tape_amt * 48);
+    int32_t inv_sat_q15 = (4096 * 32768) / sat_gain;
     int32_t dmix = song.g[G_DMIX] * 258;
     int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
+    uint32_t nvoices = (uint32_t)clamp(song.g[G_CVOICE], 0, 3) + 1u; /* 1..4 chorus voices */
+    int32_t ctone = song.g[G_CTONE]; /* Chorus Tone: -64..+63 */
+
     if (pf.ew1 && fb < THR_FB)
         fb += mulq16(THR_FB - fb, (uint32_t)pf.ew1 << 1);   /* ECHO THROW (perform.c): more feedback while held, 0.7
                                                              * at most (the loop's gain below 1: it never runs away) */
     for (i = 0; i < n; i++) {
-        int32_t y = 0, x, r;
-        /* chorus: modulated short delay, 5..15 ms */
+        int32_t y = 0, x;
+
+        /* Multi-Voice Chorus: 1..4 voices with evenly distributed LFO phases */
         cho_buf[fx.cho_w & (CHO_LEN - 1u)] = (int16_t)clamp(cho_in[i] >> 1, -32768, 32767);
         fx.cho_ph += cinc;
-        r = (400 << 8) + ((osc_sine(fx.cho_ph) + 32768) * cdepth >> 8);   /* Q8 delay: read between samples */
-        {
-            uint32_t ri = (uint32_t)r >> 8;
-            int32_t f = r & 255, c0 = cho_buf[(fx.cho_w - ri) & (CHO_LEN - 1u)];
+        int32_t cho_sum = 0;
+        uint32_t v;
+        for (v = 0; v < nvoices; v++) {
+            /* Evenly spaced phase offsets: 1v: 0, 2v: 0/180 deg, 3v: 0/120/240 deg, 4v: 0/90/180/270 deg */
+            uint32_t vph = fx.cho_ph + (uint32_t)(((uint64_t)v << 32) / (uint64_t)nvoices);
+            int32_t vr = (400 << 8) + ((osc_sine(vph) + 32768) * cdepth >> 8);
+            uint32_t ri = (uint32_t)vr >> 8;
+            if (ri < 2u) ri = 2u;
+            else if (ri >= CHO_LEN - 2u) ri = CHO_LEN - 2u;
+            int32_t f = vr & 255;
+            int32_t c0 = cho_buf[(fx.cho_w - ri) & (CHO_LEN - 1u)];
             int32_t c1 = cho_buf[(fx.cho_w - ri - 1u) & (CHO_LEN - 1u)];
-            y += (c0 + (((c1 - c0) * f) >> 8)) << 1;
+            cho_sum += c0 + (((c1 - c0) * f) >> 8);
         }
+        cho_sum = (cho_sum << 1) / (int32_t)nvoices;
+
+        /* Chorus Tone: BBD Warm Lowpass vs Crisp Shimmer */
+        if (ctone < 0) {
+            int32_t k_lp = 32767 + ctone * 360; /* Warm analog lowpass down to ~9700 */
+            fx.cho_lp += mulq15(cho_sum - fx.cho_lp, k_lp);
+            cho_sum = fx.cho_lp;
+        } else if (ctone > 0) {
+            int32_t diff = cho_sum - fx.cho_lp;
+            fx.cho_lp += mulq15(diff, 20000);
+            cho_sum = clamp(cho_sum + ((diff * ctone) >> 6), -32768, 32767);
+        }
+        y += cho_sum;
         fx.cho_w++;
-        /* delay with a low-passed feedback */
-        x = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)];
+
+        /* Loom Tape Echo: wow & flutter (wow is 3x flutter) + physical tape inertia + saturation */
+        fx.dly_wow_ph += 48677u;       /* ~0.5 Hz */
+        fx.dly_flutter_ph += 1168257u; /* ~12.0 Hz */
+        int32_t wow = (osc_sine(fx.dly_wow_ph) * (tape_amt * 3)) >> 15;
+        int32_t flt = (osc_sine(fx.dly_flutter_ph) * (tape_amt * 1)) >> 15;
+        int32_t target_dl = (int32_t)dl << 8;
+
+        /* Tape speed inertia slew rate limiter: smooth tape pitch glide without sluggish creep */
+        if (!fx.dly_cur) {
+            fx.dly_cur = target_dl;
+        } else {
+            int32_t diff = target_dl - fx.dly_cur;
+            if (diff > -8 && diff < 8) {
+                fx.dly_cur = target_dl;
+            } else {
+                int32_t step = diff >> 6;
+                const int32_t max_slew = 48; /* max ~0.19 samples/sample slew rate: musical +/-3 semitone glide */
+                if (step > max_slew) step = max_slew;
+                else if (step < -max_slew) step = -max_slew;
+                if (step == 0 && diff != 0) step = diff > 0 ? 1 : -1;
+                fx.dly_cur += step;
+            }
+        }
+
+        int32_t cur_tap = fx.dly_cur + wow + flt;
+        uint32_t dri = (uint32_t)(cur_tap >> 8);
+        if (dri < 2u) dri = 2u;
+        else if (dri >= DLY_LEN - 2u) dri = DLY_LEN - 2u;
+        int32_t dfr = cur_tap & 255;
+        int32_t d0 = dly_buf[(fx.dly_w - dri) & (DLY_LEN - 1u)];
+        int32_t d1 = dly_buf[(fx.dly_w - dri - 1u) & (DLY_LEN - 1u)];
+        x = d0 + (((d1 - d0) * dfr) >> 8);
+
+        /* Tape head wear low-pass filtering and unity-gain tape saturation on feedback */
         fx.dly_lp += mulq15(x - fx.dly_lp, col);
+        int32_t fb_sig = (fx.dly_lp * fb) / 32768;
+        int32_t sat_fb = (softclip((fb_sig * sat_gain) >> 12) * inv_sat_q15) / 32768;
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
-            (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);
+            (int16_t)clamp((dly_in[i] >> 1) + sat_fb, -32768, 32767);
         fx.dly_w++;
         y += mulq15(x << 1, dmix);
         wet[i] = y;
     }
+
+    /* Save pre-reverb wet base to isolate reverb output for Tone shaping */
+    int32_t base_wet[CTL];
+    for (i = 0; i < n; i++) base_wet[i] = wet[i];
+
     rt = song.g[G_RTYPE];
     rt = rt == 1 || rt == 2 ? rt : 0;
     hl.side = 0;
@@ -573,6 +741,38 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         rev_spring(rev_in, wet, n);
     else
         rev_room(rev_in, wet, n);
+
+    /* Reverb Tone: Warmer (-64..-1) vs Harder (+1..+63) */
+    int32_t rtone = song.g[G_RTONE];
+    if (rtone != 0) {
+        for (i = 0; i < n; i++) {
+            int32_t rev_only = wet[i] - base_wet[i];
+            if (rtone < 0) {
+                int32_t k_lp = 32767 + rtone * 360; /* Warm lowpass down to ~9700 */
+                fx.rev_tone_lp += mulq15(rev_only - fx.rev_tone_lp, k_lp);
+                rev_only = fx.rev_tone_lp;
+            } else {
+                int32_t diff = rev_only - fx.rev_tone_lp;
+                fx.rev_tone_lp += mulq15(diff, 18000);
+                rev_only = clamp(rev_only + ((diff * rtone) >> 6), -32768, 32767);
+            }
+            wet[i] = base_wet[i] + rev_only;
+        }
+        if (rt == 2) {
+            static int32_t rev_side_lp = 0;
+            for (i = 0; i < n; i++) {
+                if (rtone < 0) {
+                    int32_t k_lp = 32767 + rtone * 360;
+                    rev_side_lp += mulq15(rev_side[i] - rev_side_lp, k_lp);
+                    rev_side[i] = rev_side_lp;
+                } else {
+                    int32_t diff = rev_side[i] - rev_side_lp;
+                    rev_side_lp += mulq15(diff, 18000);
+                    rev_side[i] = clamp(rev_side[i] + ((diff * rtone) >> 6), -32768, 32767);
+                }
+            }
+        }
+    }
 }
 
 /* after the buses: HALL's stereo difference to the left and from the right of the dry mix (the wet bus adds the
@@ -609,7 +809,8 @@ static __attribute__((noinline)) void rev_side_mix(int32_t *l, int32_t *r, uint3
  * recordings) comes after, so its edges stay sharp (no flanger feedback or phaser ringing smears them) and a STUT
  * repeats the processed sound. State in the pool, per track (ins[], 580 B each); noinline, its own loops: the audio
  * ISR's inlined path gains one test per part (track_t ins_run) */
-enum { IT_OFF, IT_SOFT, IT_HARD, IT_FOLD, IT_FUZZ, IT_CRUSH, IT_PHASER, IT_FLANGER, IT_CHORUS, IT_N };
+enum { IT_OFF, IT_SOFT, IT_HARD, IT_FOLD, IT_FUZZ, IT_CRUSH, IT_PHASER, IT_FLANGER, IT_CHORUS,
+       IT_WOBBLE, IT_OCTAVER, IT_OVERDRIVE, IT_PANNER, IT_N };
 #define IL_LEN 256u                     /* FLANG / CHOR: the line, samples (a power of 2: masked) */
 static const uint8_t INS_HOLD[16] = {64, 48, 40, 32, 24, 20, 16, 12, 10, 8, 6, 5, 4, 3, 2, 1};   /* CRUSH RATE */
 typedef struct {
@@ -747,6 +948,166 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const track_t *t, int3
     }
 }
 
+/* IT_WOBBLE: Loom Tape Wobble (wow & flutter pitch modulation + tape saturation) */
+static __attribute__((noinline)) void ins_wobble(ins_t *s, const track_t *t, int32_t *b, uint32_t n, int32_t tw)
+{
+    uint32_t inc = LFO_INC[clamp(t->p[P_IA], 0, 127)] / CTL;
+    uint32_t dep = (uint32_t)clamp(t->p[P_IB], 0, 127);
+    int32_t sat = clamp(t->p[P_IC], 0, 127);
+    int32_t sat_gain = 4096 + sat * 64;
+    uint32_t i;
+
+    for (i = 0; i < n; i++, s->ph += inc) {
+        int32_t x = b[i];
+        s->w += clamp(tw - s->w, -SL_SLOPE, SL_SLOPE);
+
+        int32_t mod = (osc_sine(s->ph) * (int32_t)dep) >> 15;
+        uint32_t d = (uint32_t)((64 << 16) + (mod * 200));
+        int32_t r0 = (int32_t)(s->wp - (d >> 16)) & (int32_t)(IL_LEN - 1u);
+        int32_t r1 = (r0 - 1) & (int32_t)(IL_LEN - 1u);
+        int32_t fr = (int32_t)((d >> 1) & 0x7FFFu);
+        int32_t v = s->line[r0] + (((s->line[r1] - s->line[r0]) * fr) >> 15);
+
+        s->line[s->wp] = (int16_t)clamp(x >> 1, -32767, 32767);
+        s->wp = (uint16_t)((s->wp + 1u) & (IL_LEN - 1u));
+
+        if (sat > 0)
+            v = softclip((v * sat_gain) >> 12);
+        v <<= 1;
+
+        b[i] = pf_mix(x, v, s->w);
+    }
+}
+
+/* IT_OCTAVER: Loom Granular Pitch Shift Octaver & Harmonies */
+static __attribute__((noinline)) void ins_octaver(ins_t *s, const track_t *t, int32_t *b, uint32_t n, int32_t tw)
+{
+    int32_t mode = clamp(t->p[P_IA], 0, 9);
+    int32_t tone = clamp(t->p[P_IC], 0, 127);
+    int32_t tone_k = ins_lpk(tone);
+    uint32_t i;
+
+    static const int32_t RATIOS[10][3] = {
+        {131072, 0, 0},
+        {262144, 0, 0},
+        {32768, 0, 0},
+        {16384, 0, 0},
+        {131072, 32768, 0},
+        {49097, 82570, 0},
+        {49097, 82570, 116773},
+        {49097, 82570, 123715},
+        {49097, 77935, 116773},
+        {46341, 77935, 0},
+    };
+
+    const int32_t *r = RATIOS[mode];
+    const uint32_t win_len = 128u;
+    const uint32_t win_len_q16 = win_len << 16;
+
+    for (i = 0; i < n; i++) {
+        int32_t x = b[i];
+        s->w += clamp(tw - s->w, -SL_SLOPE, SL_SLOPE);
+
+        s->line[s->wp] = (int16_t)clamp(x, -32767, 32767);
+
+        int32_t wet = 0;
+        uint32_t v;
+        for (v = 0; v < 3u && r[v] > 0; v++) {
+            int32_t drift = 65536 - r[v];
+            s->px[v] += drift;
+            while (s->px[v] < 0) s->px[v] += (int32_t)win_len_q16;
+            while (s->px[v] >= (int32_t)win_len_q16) s->px[v] -= (int32_t)win_len_q16;
+
+            uint32_t p1 = (uint32_t)s->px[v];
+            uint32_t p2 = (p1 + (win_len_q16 >> 1)) % win_len_q16;
+
+            uint32_t tap1 = p1 >> 16;
+            uint32_t tap2 = p2 >> 16;
+            int32_t diff1 = (int32_t)p1 - (int32_t)(win_len_q16 >> 1);
+            if (diff1 < 0) diff1 = -diff1;
+            int32_t diff2 = (int32_t)p2 - (int32_t)(win_len_q16 >> 1);
+            if (diff2 < 0) diff2 = -diff2;
+
+            int32_t w1 = (int32_t)(win_len_q16 >> 1) - diff1;
+            int32_t w2 = (int32_t)(win_len_q16 >> 1) - diff2;
+
+            int32_t samp1 = s->line[(s->wp - tap1) & (IL_LEN - 1u)];
+            int32_t samp2 = s->line[(s->wp - tap2) & (IL_LEN - 1u)];
+
+            int32_t voice_val = (samp1 * (w1 >> 8) + samp2 * (w2 >> 8)) >> 14;
+            wet += voice_val;
+        }
+
+        s->wp = (uint16_t)((s->wp + 1u) & (IL_LEN - 1u));
+
+        int32_t diff = wet - s->lp1;
+        s->lp1 += mulq16(diff, (uint32_t)tone_k);
+        wet = softclip(s->lp1);
+
+        b[i] = pf_mix(x, wet, s->w);
+    }
+}
+
+/* IT_OVERDRIVE: Loom Overdrive (bass tightening + multi-stage clipping + wavefolding grit) */
+static __attribute__((noinline)) void ins_overdrive(ins_t *s, const track_t *t, int32_t *b, uint32_t n, int32_t tw)
+{
+    int32_t drv = clamp(t->p[P_IA], 0, 127);
+    int32_t drv_gain = 4096 + drv * 320;
+    int32_t tone = clamp(t->p[P_IB], 0, 127);
+    int32_t tone_k = ins_lpk(tone);
+    int32_t grit = clamp(t->p[P_IC], 0, 127);
+    uint32_t i;
+
+    for (i = 0; i < n; i++) {
+        int32_t x = b[i];
+        s->w += clamp(tw - s->w, -SL_SLOPE, SL_SLOPE);
+
+        s->hp += ((x << 8) - s->hp) >> 5;
+        int32_t tight = x - (s->hp >> 8);
+
+        int32_t driven = (tight * drv_gain) >> 12;
+        int32_t st1 = softclip(driven);
+
+        if (grit > 0 && (st1 > 12000 || st1 < -12000)) {
+            int32_t gterm = (osc_sine((uint32_t)(st1 * 4)) * grit) >> 10;
+            st1 = softclip(st1 + gterm);
+        }
+
+        int32_t diff = st1 - s->lp1;
+        s->lp1 += mulq16(diff, (uint32_t)tone_k);
+
+        b[i] = pf_mix(x, s->lp1, s->w);
+    }
+}
+
+/* IT_PANNER: Loom AutoPanner (LFO modulated panning / tremolo) */
+static __attribute__((noinline)) void ins_panner(ins_t *s, const track_t *t, int32_t *b, uint32_t n, int32_t tw)
+{
+    uint32_t inc = LFO_INC[clamp(t->p[P_IA], 0, 127)] / CTL;
+    uint32_t dep = (uint32_t)clamp(t->p[P_IB], 0, 127);
+    int32_t shape = clamp(t->p[P_IC], 0, 2);
+    uint32_t i;
+
+    for (i = 0; i < n; i++, s->ph += inc) {
+        int32_t x = b[i];
+        s->w += clamp(tw - s->w, -SL_SLOPE, SL_SLOPE);
+
+        int32_t lfo = 0;
+        if (shape == 0) {
+            lfo = osc_sine(s->ph);
+        } else if (shape == 1) {
+            lfo = (int32_t)pf_tri(s->ph) * 2 - 65536;
+        } else {
+            lfo = (s->ph & 0x80000000u) ? -32767 : 32767;
+        }
+
+        int32_t mod = (lfo * (int32_t)dep) >> 16;
+        int32_t wet = (x * (32768 + mod)) >> 15;
+
+        b[i] = pf_mix(x, wet, s->w);
+    }
+}
+
 /* the INSERT at rest at once (mix_part: TYPE turned OFF while the part was silent, its fade never ran) */
 static __attribute__((noinline)) void ins_rest(track_t *t)
 {
@@ -770,7 +1131,15 @@ static __attribute__((noinline)) void track_insert(track_t *t, int32_t *b, uint3
         memset(s, 0, sizeof *s);                        /* starting: no stale line or filter */
         s->type = (uint8_t)ty;
     }
-    if (s->type >= IT_PHASER)
+    if (s->type == IT_WOBBLE)
+        ins_wobble(s, t, b, n, tw);
+    else if (s->type == IT_OCTAVER)
+        ins_octaver(s, t, b, n, tw);
+    else if (s->type == IT_OVERDRIVE)
+        ins_overdrive(s, t, b, n, tw);
+    else if (s->type == IT_PANNER)
+        ins_panner(s, t, b, n, tw);
+    else if (s->type >= IT_PHASER && s->type <= IT_CHORUS)
         ins_swept(s, t, b, n, tw);
     else
         ins_drive(s, t, b, n, tw);
@@ -805,7 +1174,7 @@ static __attribute__((noinline)) void mix_spread(track_t *t, int32_t *b, uint32_
     xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);
     for (i = 0; i < n; i++)
         d[i] = (d[i] << 1) - b[i];                      /* left - right */
-    track_dist(t, b, n);
+    track_duck_spread(t, b, d, n);
     if (t->p[P_ITYPE] | t->ins_run)
         track_insert(t, b, n);                          /* (the mono sum, as DIST) */
     slicer_track_sd(t, b, d, n);
@@ -837,9 +1206,8 @@ static void mix_part(track_t *t, uint32_t n)
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
     spread_on = t->p[P_SPRD] > 0 && (trk_vmode(t) == V_POLY || trk_vmode(t) == V_UNISON);   /* (SPREAD, mix_spread) */
     if (track_render(t, b, n))
-        t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of DIST / INSERT state to run out after the last
-                                                         * voice (the INSERT's: 46 ms, a flanger's feedback) */
-    else if ((!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE]) || !--t->tail) && !slicer_busy(t)) {
+        t->tail = t->p[P_ITYPE] ? 64 : 16;              /* blocks of INSERT state to run out after the last voice */
+    else if ((!t->tail || !t->p[P_ITYPE] || !--t->tail) && !slicer_busy(t)) {
         slicer_track(t, 0, n);                          /* (the SLICER's step clock runs on) */
         if (t->ins_run && !t->p[P_ITYPE])
             ins_rest(t);                                /* TYPE OFF while silent: no fade-out left for the next note */
@@ -850,7 +1218,7 @@ static void mix_part(track_t *t, uint32_t n)
     if (spread_on)
         mix_spread(t, b, n);
     else {
-        track_dist(t, b, n);
+        track_duck(t, b, n);
         if (t->p[P_ITYPE] | t->ins_run)
             track_insert(t, b, n);                      /* the INSERT (1.5): off, nothing */
         slicer_track(t, b, n);                          /* slicer.c: before the level, pan and sends */
@@ -924,15 +1292,30 @@ static void mix_block(int32_t *out, uint32_t n)
     uint32_t i;
     int perf;
     int32_t mg = fx_usb_fixed ? MASTER_FULL : (int32_t)song.master_q12;   /* (USB LEVEL FIXED: MASTER after) */
+    sidechain_tick(n);
     for (i = 0; i < n; i++)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     perf = perf_begin(n);                               /* the FX hold layer at work (perform.c) */
-    for (i = 0; i < NPART; i++)
+    for (i = 0; i < NTRK; i++)
         mix_part(&trk[i], n);
     if (perf)
         perf_pre(mix_l, mix_r, send_d, send_r, n);
     fx_buses(send_c, send_d, send_r, wet, n);
+    /* Master Send FX Ducking: ducks Reverb and Tape Delay send returns during drum hits */
+    if (song.sc[2] > 0 && (sc_state.prev_env || sc_state.env)) {
+        int32_t fx_duck_amt = song.sc[2];
+        int32_t e_start = sc_state.prev_env;
+        int32_t e_end = sc_state.env;
+        for (i = 0; i < n; i++) {
+            int32_t e = e_start + (((e_end - e_start) * (int32_t)i) >> 6);
+            int32_t red = (fx_duck_amt * e) >> 7;
+            int32_t gain = 32768 - red;
+            wet[i] = (wet[i] * gain) >> 15;
+            if (hl.side)
+                rev_side[i] = (rev_side[i] * gain) >> 15;
+        }
+    }
     if (hl.side)
         rev_side_mix(mix_l, mix_r, n);                  /* HALL: stereo */
     if (scope_mix)

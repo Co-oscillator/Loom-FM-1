@@ -1,4 +1,5 @@
 build/
 .DS_Store
 __pycache__/
-*.fwsc
+FM-1_015.fwsc
+web/firmware/FM-1_015.fwsc

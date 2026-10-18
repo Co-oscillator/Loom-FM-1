@@ -163,43 +163,73 @@ static const slc_man_t *slc_man_of(const slc_src_t *s)
     return m->n ? m : 0;
 }
 static uint32_t slc_man_end(const slc_src_t *s, const slc_man_t *m) { return m->end && m->end < s->len ? m->end : s->len; }
-static uint32_t slc_count(const slc_src_t *s, uint32_t div)
+static uint32_t slc_state_at(const slc_src_t *s, uint32_t pos);
+
+static uint32_t slc_count(const slc_src_t *s, uint32_t slcs)
 {
-    const slc_man_t *m = div == SLC_DIV_MAN ? slc_man_of(s) : 0;
-    return div < SLC_DIV_AUTO ? 4u << div : m ? m->n : s->nauto;
+    (void)s;
+    return (uint32_t)clamp(slcs, 1, 16);
 }
-/* the slice a note plays (n slices): note - C4 - ROOT + START, mod n */
+/* the slice a note plays (n slices): note - C4 - ROOT, mod n */
 static uint32_t slc_note_slice(const int16_t *p, uint32_t note, uint32_t n)
 {
-    int32_t j = ((int32_t)note - SLC_BASE - p[P_ROOT] + p[P_E2]) % (int32_t)n;
+    int32_t j = ((int32_t)note - SLC_BASE - p[P_ROOT]) % (int32_t)n;
     return (uint32_t)(j < 0 ? j + (int32_t)n : j);
 }
 
-/* slice j of DIV div: [*a, *b), *st the state at *a */
-static void slc_bounds(const slc_src_t *s, uint32_t div, uint32_t j, uint32_t *a, uint32_t *b, uint32_t *st)
+/* Auto-adjust slice point j in [0..n_slices] to start on transients while using the entire sample */
+static void slc_calc_slice_point(const slc_src_t *s, uint32_t n_slices, uint32_t j, uint32_t *pos, uint32_t *st)
 {
-    const slc_man_t *m = div == SLC_DIV_MAN ? slc_man_of(s) : 0;
-    if (div < SLC_DIV_AUTO) {
-        uint32_t w = SLC_GRID >> (2u + div);
-        *a = slc_gpos(s, j * w);
-        *b = slc_gpos(s, (j + 1u) * w);
-        *st = s->grid[j * w];
-    } else if (m) {
-        j = j < m->n ? j : m->n - 1u;
-        *a = m->pos[j];
-        *b = j + 1u < m->n ? m->pos[j + 1u] : slc_man_end(s, m);
-        *st = m->st[j];
-    } else {
-        j = j < s->nauto ? j : s->nauto - 1u;
-        *a = s->apos[j];
-        *b = j + 1u < s->nauto ? s->apos[j + 1u] : s->len;
-        *st = s->ast[j];
+    if (j == 0) {
+        *pos = 0;
+        *st = 0;
+        return;
     }
+    if (j >= n_slices) {
+        *pos = s->len;
+        *st = 0;
+        return;
+    }
+    if (s->nauto >= n_slices) {
+        /* Distribute transients evenly across the sample */
+        uint32_t t_idx = (j * (s->nauto - 1u)) / (n_slices - 1u);
+        *pos = s->apos[t_idx];
+        *st = s->ast[t_idx];
+    } else if (s->nauto > 1) {
+        if (j < s->nauto) {
+            *pos = s->apos[j];
+            *st = s->ast[j];
+        } else {
+            uint32_t p_last = s->apos[s->nauto - 1u];
+            uint32_t rem_slices = n_slices - s->nauto + 1u;
+            uint32_t rem_j = j - s->nauto + 1u;
+            uint32_t p = p_last + (uint32_t)((uint64_t)rem_j * (s->len - p_last) / rem_slices);
+            *pos = p < s->len ? p : s->len;
+            *st = slc_state_at(s, *pos);
+        }
+    } else {
+        uint32_t p = (uint32_t)((uint64_t)j * s->len / n_slices);
+        *pos = p < s->len ? p : s->len;
+        *st = slc_state_at(s, *pos);
+    }
+}
+
+/* slice j of n_slices: [*a, *b), *st the state at *a */
+static void slc_bounds(const slc_src_t *s, uint32_t slcs, uint32_t j, uint32_t *a, uint32_t *b, uint32_t *st)
+{
+    uint32_t n = (uint32_t)clamp(slcs, 1, 16);
+    j = j < n ? j : n - 1u;
+    uint32_t p0, st0, p1, st1;
+    slc_calc_slice_point(s, n, j, &p0, &st0);
+    slc_calc_slice_point(s, n, j + 1u, &p1, &st1);
+    *a = p0;
+    *b = p1;
+    *st = st0;
 }
 static void slc_bounds_v(const slc_src_t *s, const voice_t *v, uint32_t *a, uint32_t *b, uint32_t *st)
 {
     uint32_t pk = (uint32_t)v->s[4];
-    slc_bounds(s, (pk >> 16) & 7u, (pk >> 8) & 63u, a, b, st);
+    slc_bounds(s, (pk >> 16) & 31u, (pk >> 8) & 63u, a, b, st);
 }
 
 /* ---- the slice table of a user slot (main loop) */
@@ -439,7 +469,7 @@ static int16_t *slc_rb(track_t *t, voice_t *v)
 static void slice_note_on(track_t *t, voice_t *v)
 {
     const int16_t *p = t->p;
-    uint32_t src = slc_src_of(p), div = (uint32_t)clamp(p[P_E1], 0, SLC_DIV_MAN), rev = p[P_E5] != 0;
+    uint32_t src = slc_src_of(p), slcs = (uint32_t)clamp(p[P_E1], 1, 16), rev = p[P_E6] != 0;
     uint32_t a, b, st, j;
     const slc_src_t *s = slc_get(src);
     v->ph[1] = 0;
@@ -454,11 +484,11 @@ static void slice_note_on(track_t *t, voice_t *v)
         v->ph[0] = 0;
         return;
     }
-    j = slc_note_slice(p, v->note, slc_count(s, div));
-    slc_bounds(s, div, j, &a, &b, &st);
+    j = slc_note_slice(p, v->note, slc_count(s, slcs));
+    slc_bounds(s, slcs, j, &a, &b, &st);
     if (b <= a || (rev && !slc_rb(t, v)))
         return;
-    v->s[4] = (int32_t)(src | (st >> 24) << 3 | rev << 7 | j << 8 | div << 16);
+    v->s[4] = (int32_t)(src | (st >> 24) << 3 | rev << 7 | j << 8 | slcs << 16);
     v->s[6] = 0;
     if (rev) {
         v->ph[0] = b;
@@ -534,38 +564,38 @@ static inline int slc_rev(const slc_src_t *s, voice_t *v, int16_t *rb, int loop,
     return 1;
 }
 
-/* the ADSR (ONE: no release), DECAY, the fade at the slice end */
+/* the ADSR (ONE: no release), the fade at the slice end */
 static int32_t slice_amp(track_t *t, voice_t *v, int32_t adsr)
 {
     const int16_t *p = t->p;
-    if (p[P_E4] == SLC_ONE && v->stage == 3u && ((uint32_t)v->s[4] & 7u) != SLC_SINE)
+    if (p[P_E5] == SLC_ONE && v->stage == 3u && ((uint32_t)v->s[4] & 7u) != SLC_SINE)
         v->stage = 2;                                   /* ONE: the slice plays to its end (the sine has none) */
-    if (p[P_E6] < 127) {
-        v->s[5] -= mulq16(v->s[5], ENV_EXP[p[P_E6] & 127]);
-        if (v->s[5] < 8)
-            v->s[6] = 2;                                /* faded out: the voice ends */
-    }
-    return v->s[6] == 3 ? 0 : mulq15(adsr, v->s[5]);
+    return v->s[6] == 3 ? 0 : adsr;
 }
 
 static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
-    uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 7) & 1u, stepq, rem;
+    uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 7) & 1u, stepq, stepq_adv, rem;
     int32_t lp = 4000 + ((clamp((p[P_E7] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15), x;
-    int loop = p[P_E4] == SLC_LOOP && v->gate;
+    int loop = p[P_E5] == SLC_LOOP && v->gate;
     const slc_src_t *s = v->s[6] == 2 || (pk & 7u) == SLC_SINE ? 0 : slc_get(pk & 7u);
     int16_t *rb = slc_rb(t, v);
     slc_dec_t d;
     if ((pk & 7u) == SLC_SINE && v->s[6] != 2) {        /* no material: the sine at the key's pitch + PTCH */
-        smp_sine(out, n, m, p[P_E3] * 16, lp, &v->ph[0], &v->s[7]);
+        smp_sine(out, n, m, p[P_E2] * 16, lp, &v->ph[0], &v->s[7]);
         return;
     }
     if (!s) {                                           /* ended, or its slot was erased */
         v->active = 0;
         return;
     }
-    stepq = (pow2_q16(clamp(m->pitch16 - v->pitch_cur + p[P_E3] * 16, -1536, 576)) >> 8) * (s->rate >> 8);
+    int32_t semi = clamp(m->pitch16 - v->pitch_cur + p[P_E2] * 16, -1536, 576);
+    uint32_t speed_fac = (uint32_t)clamp(p[P_E3] ? p[P_E3] : 100, 10, 400);
+    stepq = (uint32_t)((((uint64_t)(pow2_q16(semi) >> 8) * (s->rate >> 8)) * speed_fac) / 100u);
+    uint32_t strch_fac = (uint32_t)clamp(p[P_E4] ? p[P_E4] : 100, 25, 400);
+    stepq_adv = (stepq * 100u) / strch_fac;
+
     d.pos = v->ph[0];
     d.pred = v->s[0];
     d.idx = v->s[1];
@@ -579,11 +609,11 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         v->s[6] = 1;
     }
     rem = rev ? v->ph[0] - v->ph[2] : v->ph[2] - d.pos;
-    if (v->s[6] == 1 && !loop && rem < ((stepq * 3u * n) >> 16))
+    if (v->s[6] == 1 && !loop && rem < ((stepq_adv * 3u * n) >> 16))
         v->s[6] = 3;                                    /* the next block fades to 0 (slice_amp) */
     for (i = 0; i < n; i++) {
         int32_t y;
-        frac += stepq;
+        frac += stepq_adv;
         while (frac >= 65536u) {
             frac -= 65536u;
             v->s[2] = v->s[3];
@@ -609,17 +639,19 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     }
 }
 
-/* two factory sounds, both on BREAK (always there). PATTERNS (engines.c): CHOP suggests
- * 9 CHOP (16 slices re-ordered), STUTTER 10 STUTTER (8 slices, repeats); 11 SLICES plays 0..15 in order */
+/* two factory sounds, both on BREAK (always there) */
 static const preset_t SLICE_PRESETS[] = {
-    {"CHOP", {0, 2, 0, 0, SLC_ONE, 0, 127, 127}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 12), PAT(9)},
-    {"STUTTER", {0, 1, 0, 0, SLC_GATE, 0, 90, 110}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 20, 10), PAT(10)},
+    {"CHOP", {0, 16, 0, 100, 100, SLC_ONE, 0, 127}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 12), PAT(9)},
+    {"STUTTER", {0, 8, 0, 100, 100, SLC_GATE, 0, 110}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 20, 10), PAT(10)},
 };
 
-/* the lowest key is slice 0 (C4 + ROOT), no scale */
+/* Each of the 16 white keys plays one of up to 16 slices; black keys are silent */
 static int32_t slice_keys(const track_t *t, uint32_t k)
 {
-    return clamp(SLC_BASE + t->p[P_ROOT] + 12 * song.octave + (int32_t)k, 0, 127);
+    if (key_black(k))
+        return KB_SILENT;
+    uint32_t w = key_place(k); /* white key 0..15 */
+    return clamp(SLC_BASE + t->p[P_ROOT] + (int32_t)w, 0, 127);
 }
 
 static const engine_t ENG_SLICE = {
@@ -627,19 +659,19 @@ static const engine_t ENG_SLICE = {
     .page_title = {"SLCE", "PLAY"},
     .edit = {
         {"SRC", F_ENUM, 0, SLC_NSRC - 1, 0, N_SLC_SRC, 0},
-        {"DIV", F_ENUM, 0, 5, 2, N_SLC_DIV, 0},
-        {"START", F_INT, 0, 31, 0, 0, 0},
+        {"SLCS", F_INT, 1, 16, 16, 0, 0},
         {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
+        {"SPEED", F_PCT, 10, 400, 100, 0, 0},
+        {"STRCH", F_PCT, 25, 400, 100, 0, 0},
         {"MODE", F_ENUM, 0, 2, 0, N_SLC_MODE, 0},
         {"REV", F_ENUM, 0, 1, 0, N_SLC_REV, 0},
-        {"DCAY", F_TIME, 0, 127, 127, 0, 0},
         {"TONE", F_INT, 0, 127, 127, 0, 0},
     },
     .presets = SLICE_PRESETS,
     .npresets = NELEM(SLICE_PRESETS),
     .note_on = slice_note_on,
     .render = slice_render,
-    .knob = {P_E0, P_E1, P_E3, P_E6},
+    .knob = {P_E2, P_E3, P_E4, P_E1},
     .sampled = 1,
     .keys = slice_keys,
     .amp = slice_amp,

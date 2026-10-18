@@ -13,7 +13,8 @@ PY="${PYTHON:-python3}"
 
 "$PY" -c 'import PIL' 2>/dev/null || { echo "build.sh: $PY has no Pillow (pip3 install Pillow)"; exit 1; }
 [ -x "$JIELI_TOOLCHAIN/pi32v2/bin/clang" ] || { echo "build.sh: no toolchain in $JIELI_TOOLCHAIN (run tools/get_toolchain.sh)"; exit 1; }
-[ -f "$AC79_SDK/cpu/wl82/tools/uboot.boot" ] || { echo "build.sh: no JieLi AC79 SDK in $AC79_SDK"; exit 1; }
+[ -f "$AC79_SDK/cpu/wl82/tools/uboot.boot" ] || [ -f "tools/sdk_pack/uboot.boot" ] || { echo "build.sh: no JieLi AC79 SDK in $AC79_SDK or tools/sdk_pack"; exit 1; }
+[ -d "$HOME/.docker/bin" ] && export PATH="$HOME/.docker/bin:$PATH"
 if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
     docker info >/dev/null 2>&1 || { echo "build.sh: Docker is not running"; exit 1; }
 fi

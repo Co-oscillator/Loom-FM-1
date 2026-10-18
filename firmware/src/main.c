@@ -117,8 +117,13 @@ static void felucca_init(void)
         pat_sig[i] = steps_sig(t);            /* a default pattern, not the user's */
         pat_last[i] = TRK_DEF[i][2];
     }
+    macro_init();
     undo_depth--;
     song.sel = 0;
+    song.sc[0] = 48;                          /* Sidechain: REL 48 (~120ms) */
+    song.sc[1] = 1;                           /* Sidechain: ATK 1 (~1.5ms) */
+    song.sc[2] = 64;                          /* Sidechain: Master FX duck 50% */
+    song.sc[3] = 0;                           /* Sidechain: Trigger source KICK */
     song.master_q12 = 2048;                   /* (the pot's level replaces it before the audio starts: master_boot) */
     ui.home = 1;
     ui.force = 1;
@@ -190,9 +195,11 @@ static void fm1_main(void)
         settings_save();
     }
     autosave_boot(boot_clean);                /* (1.2) the last session's music, under the splash */
-    for (ms = 0; ms < 400u; ms += 10u) {      /* the splash; the pot followed (MIDI IN plays under it) */
+    for (ms = 0; ms < 1500u; ms += 10u) {      /* the splash; the pot followed (MIDI IN plays under it) */
         fm1_delay_ms(10);
         master_poll();
+        if (fm1_in.buttons || fm1_in.notes)
+            break;
     }
     kb_boot_hold = 0;
     lcd_fill(0, 0, 240, 240, T_BG);

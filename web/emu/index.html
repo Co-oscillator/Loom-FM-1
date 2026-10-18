@@ -6,9 +6,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Felucca</title>
+<title>Loom FM-1</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22%23fff%22/%3E%3C/svg%3E">
-<meta name="description" content="Felucca, the multi-engine synth firmware for the FM-1, running in your browser: the same code the instrument runs.">
+<meta name="description" content="Loom FM-1, multi-engine synthesizer and groovebox firmware for the M-VAVE FM-1.">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <style>
 /* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
@@ -69,14 +72,72 @@ kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rul
 footer { margin-top: 12px; font-size: 12px; }
 footer nav a { margin: 0 6px; }
 footer small { font-size: 11px; opacity: .8; }
+/* Loom Workbench Navigation & Panels */
+.wb-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+          background: #1d1d1f; color: #ececee; padding: 10px 16px; border-radius: 14px; margin-bottom: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.22); }
+.wb-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: 0.4px; }
+.wb-badge { background: #ff2d78; color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 700; letter-spacing: 0.6px; }
+.wb-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.wb-tab { background: #2c2c2e; color: #d6d6d8; border: 1px solid #3a3a3e; border-radius: 8px; padding: 6px 13px;
+          font: 600 12.5px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; transition: all 0.12s; }
+.wb-tab:hover { background: #3a3a3e; color: #fff; }
+.wb-tab.active { background: #5fe08a; color: #0d2414; border-color: #5fe08a; }
+.wb-actions { display: flex; align-items: center; gap: 8px; }
+.wb-btn { background: #2c2c2e; color: #ececee; border: 1px solid #48484a; border-radius: 8px; padding: 6px 12px;
+          font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.wb-btn:hover:not(:disabled) { background: #3a3a3e; }
+.wb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wb-btn.rec-active { background: #ff453a; color: #fff; border-color: #ff453a; animation: pulse-rec 1s infinite; }
+.wb-btn.primary { background: #5fe08a; color: #0d2414; border-color: #5fe08a; }
+.wb-btn.warn { background: #ff9f0a; color: #1d1d1f; border-color: #ff9f0a; }
+@keyframes pulse-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+.wb-panel { display: none; }
+.wb-panel.active { display: block; }
+.wb-card { background: #1d1d1f; color: #ececee; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
+.wb-card h2 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+.wb-card h3 { margin: 18px 0 8px; font-size: 14px; color: #5fe08a; text-transform: uppercase; letter-spacing: 0.5px; }
+.wb-card p { margin: 0 0 12px; color: #c7c7cc; font-size: 13.5px; }
+.wb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+.wb-box { background: #262629; border: 1px solid #3a3a3e; border-radius: 12px; padding: 16px; }
+.wb-box h4 { margin: 0 0 6px; font-size: 14px; color: #fff; }
+.wb-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 10px; border: 1px solid #48484a;
+             background: #262629; color: #fff; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; margin-bottom: 16px; }
+.wb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wb-table th, .wb-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #323236; vertical-align: top; }
+.wb-table th { color: #5fe08a; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+.wb-table td code { background: #2c2c2e; color: #fff4d6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.wb-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #323236; color: #5fe08a; }
 </style>
 </head>
 <body>
 <main>
+<nav class="wb-nav" aria-label="Loom Workbench Navigation">
+  <div class="wb-brand">
+    <span>🎛️ LOOM WORKBENCH</span>
+    <span class="wb-badge">FM-1</span>
+  </div>
+  <div class="wb-tabs" role="tablist">
+    <button class="wb-tab active" data-tab="play" role="tab" aria-selected="true">🎹 Play &amp; Emulator</button>
+    <button class="wb-tab" data-tab="editor" role="tab" aria-selected="false">🎚️ Editor &amp; Samples</button>
+    <button class="wb-tab" data-tab="updater" role="tab" aria-selected="false">⚡ Firmware Updater</button>
+    <button class="wb-tab" data-tab="manual" role="tab" aria-selected="false">📖 Manual &amp; Glossary</button>
+  </div>
+  <div class="wb-actions">
+    <button id="resample-btn" class="wb-btn" type="button" disabled title="Record emulator audio output to a 16-bit WAV file that you can load into USR1..3 in Editor & Samples">● Resample Audio</button>
+  </div>
+</nav>
+
+<!-- TAB 1: PLAY & EMULATOR -->
+<section id="tab-play" class="wb-panel active" role="tabpanel">
 <div class="device" id="device">
   <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
   <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
-  <div class="start" id="start"><button id="go" type="button">Switch on</button><p id="status" hidden></p></div>
+  <div class="start" id="start">
+    <button id="go" type="button">Switch on</button>
+    <div style="color: #5fe08a; font-size: 13px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">LOOM FM-1 · Multi-Engine Groovebox, Tape Scrub, Wavetable &amp; Ducking FX</div>
+    <p id="status" hidden></p>
+  </div>
 </div>
 
 <p class="keys">
@@ -87,12 +148,137 @@ footer small { font-size: 11px; opacity: .8; }
   <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
+</section>
+
+<!-- TAB 2: EDITOR & SAMPLES -->
+<section id="tab-editor" class="wb-panel" role="tabpanel">
+  <div class="wb-card" style="padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <div>
+      <strong style="color:#fff;">Loom Device Editor, <code>.MP3</code>/<code>.WAV</code> Sample Converter (<code>USR1..3</code>) &amp; <code>.MID</code> Multi-Track Importer</strong>
+      <div style="font-size:12px; color:#c7c7cc;">Works directly with the <strong>Browser Emulator</strong> (auto-connected) or a physical <strong>USB FM-1</strong>. Convert &amp; trim <code>.mp3</code>/<code>.wav</code> files into <code>USR1</code>–<code>USR3</code> (immediately playable in <code>SAMPLE</code>, <code>SLICE</code>, <code>SCRUB</code>, <code>WAVETABLE</code> &amp; <code>GRAIN</code>), or import <code>.mid</code>/<code>.midi</code> files with custom track-to-track routing.</div>
+    </div>
+    <a href="editor.html" target="_blank" class="wb-btn primary" style="text-decoration:none;">Open Fullscreen ↗</a>
+  </div>
+  <iframe id="editor-frame" title="Loom Device Editor & Sample Manager" style="width:100%; height:760px; border:0; border-radius:16px; background:#141415; box-shadow: 0 6px 20px rgba(0,0,0,0.25);"></iframe>
+</section>
+
+<!-- TAB 3: FIRMWARE UPDATER -->
+<section id="tab-updater" class="wb-panel" role="tabpanel">
+  <div class="wb-card">
+    <h2>⚡ USB-MIDI Firmware Updater &amp; Stock V15 Recovery</h2>
+    <p>Update a physical M-VAVE FM-1 directly from Chrome or Edge over a standard USB data cable (WebMIDI SysEx). No external hardware probe is needed. Static hosting (such as <strong>GitHub Pages</strong> or <code>localhost</code>) serves the firmware images directly to your browser.</p>
+
+    <div class="wb-grid">
+      <div class="wb-box">
+        <h4>1. Install Loom FM-1 Firmware</h4>
+        <p style="font-size:12.5px;">Flashes the built <code>loom-groovebox.fswc</code> Loom FM-1 firmware package to your connected FM-1.</p>
+        <p id="ota-pkg-info" style="font-size:12px; color:#5fe08a;">Checking for bundled <code>loom-groovebox.fswc</code>…</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+          <button id="ota-install-btn" class="wb-btn primary" type="button" disabled>⚡ Install Loom FM-1</button>
+          <label class="wb-btn" style="cursor:pointer;">
+            📂 Load Custom .fswc / .fwsc
+            <input id="ota-custom-file" type="file" accept=".fswc,.fwsc" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="wb-box">
+        <h4>2. Restore Official M-VAVE Stock V15</h4>
+        <p style="font-size:12.5px;">Automatically backs up your Loom songs, presets, and samples to a JSON archive, then restores the official factory <code>FM-1_015.fwsc</code> firmware.</p>
+        <p id="ota-stock-info" style="font-size:12px; color:#ff9f0a;">Checking for bundled <code>FM-1_015.fwsc</code>…</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+          <button id="ota-stock-btn" class="wb-btn warn" type="button" disabled>↺ Back Up &amp; Restore Stock V15</button>
+          <label class="wb-btn" style="cursor:pointer;">
+            📂 Select V15 .fwsc
+            <input id="ota-stock-file" type="file" accept=".fwsc" style="display:none;">
+          </label>
+        </div>
+        <label style="display:block; margin-top:10px; font-size:12px; color:#c7c7cc;">
+          <input id="ota-stock-resume" type="checkbox"> Resume interrupted restore (skip backup if device is already in <code>ota-FM-1</code> loader mode)
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <progress id="ota-bar" max="100" value="0" style="width:100%; height:8px; border-radius:4px;"></progress>
+      <div id="ota-status" style="margin-top:8px; font-weight:600; color:#5fe08a; min-height:1.5em;">Ready. Connect your FM-1 via USB.</div>
+      <pre id="ota-log" style="background:#141415; color:#9a9a9e; padding:12px; border-radius:8px; font-size:11.5px; max-height:180px; overflow:auto; margin-top:8px; white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- TAB 4: MANUAL & GLOSSARY -->
+<section id="tab-manual" class="wb-panel" role="tabpanel">
+  <div class="wb-card">
+    <h2>📖 Loom FM-1 Interactive Manual, Shortcuts &amp; Plain-Language Glossary</h2>
+    <p>Type any button name, parameter label (e.g. <code>QNT</code>, <code>DUCK</code>, <code>SLCS</code>, <code>INERT</code>, <code>INIT+</code>), or feature below to filter the reference tables.</p>
+    <input id="manual-search" class="wb-search" type="search" placeholder="🔍 Search shortcuts, buttons, menus, or parameter names (e.g. Scale, Resample, Save, Duck, Scrub, Slice)...">
+
+    <div class="manual-section">
+      <h3>🎹 Hardware Button Combos, Long-Presses &amp; Piano Key Shortcuts</h3>
+      <table class="wb-table">
+        <thead>
+          <tr><th>Shortcut / Action</th><th>Context</th><th>What It Does (Plain Language)</th></tr>
+        </thead>
+        <tbody id="manual-shortcuts-body">
+          <tr><td><code>Hold HOME</code> + <code>Keys 1–4 (F..G#)</code></td><td>Anywhere</td><td>Select active Track <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
+          <tr><td><code>Hold HOME</code> + <code>Keys 5–8 (A..C)</code></td><td>Anywhere</td><td>Mute or unmute Track <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
+          <tr><td><code>Hold HOME</code> + <code>Turn K1–K4</code></td><td>Anywhere</td><td>Adjust per-track mixer volume for <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
+          <tr><td><code>Hold FX</code> + <code>Keys 1–4</code></td><td>Anywhere</td><td>Punch-in performance FX (Repeat, Stutter, Tape Stop, Half-Speed) while held.</td></tr>
+          <tr><td><code>Hold FX</code> + <code>Turn K1–K4</code></td><td>Anywhere</td><td>Quick-adjust send levels for <code>DUCK</code> (Sidechain), <code>CHOR</code> (Chorus), <code>DLY</code> (Tape Delay), and <code>RVB</code> (Reverb).</td></tr>
+          <tr><td><code>Hold SEQ</code> + <code>White Keys 1–16</code></td><td>Sequencer</td><td>Select step 1–16 for inspection or step-locking, or toggle drum hits in the <code>DRUM</code> grid.</td></tr>
+          <tr><td><code>Tap EDIT</code> (while on <code>STEP</code> page)</td><td>Step Edit</td><td>Clears the selected sequencer step (removes notes and parameter locks on that step).</td></tr>
+          <tr><td><code>Hold EDIT</code> + <code>Turn Knob</code></td><td>Step Edit</td><td>Parameter-lock (motion lock) that knob's parameter onto the currently selected sequencer step.</td></tr>
+          <tr><td><code>Hold REC</code> (~0.6s)</td><td>Anywhere</td><td>Toggle Metronome click on/off.</td></tr>
+          <tr><td><code>Hold SAVE</code> (~0.6s)</td><td>Anywhere</td><td>Quick-save the current Project into its active project slot (<code>S01</code>–<code>S16</code>).</td></tr>
+          <tr><td><code>Shift + Click</code> (Web Emulator)</td><td>Browser Emulator</td><td>Latches (holds down) any panel button so you can perform <code>Hold + Key</code> or <code>Hold + Knob</code> combos with a mouse.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="manual-section">
+      <h3>💾 SAVE Menu Pages Explained (Pages 1–6)</h3>
+      <table class="wb-table">
+        <thead>
+          <tr><th>Save Page</th><th>Knobs (K1 / K2 / K3 / K4)</th><th>Plain-Language Explanation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>1/6 PROJECT</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>NEW</code></td><td><strong>Full Song / Project Slots (S01–S16):</strong> Saves or loads all 4 tracks, their sequences, sounds, FX settings, and tempo together. Turn K2 to load, K3 to save, or K4 to initialize a clean project.</td></tr>
+          <tr><td><code>2/6 TOOLS</code></td><td><code>TRACK</code> / <code>SEQ</code> / <code>SOUND</code> / <code>LOCKS</code></td><td><strong>Quick-Clear Utilities:</strong> Resets parts of the current track without wiping the whole song. <code>TRACK</code> resets the whole track; <code>SEQ</code> clears the step pattern; <code>SOUND</code> resets the synth patch to default; <code>LOCKS</code> removes step automation locks.</td></tr>
+          <tr><td><code>3/6 USER</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>CLR</code></td><td><strong>32 User Patch Slots (U01–U32):</strong> Your personal sound bank! Save your custom synth patch on the active track into one of 32 flash slots (K3), load one into the current track (K2), or clear a slot (K4).</td></tr>
+          <tr><td><code>4/6 PRESETS</code></td><td><code>PATCH</code> / <code>ENG</code> / <code>FAV</code> / <code>LIST</code></td><td><strong>Preset Browser &amp; Favorites:</strong> K1 scrolls presets one-by-one; K2 jumps by Synth Engine; K3 marks/unmarks a preset as a Favorite (<code>★</code>); K4 filters the browser by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.). Leaving this page automatically restores full preset access on tracks.</td></tr>
+          <tr><td><code>5/6 PHRASES</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>CLR</code></td><td><strong>Pattern / Sequence Bank (P01–P16):</strong> Saves or loads a 16-step sequence (notes + motion locks) independently of the project so you can reuse riffs across songs.</td></tr>
+          <tr><td><code>6/6 INIT+</code></td><td><code>SAVE</code> / <code>LOAD</code> / <code>CLR</code> / —</td><td><strong>Custom Default Boot State:</strong> Saves your current project layout as the personal default template that loads whenever you initialize a new project.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="manual-section">
+      <h3>🎛️ Plain-Language Parameter &amp; Engine Glossary</h3>
+      <table class="wb-table">
+        <thead>
+          <tr><th>Term / Label</th><th>Where Found</th><th>Plain-Language Meaning</th></tr>
+        </thead>
+        <tbody id="manual-glossary-body">
+          <tr><td><code>SCL</code> &amp; <code>QNT</code> (<code>OFF</code>, <code>SNAP</code>, <code>WHITE</code>, <code>SEQ</code>)</td><td><code>SCL</code> Button (Scale Page)</td><td><strong>Scale Quantization:</strong> Selecting any scale automatically enables <code>SNAP</code>. <code>SNAP</code> rounds out-of-scale notes to the nearest note in the chosen scale; <code>WHITE</code> maps consecutive scale degrees across the white keys so every white key is in-key; <code>SEQ</code> quantizes recorded sequencer notes to the scale while leaving live keys chromatic.</td></tr>
+          <tr><td><code>Resampling</code> &amp; <code>USR1..3</code></td><td>Workbench Top Bar &amp; <code>Editor &amp; Samples</code></td><td><strong>Resampling &amp; Custom Samples:</strong> Because the physical FM-1 has no audio input jack, custom audio enters slots <code>USR1..3</code> over USB SysEx via the <strong>Editor &amp; Samples</strong> tab, or by clicking <strong>● Resample Audio</strong> in the top bar while playing the emulator to capture a WAV file of your loop and load it into <code>USR1..3</code> for <code>SLICE</code>, <code>SCRUB</code>, <code>WAVETABLE</code>, or <code>GRAIN</code>.</td></tr>
+          <tr><td><code>SLCS</code> (Slices 1–16)</td><td><code>SLICE</code> Engine (Edit 1 K2)</td><td><strong>Slice Count:</strong> Sets the number of slices (1 to 16) across the full sample waveform. Changing <code>SLCS</code> automatically recalculates slice points to snap to transients across the entire sample. Each white key triggers one slice with its own live playhead.</td></tr>
+          <tr><td><code>POS</code>, <code>MOTOR</code>, <code>INERT</code>, <code>FRIC</code></td><td><code>SCRUB</code> Engine</td><td><strong>Tape / Platter Scrubbing:</strong> <code>POS</code> scrubs the tape playhead directly; <code>MOTOR</code> sets continuous forward/reverse reel speed (<code>-3.0x</code> to <code>+3.0x</code>); <code>INERT</code> controls platter mass/momentum (higher = heavier, more elastic lag); <code>FRIC</code> sets brake friction when the motor stops.</td></tr>
+          <tr><td><code>DUCK</code>, <code>TRIG</code>, <code>PUMP</code>, <code>RELS</code>, <code>FXDK</code></td><td><code>FX</code> Menu (Send 1 &amp; Duck Page)</td><td><strong>Sidechain Ducking Compressor:</strong> Replaces the old send distortion. Ducks tracks and/or master FX whenever the selected drum trigger hits. <code>TRIG</code> selects <code>KICK</code> (default), <code>K+SNR</code>, <code>K+TOM</code>, or <code>ALL</code>; <code>PUMP</code> sets threshold/ratio depth; <code>RELS</code> sets release recovery speed; <code>FXDK</code> ducks the global Chorus/Delay/Reverb tails.</td></tr>
+          <tr><td><code>TAPE DELAY</code> (<code>TIME</code>, <code>FB</code>, <code>TAPE</code>, <code>CROSS</code>)</td><td><code>FX</code> Menu (Delay Page)</td><td><strong>Continuous Tape Echo:</strong> Smooth continuous delay time (5–720 ms) with gentle analog tape-transport inertia for pitch-bent dub sweeps without excessive wobble. <code>TAPE</code> increases both Wow and Flutter (with Wow scaled 3× relative to Flutter).</td></tr>
+          <tr><td><code>CHORUS</code> (<code>RATE</code>, <code>DEPTH</code>, <code>TONE</code>, <code>VOICES</code>)</td><td><code>FX</code> Menu (Chorus Page)</td><td><strong>Multi-Voice Chorus:</strong> <code>TONE</code> shapes warmth vs. shimmer; <code>VOICES</code> selects 1 to 4 detuned quadrature chorus voices.</td></tr>
+          <tr><td><code>REVERB</code> (<code>TYPE</code>, <code>TIME</code>, <code>DAMP</code>, <code>TONE</code>)</td><td><code>FX</code> Menu (Reverb Page)</td><td><strong>Stereo Reverb:</strong> <code>TONE</code> tilts the reverb tank from dark/warm (negative) to bright/hard (positive).</td></tr>
+          <tr><td><code>Insert FX</code> (Track FX)</td><td><code>FX</code> Menu (Insert Page)</td><td><strong>Per-Track Insert Effect:</strong> Each of the 4 tracks (<code>T1..T3</code>, <code>DRUM</code>) has its own dedicated Insert FX processor (Overdrive, Bitcrush, Decimator, Filter, Phaser, Tremolo, RingMod, Compressor, Comb) before feeding the 4 global Send buses.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
 <footer>
   <small class="version">@VERSION@@PREVIEW@</small><br>
-  Felucca by Leo Kuroshita, Hügelton Instruments · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · browser build after charlesvestal's <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
-  <nav><a href="../installer/">Install</a><a href="../editor/">Editor</a><a href="https://github.com/hugelton/Felucca">Source</a></nav>
-  <small>M-VAVE and FM-1 are trademarks of their respective owners. Felucca is not affiliated with or endorsed by them.</small>
+  Loom FM-1 Groovebox · Built on Felucca / SLOOP core · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
+  <small>M-VAVE and FM-1 are trademarks of their respective owners.</small>
 </footer>
 </main>
 
@@ -106,7 +292,8 @@ const PLAY_GREEN = 14;
 const WHITE = [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26];
 const BLACK = [1, 3, 5, 8, 10, 13, 15, 17, 20, 22, 25];
 const BLACK_AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];      // the white key each black one follows
-const STORE = "felucca-emu-flash";
+const STORE = "loom-emu-flash-v2";
+try { localStorage.removeItem("felucca-emu-flash"); localStorage.removeItem("loom-emu-flash"); } catch {}
 
 // ------------------------------------------------------------------ the panel
 // Two drawings of the same controls: WIDE after the FM-1's own layout, TALL for a phone held upright (the
@@ -336,7 +523,7 @@ const KEYMAP = {};
 Object.assign(KEYMAP, { BracketLeft: { btn: B["OCT-"] }, BracketRight: { btn: B["OCT+"] } });
 const ARROWS = { ArrowUp: [EN.SELECT, 1], ArrowDown: [EN.SELECT, -1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
 addEventListener("keydown", (e) => {
-  if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob")) return;
+  if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob, input, textarea, select") || !document.getElementById("tab-play").classList.contains("active")) return;
   if (ARROWS[e.code]) { const [r, n] = ARROWS[e.code]; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
   const m = KEYMAP[e.code];
   if (!m) return;
@@ -441,7 +628,79 @@ async function midiOn() {
   } catch { /* no permission: the panel only */ }
 }
 
-// ------------------------------------------------------------------ switching on
+// ------------------------------------------------------------------ switching on & Live Audio Resampler
+let audioCtx = null, resampleActive = false, resampleChunksL = [], resampleChunksR = [], resampleProc = null;
+const resampleBtn = document.getElementById("resample-btn");
+
+function encodeWavStereo(chunksL, chunksR, sampleRate) {
+  let total = 0;
+  for (const c of chunksL) total += c.length;
+  const buf = new ArrayBuffer(44 + total * 4);
+  const view = new DataView(buf);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + total * 4, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 2, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 4, true);
+  view.setUint16(32, 4, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, total * 4, true);
+  let off = 44;
+  for (let b = 0; b < chunksL.length; b++) {
+    const L = chunksL[b], R = chunksR[b];
+    for (let i = 0; i < L.length; i++) {
+      const sL = Math.max(-1, Math.min(1, L[i]));
+      const sR = Math.max(-1, Math.min(1, R[i]));
+      view.setInt16(off, sL < 0 ? sL * 0x8000 : sL * 0x7FFF, true);
+      view.setInt16(off + 2, sR < 0 ? sR * 0x8000 : sR * 0x7FFF, true);
+      off += 4;
+    }
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+resampleBtn.addEventListener("click", () => {
+  if (!audioCtx || !node) return;
+  if (!resampleActive) {
+    resampleChunksL = [];
+    resampleChunksR = [];
+    resampleProc = audioCtx.createScriptProcessor(4096, 2, 2);
+    resampleProc.onaudioprocess = (e) => {
+      if (!resampleActive) return;
+      resampleChunksL.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      resampleChunksR.push(new Float32Array(e.inputBuffer.getChannelData(1)));
+    };
+    node.connect(resampleProc);
+    resampleProc.connect(audioCtx.destination);
+    resampleActive = true;
+    resampleBtn.classList.add("rec-active");
+    resampleBtn.textContent = "■ Stop & Save WAV";
+  } else {
+    resampleActive = false;
+    try { node.disconnect(resampleProc); resampleProc.disconnect(); } catch {}
+    resampleProc = null;
+    resampleBtn.classList.remove("rec-active");
+    resampleBtn.textContent = "● Resample Audio";
+    if (resampleChunksL.length > 0) {
+      const wav = encodeWavStereo(resampleChunksL, resampleChunksR, audioCtx.sampleRate);
+      const url = URL.createObjectURL(wav);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `loom-resample-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.wav`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+  }
+});
+
 const status = document.getElementById("status");
 const say = (t) => { status.textContent = t; status.hidden = !t; };
 async function switchOn() {
@@ -450,9 +709,12 @@ async function switchOn() {
   go.textContent = "Starting…";
   try {
     const ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
+    audioCtx = ac;
+    const cacheBust = Date.now();
+    console.log(`[Loom FM-1] Initializing Loom firmware (v=${cacheBust})...`);
     const [wasm] = await Promise.all([
-      fetch("felucca.wasm").then((r) => { if (!r.ok) throw new Error(`felucca.wasm: ${r.status}`); return r.arrayBuffer(); }),
-      ac.audioWorklet.addModule("worklet.js")]);
+      fetch(`felucca.wasm?v=${cacheBust}`, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`felucca.wasm: ${r.status}`); return r.arrayBuffer(); }),
+      ac.audioWorklet.addModule(`worklet.js?v=${cacheBust}`)]);
     node = new AudioWorkletNode(ac, "felucca", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     node.connect(ac.destination);
     let warned = false;
@@ -475,10 +737,15 @@ async function switchOn() {
     await ac.resume();
     document.getElementById("start").hidden = true;
     go.textContent = "On";
+    resampleBtn.disabled = false;
     if (ac.sampleRate !== 44100) console.warn(`Felucca: the browser plays at ${ac.sampleRate} Hz, the pitch is off by ${(1200 * Math.log2(ac.sampleRate / 44100)).toFixed(0)} cents.`);
     syncButtons();
     syncKeys();
     send({ type: "visible", on: !document.hidden });
+    if (pendingMidiImport) {
+      send(pendingMidiImport);
+      pendingMidiImport = null;
+    }
     midiOn();
   } catch (err) {
     node = null;
@@ -489,6 +756,270 @@ async function switchOn() {
 }
 document.getElementById("go").addEventListener("click", switchOn);
 document.addEventListener("visibilitychange", () => send({ type: "visible", on: !document.hidden }));
+
+// ------------------------------------------------------------------ Editor <-> Emulator Bridge (.MP3 Sample & .MID Sequencer Import)
+let pendingMidiImport = null;
+function persistSampleSlotToFlash(k, hdr, data) {
+  if (k < 0 || k >= 3) return;
+  const base = 0xA0000 + k * 0x14000;
+  const slotBuf = new Uint8Array(0x14000);
+  slotBuf.fill(0xFF);
+  if (hdr && hdr.length) slotBuf.set(hdr.subarray(0, Math.min(hdr.length, 512)), 0);
+  if (data && data.length) slotBuf.set(data.subarray(0, Math.min(data.length, 0x14000 - 512)), 512);
+  const sectors = loadFlash();
+  for (let off = 0; off < 0x14000; off += 4096) {
+    const sec = slotBuf.subarray(off, off + 4096);
+    let any = false;
+    for (let i = 0; i < 4096; i++) { if (sec[i] !== 0xFF) { any = true; break; } }
+    if (any) sectors[base + off] = new Uint8Array(sec);
+    else delete sectors[base + off];
+  }
+  saveFlash(sectors);
+}
+
+window.addEventListener("message", (e) => {
+  const m = e.data;
+  if (!m || typeof m.type !== "string") return;
+  if (m.type === "loom-emu-sample") {
+    const k = m.slot | 0;
+    const hdr = new Uint8Array(m.hdr || []);
+    const data = new Uint8Array(m.data || []);
+    persistSampleSlotToFlash(k, hdr, data);
+    if (node) {
+      send({ type: "smp_slot", slot: k, hdr, data, select: m.select !== false });
+    }
+  } else if (m.type === "loom-emu-sample-erase") {
+    const k = m.slot | 0;
+    persistSampleSlotToFlash(k, null, null);
+    if (node) {
+      send({ type: "smp_slot", slot: k, hdr: new Uint8Array(0), data: new Uint8Array(0), select: false });
+    }
+  } else if (m.type === "loom-emu-midi-seq") {
+    const payload = { type: "midi_seq_import", bpm: m.bpm, tracks: m.tracks };
+    if (node) send(payload);
+    else pendingMidiImport = payload;
+  }
+});
+
+// ------------------------------------------------------------------ Workbench Tabs & Searchable Manual
+let editorLoaded = false, updaterInitialized = false;
+function activateTab(target, editorAction = null) {
+  document.querySelectorAll(".wb-tab").forEach((b) => {
+    const active = b.dataset.tab === target;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", active);
+  });
+  document.querySelectorAll(".wb-panel").forEach((p) => {
+    p.classList.toggle("active", p.id === `tab-${target}`);
+  });
+  if (target === "editor") {
+    const frame = document.getElementById("editor-frame");
+    if (!editorLoaded) {
+      editorLoaded = true;
+      frame.src = "editor.html";
+      if (editorAction) {
+        frame.addEventListener("load", () => {
+          setTimeout(() => frame.contentWindow?.postMessage({ type: "loom-editor-action", action: editorAction }, "*"), 220);
+        }, { once: true });
+      }
+    } else if (editorAction) {
+      frame.contentWindow?.postMessage({ type: "loom-editor-action", action: editorAction }, "*");
+    }
+  }
+  if (target === "updater" && !updaterInitialized) {
+    updaterInitialized = true;
+    initFirmwareUpdater();
+  }
+}
+document.querySelectorAll(".wb-tab").forEach((btn) => {
+  btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+});
+
+document.getElementById("manual-search").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll("#tab-manual .wb-table tbody tr").forEach((tr) => {
+    tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+
+// ------------------------------------------------------------------ Integrated OTA Firmware Updater
+async function initFirmwareUpdater() {
+  const pkgInfo = document.getElementById("ota-pkg-info");
+  const stockInfo = document.getElementById("ota-stock-info");
+  const installBtn = document.getElementById("ota-install-btn");
+  const stockBtn = document.getElementById("ota-stock-btn");
+  const customFile = document.getElementById("ota-custom-file");
+  const stockFile = document.getElementById("ota-stock-file");
+  const otaBar = document.getElementById("ota-bar");
+  const otaStatus = document.getElementById("ota-status");
+  const otaLog = document.getElementById("ota-log");
+
+  const logMsg = (t) => { otaLog.textContent += t + "\n"; otaLog.scrollTop = otaLog.scrollHeight; };
+  const setStatus = (t) => { otaStatus.textContent = t; };
+
+  let pkgMod, otaMod, backupMod;
+  try {
+    [pkgMod, otaMod, backupMod] = await Promise.all([
+      import("./fm1pkg.js"),
+      import("./fm1ota.js"),
+      import("./fm1backup.js"),
+    ]);
+  } catch (err) {
+    setStatus("OTA modules (fm1pkg.js / fm1ota.js) not found in this directory.");
+    return;
+  }
+
+  let loomImage = null, loomProduct = null, stockVerified = null, writing = false;
+  const syncBtns = () => {
+    installBtn.disabled = writing || !loomImage;
+    stockBtn.disabled = writing || !stockVerified;
+  };
+
+  // Auto-load bundled loom-groovebox.fswc
+  try {
+    let r = await fetch("loom-groovebox.fswc", { cache: "no-store" });
+    if (!r.ok) r = await fetch("loom-groovebox.fwsc", { cache: "no-store" });
+    if (r.ok) {
+      const raw = new Uint8Array(await r.arrayBuffer());
+      loomProduct = pkgMod.productOf(raw);
+      loomImage = pkgMod.logicalImage(raw);
+      pkgInfo.textContent = `✓ Ready: bundled loom-groovebox.fswc (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+    } else {
+      pkgInfo.textContent = "No bundled loom-groovebox.fswc found — use Load Custom .fswc or run ./build.sh.";
+    }
+  } catch {
+    pkgInfo.textContent = "Select a .fswc / .fwsc file to install.";
+  }
+
+  // Auto-load bundled FM-1_015.fwsc
+  try {
+    const r = await fetch("FM-1_015.fwsc", { cache: "no-store" });
+    if (r.ok) {
+      const raw = new Uint8Array(await r.arrayBuffer());
+      stockVerified = await pkgMod.validateStockPackage(raw);
+      stockInfo.textContent = `✓ Ready: Official Stock V15 bundled (FM-1_015.fwsc verified)`;
+    } else {
+      stockInfo.textContent = "Select official FM-1_015.fwsc to restore factory firmware.";
+    }
+  } catch (e) {
+    stockInfo.textContent = "Select official FM-1_015.fwsc (" + (e.message || e) + ")";
+  }
+  syncBtns();
+
+  customFile.addEventListener("change", async () => {
+    const f = customFile.files[0];
+    if (!f) return;
+    try {
+      const raw = new Uint8Array(await f.arrayBuffer());
+      loomProduct = pkgMod.productOf(raw);
+      loomImage = pkgMod.logicalImage(raw);
+      pkgInfo.textContent = `✓ Loaded ${f.name} (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+    } catch (e) {
+      loomImage = null;
+      pkgInfo.textContent = `Invalid .fwsc package: ${e.message || e}`;
+    }
+    syncBtns();
+  });
+
+  stockFile.addEventListener("change", async () => {
+    const f = stockFile.files[0];
+    if (!f) return;
+    try {
+      const raw = new Uint8Array(await f.arrayBuffer());
+      stockVerified = await pkgMod.validateStockPackage(raw);
+      stockInfo.textContent = `✓ Verified official V15 package (${f.name})`;
+    } catch (e) {
+      stockVerified = null;
+      stockInfo.textContent = `Cannot validate V15 firmware: ${e.message || e}`;
+    }
+    syncBtns();
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (writing || !loomImage) return;
+    writing = true; syncBtns();
+    try {
+      const midi = await navigator.requestMIDIAccess({ sysex: true });
+      const up = new otaMod.Updater(midi, logMsg);
+      const total = 74 + 1167;
+      const step = (k, a) => {
+        logMsg(`${k} ${a ?? ""}`);
+        if (k === "verify") { setStatus("Verifying bootloader…"); otaBar.value = (a / total) * 100; }
+        else if (k === "loader") setStatus("Switching FM-1 to OTA update mode…");
+        else if (k === "write") { setStatus(`Writing firmware (${Math.round(((74 + a) / total) * 100)}%)…`); otaBar.value = ((74 + a) / total) * 100; }
+        else if (k === "reboot") setStatus("Rebooting FM-1…");
+        else if (k === "done") { otaBar.value = 100; setStatus("✓ Firmware update complete!"); }
+      };
+      const ota = await up.find((id) => /^ota-/i.test(id.model));
+      if (ota) {
+        ota.link.close();
+        const ok = await up.resume(loomImage, step, loomProduct);
+        setStatus(ok ? "✓ Firmware update complete!" : "Interrupted — reconnect USB and click Install again.");
+      } else {
+        await up.install(loomImage, loomProduct, step);
+      }
+    } catch (e) {
+      setStatus(`Update error: ${e.code || e.message || e}`);
+      logMsg(String(e.stack || e));
+    } finally {
+      writing = false; syncBtns();
+    }
+  });
+
+  stockBtn.addEventListener("click", async () => {
+    if (writing || !stockVerified) return;
+    writing = true; syncBtns();
+    let link = null;
+    try {
+      const midi = await navigator.requestMIDIAccess({ sysex: true });
+      const up = new otaMod.Updater(midi, logMsg);
+      const step = (k, n) => {
+        logMsg(`${k} ${n ?? ""}`);
+        setStatus(`Stock V15 restore: ${k} ${n ?? ""}`);
+        if (k === "done") { otaBar.value = 100; setStatus("✓ Restored official M-VAVE Stock V15 firmware!"); }
+      };
+      const loader = await up.find((id) => id.model === "ota-FM-1");
+      if (loader) {
+        loader.link.close();
+        if (!document.getElementById("ota-stock-resume").checked) {
+          setStatus("Device is in ota-FM-1 loader mode. Check 'Resume interrupted restore' if backup is already saved.");
+          return;
+        }
+        await up.resume(stockVerified.image, step, stockVerified.product);
+      } else {
+        const device = await up.find((id) => id.model === "FM-1");
+        if (!device) { setStatus("FM-1 not found over USB MIDI."); return; }
+        if (!document.getElementById("ota-stock-resume").checked) {
+          setStatus("Backing up Loom data before restoring Stock V15…");
+          const input = device.link.input, output = device.link.output;
+          device.link.close();
+          link = new backupMod.BackupConnection(input, output);
+          const infoResp = await link.request([1, []]);
+          const pos = infoResp.indexOf(0);
+          const ver = pos > 0 ? String.fromCharCode(...infoResp.slice(0, pos)) : "FELUCCA";
+          const archive = await backupMod.captureBackup((r, o) => link.request(r, o), ver,
+            (done, tot) => setStatus(`Saving backup (${Math.round((done / Math.max(1, tot)) * 100)}%)…`));
+          const url = URL.createObjectURL(new Blob([JSON.stringify(archive)], { type: "application/json" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Loom-FM1-backup-${new Date().toISOString().slice(0, 10)}.json`;
+          document.body.append(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          link.close(); link = null;
+        } else {
+          device.link.close();
+        }
+        await up.install(stockVerified.image, stockVerified.product, step);
+      }
+    } catch (e) {
+      setStatus(`Restore error: ${e.code || e.message || e}`);
+      logMsg(String(e.stack || e));
+    } finally {
+      if (link) link.close();
+      writing = false; syncBtns();
+    }
+  });
+}
 </script>
 </body>
 </html>

@@ -49,7 +49,7 @@ SDK_SHA256 = {
     "cfg/eq_cfg_hw.bin": "41167491bffed4651750719c973d2758adeb9021a5670d02d6a53c85ed80ea7d",
 }
 
-PRODUCT = "FM-1_900"                # package identity; release builds are FM-1_9XY
+PRODUCT = "FM-1_985"                # Loom FM-1 unique package identity on The Firmware Hub
 VERSION = None                      # FELUCCA_VERSION for release builds (default: firmware/src/felucca.c)
 
 
@@ -338,14 +338,13 @@ def main():
     ap.add_argument("--release", metavar="X.Y", help="release build: identity FM-1_9XY, version string vX.Y")
     ap.add_argument("--sdk", type=Path, help="JieLi AC79 SDK checkout (default: $AC79_SDK)")
     a = ap.parse_args()
-    name = "felucca.fwsc"
-    if a.release:                   # one digit each: the identity has room for two (X.Y.Z and X.Y.Z.W keep X.Y's)
+    name = "loom-groovebox.fswc"
+    if a.release:                   # one digit each: keep Loom FM-1's unique FM-1_985 identity
         m = re.fullmatch(r"(\d)\.(\d)(?:\.\d){0,2}(-[A-Za-z0-9]+)?", a.release)
         if not m:
             raise SystemExit(f"--release {a.release}: use X.Y, X.Y.Z, X.Y.Z.W or X.Y-suffix, one digit each")
-        PRODUCT = "FM-1_9" + m[1] + m[2]
         VERSION = "v" + a.release.lower()      # e.g. v1.0, v1.1-rc1
-        name = f"felucca-{a.release}.fwsc"
+        name = f"loom-groovebox-{a.release}.fswc"
     fm1pkg_make.SDK = a.sdk
     for rel, sha in SDK_SHA256.items():          # fail early without the SDK
         if hashlib.sha256(fm1pkg_make.sdk_file(rel)).hexdigest() != sha:
@@ -368,13 +367,17 @@ def main():
     if errors:
         raise SystemExit("build: checks failed")
     pkg = fm1pkg_make.ufw(fm1pkg_make.flash_image(img, fm1pkg_make.KEY), ota, PRODUCT)
+    fwsc_name = re.sub(r"\.fswc$", ".fwsc", name)
     (OUT / name).write_bytes(pkg)
+    (OUT / fwsc_name).write_bytes(pkg)
+    (SRC / "loom-groovebox.fswc").write_bytes(pkg)
+    (SRC / "loom-groovebox.fwsc").write_bytes(pkg)
     att = SRC / "assets" / "samples-cc0" / "ATTRIBUTION.txt"
     if att.exists():
         shutil.copy(att, OUT / "ATTRIBUTION.txt")
     print(f"app      {OUT / 'felucca.bin'}  {len(img)} B")
     print(f"loader   {LDR / 'ota.bin'}  {len(ota)} B")
-    print(f"package  {OUT / name}  {len(pkg)} B, identity {PRODUCT}")
+    print(f"package  {OUT / name} (and {SRC / 'loom-groovebox.fswc'})  {len(pkg)} B, identity {PRODUCT}")
     if a.release:                   # what a release carries: the package, the app and every licence they need
         rel = OUT / f"release-{a.release}"
         shutil.rmtree(rel, ignore_errors=True)

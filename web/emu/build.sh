@@ -22,5 +22,11 @@ emcc ${EMU_OPT:--O2} -ffp-contract=off -std=gnu99 -w ${EMU_CFLAGS:-} \
 [ "${EMU_PREVIEW:-1}" = 0 ] && PREVIEW='' || PREVIEW=' (preview)'
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@PREVIEW@/$PREVIEW/g" web/emu/index.html > build/emu/index.html
 cp web/emu/worklet.js build/emu/
+cp web/editor.html web/fm1pkg.js web/fm1ota.js web/fm1backup.js build/emu/
+[ -f web/fukiai.ttf ] && cp web/fukiai.ttf build/emu/
+[ -f web/FUKIAI-LICENSE.txt ] && cp web/FUKIAI-LICENSE.txt build/emu/
+[ -f build/loom-groovebox.fswc ] && cp build/loom-groovebox.fswc build/emu/loom-groovebox.fswc
+[ -f build/loom-groovebox.fwsc ] && cp build/loom-groovebox.fwsc build/emu/loom-groovebox.fwsc
+[ -f web/firmware/FM-1_015.fwsc ] && cp web/firmware/FM-1_015.fwsc build/emu/FM-1_015.fwsc
 cp web/emu/fonts/DotGothic16-subset.woff web/emu/fonts/OFL.txt build/emu/fonts/
 echo "emu: build/emu ($(wc -c < build/emu/felucca.wasm | tr -d ' ') B wasm, $VERSION)"

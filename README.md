@@ -1,28 +1,27 @@
-# Felucca
+# Loom FM-1
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
-![Felucca 1.0](docs/felucca-1.0.png)
+| 5-Track Mixer (`1–4` + `D`) | Sample Tape Scrub (`SCRUB`) | Granular Cloud (`GRAIN`) |
+| :---: | :---: | :---: |
+| ![5-Track Mixer](docs/5%20Track%20Mixer.png) | ![Sample Tape Scrub Engine](docs/Sample%20Tape%20Scrub%20Engine.png) | ![Granular Engine](docs/Granular%20Engine.png) |
+| **64-Step 8×8 Sequencer** | **Sample Slicer (`SLICE`)** | **Chord Progression Generator** |
+| ![64-Step Sequencer](docs/64%20Step%20Seq.png) | ![Sample Slice Engine](docs/Sample%20Slice%20Engine.png) | ![Chord Progression Generator](docs/Chord%20Progression%20Generator.png) |
 
-**TL;DR:** Felucca 1.5.1 — SEQ > DETAIL for a step's chance, ratchet, nudge and velocity, MIDI Program Change, dotted delay times, REV / ECHO THROW, on top of 1.5's INSERT effects, MIDI LEARN, ANALOG's band-pass and high-pass, ENV SYNC, note lengths and per-step velocity. Connect your FM-1 to a computer by USB,
-open the [web installer](https://hugelton.github.io/Felucca/) in Chrome or Edge, and press Install;
-no extra hardware is needed. Installing is at your own risk: M-VAVE's updater or the installer's
-**Return to official V15** takes you back. Coming from 1.1.5.x? Read [⚠ Coming from 1.1.5](#-coming-from-115) first:
-projects saved by 1.4 or later do not open on 1.1.5.x. Going back from 1.5.x to 1.4.1? Read
-[⚠ New in 1.5](#new-in-15) first: projects saved by 1.5 do not open on 1.2 to 1.4.1. Want to look around first?
-[Try it in your browser](https://hugelton.github.io/Felucca/webapp/try/), no FM-1 needed.
+**Loom FM-1** is a 5-track polyphonic synthesizer, sampler, and groovebox firmware for the **M-VAVE FM-1**, built on the open-source [Felucca](https://github.com/hugelton/Felucca) platform (`GPL-3.0-only`).
 
-Multi-engine synthesizer firmware for the M-VAVE FM-1. Please report what you find in
-[Issues](https://github.com/hugelton/Felucca/issues).
+### Loom FM-1 Highlights
+- **5-Track Architecture (`1–4` + `D`):** 4 polyphonic synth/sampler tracks plus a dedicated 5th synthesized Drum track (`DRUM` with Analog & FM kits, choke groups, and per-lane mixing), each with its own color-coded neon UI theme.
+- **14 Synthesis & Sampling Engines:** Subtractive (`SUBTRACT`), Wavetable (`WAVETBL` with 3D terrain visualizer), 6-Op FM (`FM6`), Physical Tape-Platter Scrubbing (`SCRUB`), Granular (`GRAIN`), Sample Slicer (`SLICE`), Multisample (`SAMPLE`), Physical Modeling (`PHYS`), Phase Distortion (`PHASE`), Formant (`VOICE`), Organ (`WHEEL`), Chiptune (`LOFI`), Noise (`NOISE`), and Drum (`DRUM`).
+- **64-Step Dual-View Sequencer:** Switch between `4x4 STEP` / `4x4 PAT` piano roll and `8x8 STEP` / `8x8 PAT` 64-step matrix views with humanize, swing, parameter locks, and instant pattern clear.
+- **Chord Progression Generator & Bipolar Arpeggiator:** Generative mood/complexity chord progression engine (`CHRD: PROG`) with real-time voicing display, plus a 10-mode arpeggiator with bipolar `-3` to `+3` octave range and Euclidean gating.
+- **Performance Macros & Sidechain Ducking:** 4 assignable multi-destination performance macro knobs (`HOME > MACROS`) and drum-triggered sidechain compression across synth tracks and master send FX.
+- **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor and real-time WebAssembly emulator with `.mid` / `.midi` multi-track import and `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`).
+- **Firmware Package:** [`loom-groovebox.fwsc`](loom-groovebox.fwsc) / [`loom-groovebox.fswc`](loom-groovebox.fswc) (Package Identity: `FM-1_985`, License: [`GPL-3.0-only`](LICENSE), full details in [`LICENSING.md`](LICENSING.md)).
 
-- Install: [web installer](https://hugelton.github.io/Felucca/) (Chrome or Edge, USB), or `tools/fm1_install.py` from a terminal
-- Try: [Felucca in your browser](https://hugelton.github.io/Felucca/webapp/try/): the same firmware compiled to
-  WebAssembly, with the panel on screen (mouse, touch, computer keyboard, Web MIDI in)
-- Editor: [web editor](https://hugelton.github.io/Felucca/webapp/editor/); its development has moved to
-  [Felucca-WebApp](https://github.com/hugelton/Felucca-WebApp)
-- Build: [BUILDING.md](BUILDING.md)
+---
 
-<a href="https://hugelton.itch.io/felucca"><img src="https://static.itch.io/images/badge-color.svg" alt="Available on itch.io" width="74"></a>
+## Upstream Felucca Documentation & Reference
 
 ## Features
 

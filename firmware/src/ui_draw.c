@@ -355,7 +355,7 @@ static void draw_head(void)
     ui.head_sig = sig;
     metro_x = -1;
     cv_begin(240, H_HEAD, T_BG);
-    cv_icon_mid(HEAD_TRK_X, H_HEAD / 2, 16, trk_icon(song.sel, 1), T_ACCENT, T_BG);
+    cv_icon_mid(HEAD_TRK_X, H_HEAD / 2, 16, trk_icon(song.sel, 1), T_THEME, T_BG);
     if (slot && (centre || !msg)) {                    /* the slot letter (not under a message centred: its room) */
         char l[2] = {sl[0], 0};
         GFX_HOOK_ALIGN(0, 0, 0, H_HEAD, AL_V, "header text on its middle");
@@ -739,11 +739,11 @@ static void draw_foot(void)
         page_title(ti);
     str_cpy(s, ename, sizeof s);
     s[str_len(s) + 1u] = 0;
-    s[str_len(s)] = (char)('1' + song.sel);
+    s[str_len(s)] = (char)(song.sel < 4u ? ('1' + song.sel) : 'D');
     str_cpy(s + str_len(s), pn, 16);
     str_cpy(s + str_len(s), ti, sizeof ti);
     {   /* step markers: the playhead only when it is in the shown bank, the cursor only in SEQ */
-        uint32_t ph = song.playing && t->seq_idx / 16u == ui.bank ? t->seq_idx : 0xFFu;
+        uint32_t ph = song.playing && (cur_page()->graph == GR_STEPS || t->seq_idx / 16u == ui.bank) ? t->seq_idx : 0xFFu;
         sig = str_hash(0x9E3779B9u, s) + ph * 97u + (song.seq_mode ? ui.cursor : 0xFFu) * 3001u + steps_hash(t) +
               (ui.home ? 0u : page_icon(pg)) * 7121u +
               ui.bank * 7u + (uint32_t)t->p[P_SLEN] * 13u;
@@ -829,6 +829,10 @@ static void draw_foot(void)
         if (!ui.home && pg->graph == GR_EVENTS && tx - 12 - (ex + 10) < need) {
             str_cpy(ti + 4, ti + 10, sizeof ti - 4);    /* #93: "AUTOMATION 6/6" -> "AUTO 6/6" where the sound's name */
             tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);   /* would be cut (MENU > LARGE) */
+        } else if (!ui.home && str_eq(pg->title, "TAPE DELAY") && tx - 12 - (ex + 10) < need) {
+            ti[7] = 'Y';
+            str_cpy(ti + 8, ti + 10, sizeof ti - 8);    /* "TAPE DELAY 5/7" -> "TAPE DLY 5/7" */
+            tx = r - text_w(&AF_S, ti) - (pi != ICON_NONE ? 16 : 0);
         }
         x = 8;
         if (FELUCCA_ICONS) {
@@ -862,6 +866,82 @@ static void engine_columns(void)
     draw_column(2, "FAV", preset_favorite() ? "ON" : "OFF", "", VAL(2u), -1, ICON_X_STAR);
     draw_column(3, "", "", "", T_THEME, -1, ICON_NONE);
 }
+
+static void sub_draw_columns(void)
+{
+    sub_part_t *sp = sub_of(TSEL);
+    const page_t *pg = cur_page();
+    int is_page2 = (pg->id[0] == P_E4);
+    uint32_t o = sp->sel_osc % 4u;
+    char val[16];
+
+    /* Card 0: OSC (1, 2, 3, SUB) */
+    if (o == 3u) {
+        str_cpy(val, "SUB", sizeof val);
+    } else {
+        val[0] = (char)('1' + o);
+        val[1] = 0;
+    }
+    draw_column(0, "OSC", val, "", VAL(0u), (int32_t)o * 1000 / 3, ICON_AUTO);
+
+    if (!is_page2) {
+        /* Page 1 (OSC): [K2] WAVE, [K3] FOLD, [K4] MIX */
+        uint8_t wv = sp->osc[o].wave;
+        const char *wname = "SINE";
+        if (wv == 0) wname = "SINE";
+        else if (wv < 42) wname = "SIN>TRI";
+        else if (wv == 42) wname = "TRI";
+        else if (wv < 85) wname = "TRI>SAW";
+        else if (wv == 85) wname = "SAW";
+        else if (wv < 127) wname = "SAW>SQR";
+        else wname = "SQR";
+
+        draw_column(1, "WAVE", wname, "", VAL(1u), (int32_t)wv * 1000 / 127, ICON_AUTO);
+
+        /* Card 2: FOLD */
+        uint8_t fd = sp->osc[o].fold;
+        fmt_int(val, (int32_t)fd * 100 / 127);
+        draw_column(2, "FOLD", val, "%", fd ? VAL(2u) : T_DIM, (int32_t)fd * 1000 / 127, ICON_AUTO);
+
+        /* Card 3: MIX */
+        uint8_t mx = sp->osc[o].mix;
+        if (!mx) {
+            draw_column(3, "MIX", "OFF", "", T_DIM, -1, ICON_AUTO);
+        } else {
+            fmt_int(val, (int32_t)mx * 100 / 127);
+            draw_column(3, "MIX", val, "%", VAL(3u), (int32_t)mx * 1000 / 127, ICON_AUTO);
+        }
+    } else {
+        /* Page 2 (TUNE): [K2] PTCH, [K3] DRV, [K4] GLID */
+        int8_t pt = sp->osc[o].pitch;
+        if (pt > 0) {
+            val[0] = '+';
+            fmt_int(val + 1, pt);
+        } else {
+            fmt_int(val, pt);
+        }
+        draw_column(1, "PTCH", val, "ST", VAL(1u), (int32_t)(pt + 24) * 1000 / 48, ICON_AUTO);
+
+        /* Card 2: DRV */
+        uint8_t drv = sp->osc[o].drive;
+        if (!drv) {
+            draw_column(2, "DRV", "OFF", "", T_DIM, -1, ICON_AUTO);
+        } else {
+            fmt_int(val, (int32_t)drv * 100 / 127);
+            draw_column(2, "DRV", val, "%", VAL(2u), (int32_t)drv * 1000 / 127, ICON_AUTO);
+        }
+
+        /* Card 3: GLID */
+        uint8_t gl = sp->osc[o].glide;
+        if (!gl) {
+            draw_column(3, "GLID", "OFF", "", T_DIM, -1, ICON_AUTO);
+        } else {
+            fmt_int(val, (int32_t)gl * 100 / 127);
+            draw_column(3, "GLID", val, "%", VAL(3u), (int32_t)gl * 1000 / 127, ICON_AUTO);
+        }
+    }
+}
+
 static void draw_columns(void)
 {
     uint32_t c;
@@ -874,9 +954,12 @@ static void draw_columns(void)
             const param_desc_t *d = home_param(c, &vp);
             param_format(d, *vp, val, &unit);
             card_mot_of(vp);
-            if (home_levels())                         /* 1.5: T1..T4 LEVEL, the track's cushion, muted: DIM */
-                draw_column(c, "LEVEL", val, unit, trk[c].p[P_MUTE] ? T_DIM : VAL(c), RATIO(d, *vp), trk_icon(c, 1));
-            else
+            if (home_levels()) {                        /* 1.5: T1..T4 LEVEL, the track's cushion, muted: DIM */
+                uint8_t heng = eng_idx(trk[c].eng_req);
+                uint16_t htc = (!ux.mono && !ux.light && heng < NENGINES) ? ENG_NEON[heng].theme : T_THEME;
+                uint16_t hvc = trk[c].p[P_MUTE] ? T_DIM : (c == ui.hot_col && ui.hot_t ? T_ACCENT : htc);
+                draw_column(c, "LEVEL", val, unit, hvc, RATIO(d, *vp), trk_icon(c, 1));
+            } else
                 draw_column(c, d->label, val, unit, VAL(c), RATIO(d, enum_rank(d, *vp)), param_icon(d, *vp));
         }
         return;
@@ -987,8 +1070,8 @@ static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_TOOLS) {
-        static const char *const labels[] = {"PAT", "SOUND", "SEC", "SONG"};
-        static const uint8_t icons[] = {ICON_AUTO, ICON_AUTO, ICON_X_SONG, ICON_X_SONG};   /* ROW, SONG: the song's */
+        static const char *const labels[] = {"CLR SQ", "INIT SND", "SAVE INIT", "RST INIT"};
+        static const uint8_t icons[] = {ICON_CLEAR, ICON_CLEAR, ICON_X_STAR, ICON_X_WARN};
         for (c = 0; c < 4u; c++) draw_act_column(c, labels[c], VAL(c), icons[c]);
         return;
     }
@@ -1074,16 +1157,54 @@ static void draw_columns(void)
         }
         return;
     }
-    if (cur_page()->graph == GR_MOD) {                   /* SLOT, then that slot's SRC DST AMT */
-        const track_t *t = TSEL;
-        uint32_t id = P_M1SRC + 3u * mod_ui_slot;
-        int32_t s = t->p[id], d = t->p[id + 1u], a = t->p[id + 2u];
-        fmt_int(val, (int32_t)mod_ui_slot + 1);
-        draw_column(0, "SLOT", val, "/4", VAL(0u), (int32_t)mod_ui_slot * 1000 / 3, mod_src_icon(MS_OFF));   /* (the mod icon) */
-        draw_column(1, "SRC", N_MSRC[clamp(s, 0, MS_N - 1)], "", s ? VAL(1u) : T_DIM, -1, mod_src_icon(s));
-        draw_column(2, "DST", mod_dst_name(t, d), "", d ? VAL(2u) : T_DIM, -1, mod_dst_icon(t, d));
-        param_format(&TP[id + 2u], a, val, &unit);
-        draw_column(3, "AMT", val, unit, a ? VAL(3u) : T_DIM, RATIO(&TP[id + 2u], a), mod_src_icon(MS_OFF));
+    if (is_sub_edit_page(cur_page())) {
+        sub_draw_columns();
+        return;
+    }
+    if (cur_page()->graph == GR_MOD) {
+        uint32_t m = cur_page()->id[0] % NMACROS;
+        macro_t *mc = &loom_macros[m];
+        uint8_t line = macro_ui_line % NMACRO_DESTS;
+        macro_dest_t *dst = &mc->dest[line];
+
+        /* Card 0: PARAM (which parameter in the macro: 1/3 .. 3/3) */
+        char pnum[8], ubuf[8];
+        fmt_int(pnum, (int32_t)line + 1);
+        str_cpy(ubuf, "/", sizeof ubuf);
+        fmt_int(ubuf + 1, NMACRO_DESTS);
+        draw_column(0, "PARAM", pnum, ubuf, VAL(0u), (int32_t)line * 1000 / (NMACRO_DESTS - 1), ICON_AUTO);
+
+        /* Card 1: TRK */
+        draw_column(1, "TRK", macro_trk_name(dst->trk), "", VAL(1u), (int32_t)dst->trk * 1000 / 4, trk_icon(dst->trk < 4 ? dst->trk : 0, 0));
+
+        /* Card 2: DEST */
+        draw_column(2, "DEST", macro_dest_name(dst->trk, dst->dest), "", dst->dest ? VAL(2u) : T_DIM, (int32_t)dst->dest * 1000 / 14, macro_dest_icon(dst->trk, dst->dest));
+
+        /* Card 3: AMT */
+        int32_t pct = (int32_t)dst->amt * 100 / 63;
+        if (dst->amt > 0) {
+            val[0] = '+';
+            fmt_int(val + 1, pct);
+        } else {
+            fmt_int(val, pct);
+        }
+        draw_column(3, "AMT", val, "%", dst->amt ? (dst->amt > 0 ? VAL(3u) : T_REC) : T_DIM, (int32_t)(dst->amt + 64) * 1000 / 127, ICON_AUTO);
+        return;
+    }
+    if (cur_page()->graph == GR_MACRO) {
+        for (c = 0; c < 4u; c++) {
+            char mlabel[8];
+            mlabel[0] = 'M';
+            mlabel[1] = (char)('1' + c);
+            mlabel[2] = 0;
+            if (macro_is_assigned(c)) {
+                const macro_t *mc = &loom_macros[c];
+                fmt_int(val, mc->val);
+                draw_column(c, mlabel, val, "", VAL(c), (int32_t)mc->val * 1000 / 127, ICON_CUTOFF);
+            } else {
+                draw_column(c, mlabel, "--", "", T_DIM, -1, ICON_NONE);
+            }
+        }
         return;
     }
     if (detail_on()) {                                  /* DETAIL (1.5.1, #199): the cursor step's CHANCE RATCH NUDGE VEL;
@@ -1141,57 +1262,72 @@ static void draw_columns(void)
         }
         return;
     }
-    if (cur_page()->scope == SC_STEP && drum_track(TSEL)) {   /* the grid: STEP LANE HIT ACC */
+    if (cur_page()->scope == SC_STEP) {                       /* Loom 4x4 STEP and 8x8 STEP */
         const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        uint32_t b = 1u << ui.lane, on = (step_lanes(st) & b) != 0u, ac = (step_accents(st) & b) != 0u;
-        char sn[8], sl[8];
+        char sn[8], sl[8], bn[8], gn[8];
+        const char *opt_name = "OFF";
+        int active = 0;
+        int is_8x8 = (cur_page()->graph == GR_STEPS);
+        uint32_t gate_pct = (uint32_t)TSEL->p[P_SGATE] * 100u / 128u;
+        if (gate_pct < 1u) gate_pct = 1u;
+
         fmt_int(sn, (int32_t)ui.cursor + 1);
         str_cpy(sl, "/", 8);
         fmt_int(sl + 1, TSEL->p[P_SLEN]);
-        draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-        draw_column(1, "LANE", drum_lane_name(TSEL, ui.lane), "", VAL(1u), -1, ICON_AUTO);
-        draw_column(2, "HIT", on ? "ON" : "--", "", on ? VAL(2u) : T_DIM, -1, ICON_AUTO);
-        draw_column(3, "ACC", ac ? "ON" : "--", "", ac ? VAL(3u) : T_DIM, -1, ICON_AUTO);
-        return;
-    }
-    if (cur_page()->scope == SC_STEP) {
-        static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
-        const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        char u[8];
-        uint32_t cnt = st->n, first = st->note[0], l;
-        for (l = NLANE; l-- > 0;)                         /* (lane hits count as their notes) */
-            if ((st->hit >> l) & 1u) {
-                cnt++;
-                if (!st->n)
-                    first = DRUM_LANE_NOTE[l];
-            }
-        if (cnt) {
-            note_name(val, first);
-            u[0] = 0;
-            if (cnt > 1) {
-                str_cpy(u, "+", 8);
-                fmt_int(u + 1, (int32_t)cnt - 1);
+
+        fmt_int(gn, (int32_t)gate_pct);
+
+        if (drum_track(TSEL)) {
+            uint32_t b = 1u << ui.lane;
+            int on = (step_lanes(st) & b) != 0u;
+            int ac = (step_accents(st) & b) != 0u;
+            uint32_t ratch = step_ratchet(st);
+            active = on;
+            if (on) {
+                if (ac && ratch > 1u) opt_name = "P+RATCH";
+                else if (ratch == 4u) opt_name = "RATCH 4";
+                else if (ratch == 3u) opt_name = "RATCH 3";
+                else if (ratch == 2u) opt_name = "RATCH 2";
+                else if (ac) opt_name = "PUNCH";
+                else opt_name = "HIT";
             }
         } else {
-            str_cpy(val, "--", 12);
-            u[0] = 0;
-        }
-        {
-            static const char *const FLAG_N[4] = {"-", "ACC", "SLD", "A+S"};
-            char sn[8], sl[8];
-            fmt_int(sn, (int32_t)ui.cursor + 1);
-            str_cpy(sl, "/", 8);
-            fmt_int(sl + 1, TSEL->p[P_SLEN]);
-            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-            draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : T_DIM, -1, ICON_AUTO);
-            if (step_on(st)) {                            /* a note: its LEN (1.5, KNOB 3: the TIEs after it) */
-                fmt_int(sn, (int32_t)note_len(TSEL, ui.cursor));
-                draw_column(2, "LEN", sn, "", VAL(2u), -1, ICON_AUTO);
-            } else {
-                draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
+            if (st->time == ST_TIE) {
+                opt_name = "TIE";
+                active = 1;
+            } else if (st->time == ST_NOTE && st->n > 0) {
+                uint32_t ratch = step_ratchet(st);
+                int acc = (st->flags & SF_ACCENT) != 0;
+                active = 1;
+                if (acc && ratch > 1u) opt_name = "P+RATCH";
+                else if (ratch == 4u) opt_name = "RATCH 4";
+                else if (ratch == 3u) opt_name = "RATCH 3";
+                else if (ratch == 2u) opt_name = "RATCH 2";
+                else if (acc) opt_name = "PUNCH";
+                else opt_name = "PLAY";
             }
-            draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
-                        VAL(3u), -1, ICON_AUTO);
+        }
+
+        if (is_8x8) {
+            /* 8x8 STEP: [K1] STEP, [K2] GATE, [K3] OPT, [K4] CLEAR */
+            int has_seq = motion_lock_steps(song.sel) != 0;
+            uint32_t si;
+            for (si = 0; !has_seq && si < NSTEP; si++) {
+                const step_t *s = &TSEL->step[si];
+                if (s->n || s->time != ST_REST || s->hit || s->acc || s->flags)
+                    has_seq = 1;
+            }
+            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
+            draw_column(1, "GATE", gn, "%", VAL(1u), (int32_t)gate_pct, ICON_GATE);
+            draw_column(2, "OPT", opt_name, "", active ? VAL(2u) : T_DIM, -1, ICON_AUTO);
+            draw_column(3, "CLEAR", "--", "", has_seq ? VAL(3u) : T_DIM, -1, ICON_AUTO);
+        } else {
+            /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] GATE, [K4] OPT */
+            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
+            fmt_int(bn, (int32_t)ui.bank + 1);
+            draw_column(1, "BANK", bn, "/4", VAL(1u), -1, ICON_AUTO);
+            draw_column(2, "GATE", gn, "%", VAL(2u), (int32_t)gate_pct, ICON_GATE);
+            draw_column(3, "OPT", opt_name, "", active ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         }
         return;
     }
@@ -1226,32 +1362,184 @@ static void draw_columns(void)
  * The square (176 x 176) is more than the canvas (CV_MAX, 240 x 124): it is filled straight on the screen and its
  * two text bands drawn on it as canvases, the top one from the square's top edge, the bottom one to its bottom edge.
  * In the saved palette (settings_init before it) */
-#define SPL_SQ 176                                  /* the square (even: centred exactly) */
-#define SPL_X0 ((240u - SPL_SQ) / 2u)               /* its top-left on the screen (x and y) */
-#define SPL_PAD 16                                  /* the text's inset: left (its ink), top and bottom (the capitals) */
-#define SPL_PITCH 20                                /* line to line */
-static const char *const SPLASH_LINES[] = {"Felucca", FELUCCA_VERSION, "H\xFCgelton Instruments", "with community"};
-/* a band of two lines, h tall, at y on the screen: the first line's top at ly; the two lines' capitals declared
- * against al0..al1 (mode: AL_V the band centred there, AL_B the last baseline on al1) */
-static void splash_band(uint32_t y, uint32_t h, int32_t ly, const char *const *l, uint32_t mode, int32_t al0,
-                        int32_t al1, const char *tag)
-{
-    cv_begin(SPL_SQ, h, T_RAISE);
-    GFX_HOOK_ALIGN(0, al0, 0, al1, mode | AL_N(2), tag);
-    cv_text_on(SPL_PAD, ly, &AF_M, l[0], T_TEXT, T_RAISE);
-    cv_text_on(SPL_PAD, ly + SPL_PITCH, &AF_M, l[1], T_TEXT, T_RAISE);
-    cv_blit(SPL_X0, y);
-}
+/* LOOM splash screen: woven textile grid with 6-color neon spectrum,
+ * wavy sinusoidal yarn threads, glowing Loom Orange accent bar, and typography. */
+static const uint16_t LOOM_SPLASH_COLORS[6] = {
+    RGB(0x00, 0xE5, 0xFF), /* 0: Cyan */
+    RGB(0xBD, 0x00, 0xFF), /* 1: Purple */
+    RGB(0xFF, 0x00, 0x7F), /* 2: Magenta / Pink */
+    RGB(0x39, 0xFF, 0x14), /* 3: Lime Green */
+    RGB(0xFF, 0xD7, 0x00), /* 4: Gold */
+    RGB(0xFF, 0x33, 0x00)  /* 5: Orange / Red */
+};
+
 static void draw_splash(void)
 {
-    int32_t h = SPL_PAD - AF_M_CAP_Y + SPL_PITCH + AF_M.h;     /* a band: its two lines, the descenders in */
-    int32_t lb = h - SPL_PAD - AF_M_CAP_H - AF_M_CAP_Y;         /* the bottom band's last line: its top */
-    lcd_fill(0, 0, 240, 240, T_BG);
-    lcd_fill(SPL_X0, SPL_X0, SPL_SQ, SPL_SQ, T_RAISE);
-    splash_band(SPL_X0, (uint32_t)h, SPL_PAD - AF_M_CAP_Y, SPLASH_LINES, AL_V, SPL_PAD,
-                SPL_PAD + SPL_PITCH + AF_M_CAP_H, "splash name + version SPL_PAD from the top");
-    splash_band(SPL_X0 + SPL_SQ - (uint32_t)h, (uint32_t)h, lb - SPL_PITCH, SPLASH_LINES + 2, AL_B, 0, h - SPL_PAD,
-                "splash maker's baseline SPL_PAD from the bottom");
+    static const int16_t GX[6] = {65, 87, 109, 131, 153, 175};
+    static const int16_t GY[6] = {36, 46, 56, 66, 76, 86};
+    int i, j, p;
+
+    /* Band 0 (rows 0..119): the woven loom grid and wavy threads */
+    cv_begin(240, 120, T_BG);
+
+    /* 1. Horizontal weft threads across x=65..175 with smooth rainbow spectrum */
+    for (j = 0; j < 6; ++j) {
+        int y = GY[j];
+        for (int x = 65; x <= 175; ++x) {
+            int x_rel = x - 65;
+            int seg = x_rel / 22;
+            if (seg > 4)
+                seg = 4;
+            int frac = ((x_rel - seg * 22) * 100) / 22;
+            uint16_t c = ux_mix(LOOM_SPLASH_COLORS[seg], LOOM_SPLASH_COLORS[seg + 1], frac);
+            cv_pset(x, y, c);
+            cv_pset(x, y + 1, c);
+        }
+    }
+
+    /* 2. Vertical warp threads across y=36..87 */
+    for (i = 0; i < 6; ++i) {
+        cv_rect(GX[i], 36, 2, 52, LOOM_SPLASH_COLORS[i]);
+    }
+
+    /* 3. Woven over/under textile depth at intersections */
+    for (j = 0; j < 6; ++j) {
+        int y = GY[j];
+        for (i = 0; i < 6; ++i) {
+            int x = GX[i];
+            if ((i + j) & 1) {
+                /* Horizontal thread crosses OVER vertical thread */
+                for (int px = x - 1; px <= x + 2; ++px) {
+                    int x_rel = px - 65;
+                    int seg = x_rel / 22;
+                    if (seg < 0) seg = 0;
+                    if (seg > 4) seg = 4;
+                    int frac = ((x_rel - seg * 22) * 100) / 22;
+                    uint16_t c = ux_mix(LOOM_SPLASH_COLORS[seg], LOOM_SPLASH_COLORS[seg + 1], frac);
+                    cv_pset(px, y, c);
+                    cv_pset(px, y + 1, c);
+                }
+                /* Shadows on vertical thread above and below */
+                cv_pset(x, y - 1, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x + 1, y - 1, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x, y + 2, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x + 1, y + 2, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+            } else {
+                /* Vertical thread crosses OVER horizontal thread: shadows on horizontal thread */
+                cv_pset(x - 1, y, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x - 1, y + 1, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x + 2, y, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+                cv_pset(x + 2, y + 1, ux_mix(LOOM_SPLASH_COLORS[i], T_BG, 35));
+            }
+        }
+    }
+
+    /* 4. Squiggly wavy yarn ends extending outward from the grid edges */
+    /* Top yarn curves (extend upwards from y=36 to y=16) */
+    for (i = 0; i < 6; ++i) {
+        int x_val = GX[i];
+        uint16_t col = LOOM_SPLASH_COLORS[i];
+        int dir = (i < 3) ? -1 : 1;
+        int amp = 4 + (i < 3 ? i : 5 - i);
+        int prev_x = x_val, prev_y = 36;
+        for (p = 1; p <= 10; ++p) {
+            uint32_t ph = (uint32_t)p * (0x80000000u / 10u);
+            int s = (sine_i(ph) * amp) >> 15;
+            int d = (5 * p) / 10;
+            int cur_x = x_val + dir * (s + d);
+            int cur_y = 36 - (20 * p) / 10;
+            cv_line(prev_x, prev_y, cur_x, cur_y, col);
+            cv_line(prev_x + 1, prev_y, cur_x + 1, cur_y, col);
+            prev_x = cur_x;
+            prev_y = cur_y;
+        }
+    }
+
+    /* Bottom yarn curves (extend downwards from y=87 to y=107) */
+    for (i = 0; i < 6; ++i) {
+        int x_val = GX[i];
+        uint16_t col = LOOM_SPLASH_COLORS[i];
+        int dir = (i < 3) ? -1 : 1;
+        int amp = 4 + (i < 3 ? (2 - i) : (i - 3));
+        int prev_x = x_val, prev_y = 87;
+        for (p = 1; p <= 10; ++p) {
+            uint32_t ph = (uint32_t)p * (0x80000000u / 10u);
+            int s = (sine_i(ph) * amp) >> 15;
+            int d = (5 * p) / 10;
+            int cur_x = x_val + dir * (s + d);
+            int cur_y = 87 + (20 * p) / 10;
+            cv_line(prev_x, prev_y, cur_x, cur_y, col);
+            cv_line(prev_x + 1, prev_y, cur_x + 1, cur_y, col);
+            prev_x = cur_x;
+            prev_y = cur_y;
+        }
+    }
+
+    /* Left yarn curves (extend leftwards from x=65 to x=45) */
+    for (j = 0; j < 6; ++j) {
+        int y_val = GY[j];
+        uint16_t col = LOOM_SPLASH_COLORS[j];
+        int dir = (j < 3) ? -1 : 1;
+        int amp = 3 + (j < 3 ? j : 5 - j);
+        int prev_x = 65, prev_y = y_val;
+        for (p = 1; p <= 10; ++p) {
+            uint32_t ph = (uint32_t)p * (0x80000000u / 10u);
+            int s = (sine_i(ph) * amp) >> 15;
+            int d = (5 * p) / 10;
+            int cur_x = 65 - (20 * p) / 10;
+            int cur_y = y_val + dir * (s + d);
+            cv_line(prev_x, prev_y, cur_x, cur_y, col);
+            cv_line(prev_x, prev_y + 1, cur_x, cur_y + 1, col);
+            prev_x = cur_x;
+            prev_y = cur_y;
+        }
+    }
+
+    /* Right yarn curves (extend rightwards from x=176 to x=196) */
+    for (j = 0; j < 6; ++j) {
+        int y_val = GY[j];
+        uint16_t col = LOOM_SPLASH_COLORS[j];
+        int dir = (j < 3) ? -1 : 1;
+        int amp = 3 + (j < 3 ? (2 - j) : (j - 3));
+        int prev_x = 176, prev_y = y_val;
+        for (p = 1; p <= 10; ++p) {
+            uint32_t ph = (uint32_t)p * (0x80000000u / 10u);
+            int s = (sine_i(ph) * amp) >> 15;
+            int d = (5 * p) / 10;
+            int cur_x = 176 + (20 * p) / 10;
+            int cur_y = y_val + dir * (s + d);
+            cv_line(prev_x, prev_y, cur_x, cur_y, col);
+            cv_line(prev_x, prev_y + 1, cur_x, cur_y + 1, col);
+            prev_x = cur_x;
+            prev_y = cur_y;
+        }
+    }
+    cv_blit(0, 0);
+
+    /* Band 1 (rows 120..239): typography and glowing Loom accent bar */
+    cv_begin(240, 120, T_BG);
+
+    /* Glowing Loom Orange accent bar */
+    cv_rect(90, 5, 60, 1, RGB(120, 25, 0));
+    cv_rect(90, 9, 60, 1, RGB(120, 25, 0));
+    cv_rrect(80, 6, 80, 3, 1, RGB(255, 69, 0), T_BG);
+
+    /* "L O O M" wide letter-spaced title in AF_L */
+    {
+        char s[2] = {0, 0};
+        s[0] = 'L'; cv_text_on(74, 22, &AF_L, s, 0xFFFF, T_BG);
+        s[0] = 'O'; cv_text_on(100, 22, &AF_L, s, 0xFFFF, T_BG);
+        s[0] = 'O'; cv_text_on(126, 22, &AF_L, s, 0xFFFF, T_BG);
+        s[0] = 'M'; cv_text_on(152, 22, &AF_L, s, 0xFFFF, T_BG);
+    }
+
+    /* Subtitle in AF_S */
+    cv_text_in(0, 56, 240, &AF_S, "G R O O V E B O X", RGB(160, 165, 175), T_BG);
+
+    /* Device tagline */
+    cv_text_in(0, 78, 240, &AF_S, "Loom v0.1  -  FM-1", RGB(85, 90, 100), T_BG);
+
+    cv_blit(0, 120);
     lcd_sync();
 }
 
@@ -1358,6 +1646,14 @@ static void confirm_text(char *a, char *b)
     case CF_INIT_SOUND:
         str_cpy(a, "INITIALIZE SOUND?", 24);
         break;
+    case CF_SAVE_INIT:
+        str_cpy(a, "SAVE AS BOOT INIT?", 24);
+        str_cpy(b, "BOOTS WITH THIS STATE", 24);
+        break;
+    case CF_RESET_INIT:
+        str_cpy(a, "RESET TO FACTORY?", 24);
+        str_cpy(b, "RESTORE STOCK INIT", 24);
+        break;
     case CF_CLEAR_MOTION:
         str_cpy(a, "CLEAR T1 AUTOMATION?", 24); a[7] = (char)('1' + k % NTRK);
         break;
@@ -1458,6 +1754,8 @@ static void ui_draw_page(uint32_t counting)
         return;
     }
     if (ui.menu) {
+        if (!ux.mono && !ux.light)
+            ux_theme_engine(0xFA20, 0x07FF); /* Loom Orange in settings menu */
         draw_menu();
         ui.force = 0;
         return;
@@ -1478,6 +1776,20 @@ static void ui_draw_page(uint32_t counting)
     if (name_on()) {                                    /* NAME: a user preset's or a project's (ui_name.c) */
         name_draw();
         return;
+    }
+    /* Apply Loom engine-themed neon colors */
+    if (!ux.mono && !ux.light) {
+        uint8_t cur_eng = eng_idx(TSEL->eng_req);
+        uint16_t eth = (cur_eng < NENGINES) ? ENG_NEON[cur_eng].theme : 0xFA20;
+        uint16_t eacc = (cur_eng < NENGINES) ? ENG_NEON[cur_eng].accent : 0x07FF;
+        if (ui.layer == LAYER_GLO) {
+            eth = 0xFA20;  /* Loom Orange for Global / System */
+            eacc = 0x07FF; /* Cyan accent */
+        }
+        if (ux.theme != eth || ux.accent != eacc) {
+            ux_theme_engine(eth, eacc);
+            ui.force = 1;
+        }
     }
     if (ui.layer) {                                     /* a layer's map over the page (ui_layer.c) */
         if (ui.force)

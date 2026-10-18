@@ -19,7 +19,7 @@ static uint32_t trk_icon(uint32_t k, int filled) { (void)filled; return ICON_TRK
 static int32_t cv_trk(int32_t x, int32_t y, uint32_t size, uint32_t k, uint16_t fill, uint16_t under)
 {
     const aafont_t *f = size > 16u ? &AF_M : &AF_S;
-    char s[2] = {(char)('1' + k), 0};
+    char s[2] = {(char)(k < 4u ? ('1' + k) : 'D'), 0};
     const aag_t *g = &f->g[glyph(f, (uint8_t)s[0])];
     int32_t in = size > 16u ? 2 : 0, w = (int32_t)size - 2 * in;
     int32_t nud = k == 0u ? 1 : 0;   /* the 1's ink centred looks right of centre (its flag): nudged left 1 px (2 looked left) */
@@ -123,7 +123,7 @@ static const icon_map_t ICON_MAP[] = {
     {"SCL", ICON_SCALE}, {"QNT", ICON_QUANTIZE}, {"TRN", ICON_TRANSPOSE}, {"LEN", ICON_LENGTH},
     {"DIV", ICON_DIVISION}, {"VOIC", ICON_OCTAVE},   /* (CHRD: below, PHYS's) */
     /* fx sends, voice */
-    {"DST", ICON_DIST}, {"CHO", ICON_CHORUS}, {"DLY", ICON_DELAY}, {"REV", ICON_REVERB},
+    {"DST", ICON_DIST}, {"DUCK", ICON_RATIO}, {"CHO", ICON_CHORUS}, {"DLY", ICON_DELAY}, {"REV", ICON_REVERB},
     {"VCE", ICON_VOICE}, {"GLD", ICON_GLIDE}, {"GLMOD", ICON_GLIDE}, {"PRIO", ICON_ORDER},
     {"ALLOC", ICON_VOICE}, {"DTUNE", ICON_DETUNE}, {"PAN", ICON_PAN}, {"MUTE", ICON_MUTE},
     /* global */
@@ -146,7 +146,7 @@ static const icon_map_t ICON_MAP[] = {
     {"REG", ICON_DRAWBAR}, {"BODY", ICON_LEVEL}, {"TOP", ICON_TONE}, {"PERC", ICON_DECAY},
     {"CLICK", ICON_ATTACK}, {"ROTR", ICON_VIBRATO},
     {"SRC", ICON_SAMPLE}, {"START", ICON_STEPS}, {"PTCH", ICON_PITCH}, {"DCAY", ICON_DECAY},
-    {"POS", ICON_PHASE}, {"DENS", ICON_GRAIN}, {"SPRD", ICON_NOISE},
+    {"POS", ICON_PHASE}, {"DENS", ICON_GRAIN}, {"SPRD", ICON_NOISE}, {"SPRY", ICON_NOISE},
     {"MODEL", ICON_PHYS}, {"STRC", ICON_SHAPE}, {"BRIT", ICON_TONE}, {"BOW", ICON_SUSTAIN}, {"EXC", ICON_MIX},   /* PHYS */
     {"HARM", ICON_RATIO}, {"BEND", ICON_SWEEP}, {"CHRD", ICON_SCALE}, {"SYMP", ICON_MIX}, {"DECY", ICON_DECAY},
     {"SNAP", ICON_NOISE}, {"KIT", ICON_SAMPLE}, {"KICK", ICON_ATTACK},       /* PHYS: MEMB, SYMP; DRUM */
@@ -205,20 +205,22 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v)
     if (d == &NOISE_CLK)
         return ICON_RATE;
 #if FELUCCA_SLICE
-    if (d->names == N_SLC_DIV)
-        return ICON_SLICE;                    /* SLICE: DIV is the slicing, MODE the gate, REV the direction */
+    if (str_eq(d->label, "SLCS") || d->names == N_SLC_DIV)
+        return ICON_SLICE;                    /* SLICE: SLCS is the slicing, MODE the gate, REV the direction */
     if (d->names == N_SLC_MODE)
         return ICON_GATE;
     if (d->names == N_SLC_REV)
         return ICON_ORDER;
 #endif
+    if (d == &ENG_GRAIN.edit[6])
+        return ICON_ORDER;
     return icon_for_label(d->label);
 }
 
 /* the MOD page: the icon of a source, of a destination (an engine parameter: its own) */
 static uint32_t mod_src_icon(int32_t s)
 {
-    static const uint8_t I[MS_N] = {ICON_MOD, ICON_LFO_WAVE, ICON_ENV, ICON_ACCENT, ICON_KEYTRACK, ICON_PROB,
+    static const uint8_t I[MS_N] = {ICON_MOD, ICON_CUTOFF, ICON_LFO_WAVE, ICON_ENV, ICON_ACCENT, ICON_KEYTRACK, ICON_PROB,
                                     ICON_MOD, ICON_MIDI, ICON_LEVEL, ICON_W_SH, ICON_GLIDE};
     return I[clamp(s, 0, MS_N - 1)];
 }
@@ -236,11 +238,27 @@ static uint32_t mod_dst_icon(const track_t *t, int32_t d)
     return param_icon(track_desc(t, id), t->p[id]);
 }
 
+uint32_t macro_dest_icon(uint8_t trk_idx, uint8_t dest_id)
+{
+    static const uint8_t COMMON_ICONS[] = {
+        ICON_NONE, ICON_PITCH, ICON_CUTOFF, ICON_LEVEL, ICON_PAN, ICON_DELAY, ICON_REVERB
+    };
+    if (dest_id <= 6) return COMMON_ICONS[dest_id];
+    if (dest_id >= 7 && dest_id <= 14) {
+        uint8_t ep = dest_id - 7;
+        if (trk_idx == 4) return ICON_ACCENT;
+        const track_t *t = &trk[trk_idx < NTRK ? trk_idx : 0];
+        return param_icon(track_desc(t, P_E0 + ep), t->p[P_E0 + ep]);
+    }
+    return ICON_NONE;
+}
+
 /* engine name (ENGINES[]->name) -> icon */
 static uint32_t engine_icon(const char *name)
 {
     static const icon_map_t M[] = {
         {"ANALOG", ICON_WAVE},
+        {"SUBTRACT", ICON_WAVE},
 #if FELUCCA_FM4
         {"DIGITAL", ICON_ALGORITHM},
 #endif
@@ -252,6 +270,8 @@ static uint32_t engine_icon(const char *name)
         {"DRUM", ICON_DRUM},
         {"NOISE", ICON_NOISE},
         {"FM6", ICON_MOD},                    /* (symbol_modular: six operators patched; a glyph of its own wanted) */
+        {"WAVETABLE", ICON_WAVE},
+        {"WAVE", ICON_WAVE},
     };
     uint32_t i;
     for (i = 0; i < sizeof M / sizeof M[0]; i++)
@@ -271,6 +291,7 @@ static uint32_t page_icon(const page_t *pg)
     case GR_PATS: return ICON_X_PATTERN;      /* SAVE > PHRASES: the pattern loader */
     case GR_SONG: return ICON_X_SONG;         /* SONG: the disc */
     case GR_EVENTS: return motion_icon();     /* AUTOMATION */
+    case GR_MACRO: return ICON_X_MOTION;
     default: return ICON_NONE;
     }
 }
@@ -281,6 +302,7 @@ static uint32_t param_icon(const param_desc_t *d, int32_t v) { (void)d; (void)v;
 static uint32_t engine_icon(const char *name) { (void)name; return ICON_NONE; }
 static uint32_t mod_src_icon(int32_t s) { (void)s; return ICON_NONE; }
 static uint32_t mod_dst_icon(const track_t *t, int32_t d) { (void)t; (void)d; return ICON_NONE; }
+uint32_t macro_dest_icon(uint8_t trk_idx, uint8_t dest_id) { (void)trk_idx; (void)dest_id; return ICON_NONE; }
 static uint32_t motion_icon(void) { return ICON_NONE; }
 static uint32_t page_icon(const page_t *pg) { (void)pg; return ICON_NONE; }
 #endif

@@ -82,13 +82,14 @@ static int mom_turn(uint32_t k, int32_t s)
     } else {
         if (act_cols() || lock_held() || !(pg->scope == SC_TRACK || pg->scope == SC_ENGINE || pg->scope == SC_GLOBAL) ||
             pg->graph == GR_EVENTS || pg->graph == GR_SONG || pg->graph == GR_BROWSE || pg->graph == GR_USER ||
-            pg->graph == GR_PATS || (pg->graph == GR_SLICES && k < 2u) || (pg->graph == GR_MOD && k == 0u))
+            pg->graph == GR_PATS || (pg->graph == GR_SLICES && k < 2u) || (pg->graph == GR_MOD && k == 0u) || pg->graph == GR_MACRO)
             return 0;
         d = page_desc(pg, k, &vp);
     }
     g = vp && vp >= song.g && vp < song.g + G_COUNT ? (uint32_t)(vp - song.g) : G_COUNT;
     if (!d || !vp || d->max == d->min ||
-        !((vp >= t->p && vp < t->p + P_COUNT) || (g <= G_CDEPTH && g != G_CLOCK) || g == G_RTYPE))
+        !((vp >= t->p && vp < t->p + P_COUNT) || (g <= G_CDEPTH && g != G_CLOCK) || g == G_RTYPE ||
+          g == G_RTONE || g == G_CTONE || g == G_CVOICE))
         return 0;                                      /* (only the values a sound and the FX are: no CLK, no actions) */
     for (i = 0; i < mom.n && mom.vp[i] != vp; i++)
         ;
@@ -618,18 +619,166 @@ static void page_go(int32_t d)
     cursor_move((int32_t)(b * 16u + ui.cursor % 16u < len ? b * 16u + ui.cursor % 16u : len - 1u));
 }
 
-/* the grid's knobs: 1 STEP (the cursor), 2 LANE, 3 HIT and 4 ACC of the lane at the cursor (right on, left off) */
-static void grid_edit(uint32_t slot, int32_t steps)
+/* Loom step option helpers for drums and synths */
+static int step_get_drum_opt(const step_t *st, uint8_t lane)
 {
-    if (slot == 0u)
-        cursor_move(ui.cursor + steps);
-    else if (slot == 1u)
-        ui.lane = (uint8_t)clamp((int32_t)ui.lane + (steps > 0 ? 1 : -1), 0, NLANE - 1);
-    else if (slot == 2u)
-        grid_hit(TSEL, ui.cursor, ui.lane, steps > 0);
-    else
-        grid_acc(TSEL, ui.cursor, ui.lane, steps > 0);
+    uint32_t b = 1u << lane;
+    int on = (step_lanes(st) & b) != 0u;
+    int ac = (step_accents(st) & b) != 0u;
+    uint32_t ratch = step_ratchet(st);
+    if (on) {
+        if (ac && ratch > 1u) return 6;
+        if (ratch == 4u) return 5;
+        if (ratch == 3u) return 4;
+        if (ratch == 2u) return 3;
+        if (ac) return 2;
+        return 1;
+    }
+    return 0;
 }
+
+static void step_apply_drum_opt(step_t *st, uint8_t lane, int new_opt)
+{
+    uint32_t b = 1u << lane;
+    switch (new_opt) {
+    case 0: /* OFF */
+        st->hit &= (uint8_t)~b;
+        st->acc &= (uint8_t)~b;
+        break;
+    case 1: /* HIT */
+        st->hit |= (uint8_t)b;
+        st->acc &= (uint8_t)~b;
+        step_set_ratchet(st, 1u);
+        break;
+    case 2: /* PUNCH */
+        st->hit |= (uint8_t)b;
+        st->acc |= (uint8_t)b;
+        step_set_ratchet(st, 1u);
+        break;
+    case 3: /* RATCH 2 */
+        st->hit |= (uint8_t)b;
+        st->acc &= (uint8_t)~b;
+        step_set_ratchet(st, 2u);
+        break;
+    case 4: /* RATCH 3 */
+        st->hit |= (uint8_t)b;
+        st->acc &= (uint8_t)~b;
+        step_set_ratchet(st, 3u);
+        break;
+    case 5: /* RATCH 4 */
+        st->hit |= (uint8_t)b;
+        st->acc &= (uint8_t)~b;
+        step_set_ratchet(st, 4u);
+        break;
+    case 6: /* P+RATCH */
+        st->hit |= (uint8_t)b;
+        st->acc |= (uint8_t)b;
+        step_set_ratchet(st, 2u);
+        break;
+    }
+}
+
+static int step_get_synth_opt(const step_t *st)
+{
+    if (st->time == ST_TIE)
+        return 2;
+    if (st->time == ST_NOTE && st->n > 0) {
+        uint32_t ratch = step_ratchet(st);
+        int acc = (st->flags & SF_ACCENT) != 0;
+        if (acc && ratch > 1u) return 7;
+        if (ratch == 4u) return 6;
+        if (ratch == 3u) return 5;
+        if (ratch == 2u) return 4;
+        if (acc) return 3;
+        return 1;
+    }
+    return 0;
+}
+
+static void step_apply_synth_opt(step_t *st, int new_opt)
+{
+    switch (new_opt) {
+    case 0: /* OFF */
+        st->time = ST_REST;
+        break;
+    case 1: /* PLAY */
+        st->time = ST_NOTE;
+        st->flags &= (uint8_t)~(SF_ACCENT | SF_RATCH);
+        step_set_ratchet(st, 1u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    case 2: /* TIE */
+        st->time = ST_TIE;
+        st->flags &= (uint8_t)~(SF_ACCENT | SF_RATCH);
+        step_set_ratchet(st, 1u);
+        break;
+    case 3: /* PUNCH */
+        st->time = ST_NOTE;
+        st->flags = (uint8_t)((st->flags & ~SF_RATCH) | SF_ACCENT);
+        step_set_ratchet(st, 1u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    case 4: /* RATCH 2 */
+        st->time = ST_NOTE;
+        st->flags &= (uint8_t)~SF_ACCENT;
+        step_set_ratchet(st, 2u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    case 5: /* RATCH 3 */
+        st->time = ST_NOTE;
+        st->flags &= (uint8_t)~SF_ACCENT;
+        step_set_ratchet(st, 3u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    case 6: /* RATCH 4 */
+        st->time = ST_NOTE;
+        st->flags &= (uint8_t)~SF_ACCENT;
+        step_set_ratchet(st, 4u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    case 7: /* P+RATCH */
+        st->time = ST_NOTE;
+        st->flags |= SF_ACCENT;
+        step_set_ratchet(st, 2u);
+        if (!st->n) {
+            st->note[0] = last_note ? last_note : 60;
+            st->n = 1;
+        }
+        break;
+    }
+}
+
+static void step_edit_opt(track_t *t, int32_t steps)
+{
+    step_t *st = &t->step[ui.cursor];
+    step_undo_take(t, 0x2000u);
+    if (drum_track(t)) {
+        int cur = step_get_drum_opt(st, ui.lane);
+        int next = clamp(cur + steps, 0, 6);
+        step_apply_drum_opt(st, ui.lane, next);
+    } else {
+        int cur = step_get_synth_opt(st);
+        int next = clamp(cur + steps, 0, 7);
+        step_apply_synth_opt(st, next);
+    }
+    motion_undo_done(t);
+}
+
 
 /* the keys on the grid (presses): a white key toggles the selected lane at its step of the page (its accent
  * while ACC is held) and puts the cursor there; a lane key selects the lane (seq.c plays it); the page keys */
@@ -860,51 +1009,101 @@ static void sd_reset(void)
 
 static void step_edit(uint32_t slot, int32_t steps)
 {
-    step_t *st = &TSEL->step[ui.cursor];
-    uint32_t i;
+    track_t *t = TSEL;
+    int is_8x8 = (cur_page()->graph == GR_STEPS);
+
     if (detail_on()) {                                    /* DETAIL (1.5.1): CHANCE RATCH NUDGE VEL */
         sd_turn(slot, steps);
         return;
     }
-    if (drum_track(TSEL)) {
-        grid_edit(slot, steps);
-        return;
-    }
-    switch (slot) {
-    case 0:                                               /* STEP: the cursor */
-        cursor_move(ui.cursor + steps);
-        break;
-    case 1:                                               /* NOTE: transpose the step */
-        if (!st->n) {
-            st->note[0] = last_note;
-            st->n = 1;
-            st->time = ST_NOTE;
+
+    if (is_8x8) {
+        /* 8x8 STEP: [K1] STEP, [K2] GATE, [K3] OPT, [K4] CLEAR */
+        switch (slot) {
+        case 0: /* STEP */
+            cursor_move(ui.cursor + steps);
+            ui.bank = (uint8_t)(ui.cursor / 16u);
+            break;
+        case 1: /* GATE */
+            t->p[P_SGATE] = (int16_t)clamp((int32_t)t->p[P_SGATE] + steps * 4, 1, 127);
+            break;
+        case 2: /* OPT */
+            step_edit_opt(t, steps);
+            break;
+        case 3: { /* CLEAR: turn knob to clear sequence for current track */
+            int has_seq = motion_lock_steps(song.sel) != 0;
+            uint32_t si;
+            for (si = 0; !has_seq && si < NSTEP; si++) {
+                const step_t *s = &t->step[si];
+                if (s->n || s->time != ST_REST || s->hit || s->acc || s->flags)
+                    has_seq = 1;
+            }
+            if (has_seq) {
+                load_begin(t, UNDO_PAT);
+                track_defaults_steps(t);
+                load_end(t);
+                ui_message("PATTERN CLEARED");
+                ui.force = 1;
+            } else {
+                ui_message("ALREADY EMPTY");
+            }
             break;
         }
-        for (i = 0; i < st->n; i++)
-            st->note[i] = (uint8_t)clamp(st->note[i] + steps, 1, 127);
-        st->time = ST_NOTE;
-        last_note = st->note[0];
-        break;
-    case 2:                                               /* TIME; a note's LEN (1.5: ui.c note_set_len) */
-        if (step_on(st)) {
-            uint32_t was = note_len(TSEL, ui.cursor), n;
-            step_undo_take(TSEL, 0x2000u);                /* (a knob turned on: one undo, SAVE held) */
-            n = note_set_len(TSEL, ui.cursor, (uint32_t)clamp((int32_t)was + steps, 1, NSTEP));
-            motion_undo_done(TSEL);
-            if (steps > 0 && n == was)
-                ui_message(ui.cursor + n < (uint32_t)clamp(TSEL->p[P_SLEN], 1, NSTEP) ? "NOTE AHEAD" : "END OF PATTERN");
+        }
+    } else {
+        /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] GATE, [K4] OPT */
+        switch (slot) {
+        case 0: /* STEP */
+            cursor_move(ui.cursor + steps);
+            ui.bank = (uint8_t)(ui.cursor / 16u);
+            break;
+        case 1: /* BANK */
+            ui.bank = (uint8_t)clamp((int32_t)ui.bank + steps, 0, 3);
+            cursor_move(ui.bank * 16u + (ui.cursor % 16u));
+            break;
+        case 2: /* GATE */
+            t->p[P_SGATE] = (int16_t)clamp((int32_t)t->p[P_SGATE] + steps * 4, 1, 127);
+            break;
+        case 3: /* OPT */
+            step_edit_opt(t, steps);
             break;
         }
-        st->time = (uint8_t)clamp((int32_t)st->time + (steps > 0 ? 1 : -1), ST_NOTE, ST_REST);
-        break;
-    default: {                                            /* FLAG: - / ACC / SLD / A+S */
-        uint32_t f = (st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u);
-        f = (uint32_t)clamp((int32_t)f + (steps > 0 ? 1 : -1), 0, 3);
-        st->flags = (uint8_t)((st->flags & ~(SF_ACCENT | SF_SLIDE)) | (f & 1u ? SF_ACCENT : 0u) | (f & 2u ? SF_SLIDE : 0u));
-        break;
     }
+}
+
+static void sub_knob(uint32_t slot, int32_t steps)
+{
+    sub_part_t *sp = sub_of(TSEL);
+    const page_t *pg = cur_page();
+    int is_page2 = (pg->id[0] == P_E4);
+    uint32_t o = sp->sel_osc % 4u;
+
+    if (slot == 0u) {
+        /* Knob 1: Oscillator selector (1, 2, 3, SUB) on both pages */
+        sp->sel_osc = (uint8_t)clamp((int32_t)sp->sel_osc + steps, 0, 3);
+    } else if (!is_page2) {
+        /* Page 1 (OSC): [K2] WAVE, [K3] FOLD, [K4] MIX */
+        if (slot == 1u) {
+            sp->osc[o].wave = (uint8_t)clamp((int32_t)sp->osc[o].wave + accel(EN_K2, steps, 127), 0, 127);
+        } else if (slot == 2u) {
+            sp->osc[o].fold = (uint8_t)clamp((int32_t)sp->osc[o].fold + accel(EN_K3, steps, 127), 0, 127);
+        } else if (slot == 3u) {
+            sp->osc[o].mix = (uint8_t)clamp((int32_t)sp->osc[o].mix + accel(EN_K4, steps, 127), 0, 127);
+        }
+    } else {
+        /* Page 2 (TUNE): [K2] PTCH, [K3] DRV, [K4] GLID */
+        if (slot == 1u) {
+            sp->osc[o].pitch = (int8_t)clamp((int32_t)sp->osc[o].pitch + steps, -24, 24);
+        } else if (slot == 2u) {
+            sp->osc[o].drive = (uint8_t)clamp((int32_t)sp->osc[o].drive + accel(EN_K3, steps, 127), 0, 127);
+        } else if (slot == 3u) {
+            sp->osc[o].glide = (uint8_t)clamp((int32_t)sp->osc[o].glide + accel(EN_K4, steps, 127), 0, 127);
+        }
     }
+
+    ui.hot_col = (uint8_t)slot;
+    ui.hot_t = 40;
+    ui.force = 1;
 }
 
 static void edit_param(uint32_t slot, int32_t steps)
@@ -956,7 +1155,11 @@ static void edit_param(uint32_t slot, int32_t steps)
         if (slot == 0u) {
             preset_step(steps);
         } else if (slot == 1u) {
-            select_engine(eng_step(TSEL->eng_req, steps));
+            if (trk_index(TSEL) < NPART) {
+                select_engine(eng_step(TSEL->eng_req, steps));
+            } else {
+                ui_message("DRUM TRACK ONLY");
+            }
         } else if (slot == 2u) {
             preset_mark(steps > 0);
         } else if (slot == 3u) {                          /* LIST: ALL FAV BASS .. OTHER (ui.c list_mode), no wrap */
@@ -995,8 +1198,46 @@ static void edit_param(uint32_t slot, int32_t steps)
         fop_knob(slot, steps);
         return;
     }
-    if (pg->graph == GR_MOD && slot == 0u) {             /* MOD: KNOB 1 the slot, 2..4 its SRC DST AMT */
-        mod_ui_slot = (uint8_t)clamp((int32_t)mod_ui_slot + (steps > 0 ? 1 : -1), 0, 3);
+    if (is_sub_edit_page(pg)) {
+        sub_knob(slot, steps);
+        return;
+    }
+    if (pg->graph == GR_MOD) {
+        uint32_t m = cur_page()->id[0] % NMACROS;
+        macro_t *mc = &loom_macros[m];
+        uint8_t line = macro_ui_line % NMACRO_DESTS;
+        macro_dest_t *dst = &mc->dest[line];
+
+        if (slot == 0u) {
+            macro_ui_line = (uint8_t)clamp((int32_t)macro_ui_line + (steps > 0 ? 1 : -1), 0, NMACRO_DESTS - 1);
+            return;
+        }
+        if (slot == 1u) {
+            dst->trk = (uint8_t)clamp((int32_t)dst->trk + steps, 0, NTRK - 1);
+            macro_sync_to_tracks();
+            return;
+        }
+        if (slot == 2u) {
+            dst->dest = (uint8_t)clamp((int32_t)dst->dest + steps, 0, 14);
+            macro_sync_to_tracks();
+            return;
+        }
+        if (slot == 3u) {
+            dst->amt = (int8_t)clamp((int32_t)dst->amt + accel(EN_K4, steps, 127), -64, 63);
+            macro_sync_to_tracks();
+            return;
+        }
+        return;
+    }
+    if (pg->graph == GR_MACRO) {
+        if (macro_is_assigned(slot)) {
+            macro_t *mc = &loom_macros[slot];
+            mc->val = (uint8_t)clamp((int32_t)mc->val + accel(EN_K1 + slot, steps, 127), 0, 127);
+            macro_sync_to_tracks();
+            ui.hot_col = (uint8_t)slot;
+            ui.hot_t = 40;
+            ui.force = 1;
+        }
         return;
     }
     d = page_desc(pg, slot, &vp);
@@ -1004,6 +1245,9 @@ static void edit_param(uint32_t slot, int32_t steps)
         return;
     v = param_turn(d, *vp, accel(EN_K1 + slot, steps, d->fmt == F_ENUM ? 0 : d->max - d->min));
     *vp = (int16_t)v;
+    if (!page_over && pg->graph == GR_SCALE && slot == 1u && v > 0 && TSEL->p[P_QUANT] == QN_OFF) {
+        TSEL->p[P_QUANT] = QN_SNAP;
+    }
     if (pg->scope != SC_GLOBAL) {
         motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
         ml_knob(TSEL, (uint32_t)(vp - TSEL->p));        /* (MIDI LEARN: picked) */
@@ -1024,11 +1268,11 @@ static void act_do(void)
     if (cur_page()->graph == GR_TOOLS) {
         if (chain_busy()) { ui_message("STOP TO EDIT"); return; }
         if (!act_ready()) {                               /* nothing there to clear or delete */
-            ui_message(c == 2u ? "NOTHING TO DELETE" : "NOTHING TO CLEAR");
+            ui_message("NOTHING TO CLEAR");
             return;
         }
         confirm_open(c == 0u ? CF_CLEAR_SEQ : c == 1u ? CF_INIT_SOUND :
-                     c == 2u ? CF_DEL_ROW : CF_CLEAR_SONG, c == 2u ? ui.song_row : song.sel);
+                     c == 2u ? CF_SAVE_INIT : CF_RESET_INIT, song.sel);
         return;
     }
     if (cur_page()->graph == GR_SONG) {
@@ -1084,6 +1328,12 @@ static void act_do(void)
     case G_CLRSEQ:
         if (chain_busy()) { ui_message("STOP TO EDIT"); break; }
         confirm_open(CF_CLEAR_SEQ, song.sel);
+        break;
+    case G_SAVEINIT:
+        confirm_open(CF_SAVE_INIT, 0);
+        break;
+    case G_RESETINIT:
+        confirm_open(CF_RESET_INIT, 0);
         break;
     default:                                              /* G_INITSND */
         set_engine(TSEL->eng_req);                        /* engine defaults + its first preset (the steps stay) */
@@ -1229,12 +1479,14 @@ static void presets_turn(int32_t s)
         return;
     }
     if (ui.home || g == GR_BROWSE) {
+        if (ui.home && list_mode()) list_set(0);
         preset_step(s);
     } else if (g == GR_ROLL || g == GR_USER || g == GR_SLOTS || g == GR_PATS || g == GR_SONG || g == GR_EVENTS) {
         edit_param(0, s);                                 /* KNOB 1's (STEP: STOP TO EDIT while a song plays) */
         ui.hot_col = 0;
         ui.hot_t = 40;
     } else if (g != GR_TOOLS && g != GR_SLICES) {
+        if (list_mode()) list_set(0);
         preset_step(s);
     }
 }
@@ -1290,19 +1542,6 @@ static int page_tap(uint32_t b)
             ui_message("STOP TO EDIT");
         else
             sd_reset();
-        return 1;
-    }
-    if (b == B_EDIT && song.seq_mode && !ui.home && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step */
-        uint64_t held = lock_held();
-        if (chain_busy()) { ui_message("STOP TO EDIT"); return 1; }
-        if (held) {                                     /* a step held: its locks (the step stays) */
-            lock_clear(held);
-            return 1;
-        }
-        step_clear(&TSEL->step[ui.cursor]);
-        (void)motion_clear_locks(TSEL, ui.cursor);
-        cursor_set(ui.cursor + 1);
-        ui_message("STEP CLEARED");
         return 1;
     }
     if (b == B_EDIT && !ui.home && cur_page()->graph == GR_EVENTS) {   /* AUTOMATION: EDIT deletes the row's record */
@@ -1444,7 +1683,21 @@ static void ui_input(void)
         }
         if (ui.ly == LAYER_FX && ((pressed >> panel.btn[B_EDIT]) & 1u))
             fx_default();                               /* .. EDIT: its default back */
-        panel_enc(EN_ALGO);                             /* (another track: OCT- puts back the layer's track only) */
+        if (ui.ly == LAYER_GLO) {
+            int32_t a = panel_enc(EN_ALGO);
+            if (a != 0) {
+                int16_t *vp = &trk[4].p[P_LEVEL];
+                *vp = (int16_t)clamp(*vp + accel(EN_ALGO, a, TP[P_LEVEL].max - TP[P_LEVEL].min), TP[P_LEVEL].min,
+                                     TP[P_LEVEL].max);
+                motion_capture(&trk[4], P_LEVEL, *vp);
+                ml_knob(&trk[4], P_LEVEL);
+                ui.hot_col = 4;
+                ui.hot_t = 40;
+                combo = 1;
+            }
+        } else {
+            panel_enc(EN_ALGO);                             /* (another track: OCT- puts back the layer's track only) */
+        }
         if (glo && (sel = panel_enc(EN_SELECT)) != 0)   /* GLO + SELECT: the tempo, a combo (OCT- puts it back) */
             combo = 1;
     } else if ((kq = (uint32_t)layer_knobs_quiet()) != 0) {   /* a layer letting go: KNOB 1..4 are nobody's (#39) */
@@ -1531,6 +1784,10 @@ static void ui_input(void)
                 if (!chain_busy()) { chain_defaults(&chain_config); ui.song_row = 0; ui_message("SONG CLEARED"); }
             } else if (kind == CF_INIT_SOUND) {
                 if (!chain_busy()) { set_engine(TSEL->eng_req); ui_message("SOUND INIT"); }
+            } else if (kind == CF_SAVE_INIT) {
+                if (!chain_busy()) { project_save_init(); ui_message("INIT SAVED"); }
+            } else if (kind == CF_RESET_INIT) {
+                if (!chain_busy()) { project_reset_init(); ui_message("FACTORY RESET"); }
             } else {
                 track_t *t = &trk[ui.confirm_trk % NTRK];
                 load_begin(t, UNDO_PAT);
@@ -1588,9 +1845,14 @@ static void ui_input(void)
             uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
             if (act_cols() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); SET layers: OCT-; */
                 break;                                  /* MIDI LEARN: clear / done (below) */
-            if ((fm1_in.buttons & both) == both)
+            if ((fm1_in.buttons & both) == both) {
                 song.octave = 0;
-            else
+                if (!ui.home && cur_page()->fam == FAM_SEQ) {
+                    ui.seq_8x8 = !ui.seq_8x8;
+                    ui_message(ui.seq_8x8 ? "GRID: 8x8 VIEW" : "GRID: 4x4 VIEW");
+                    ui.force = 1;
+                }
+            } else
                 song.octave += b == B_OCTDN ? (song.octave > -3 ? -1 : 0) : (song.octave < 3 ? 1 : 0);
             break;
         }
@@ -1675,8 +1937,8 @@ static void ui_input(void)
             continue;
         }
         if (ui.home || pg->scope == SC_STEP || pg->scope == SC_TRK || page_desc(pg, k, &hv) ||
-            ((pg->graph == GR_USER || pg->graph == GR_MOD || pg->graph == GR_PATS) && k == 0u)
-            || pg->graph == GR_SONG || (pg->graph == GR_SLICES && k < 2u) || fop_page(pg->graph)) {   /* (not an empty
+            ((pg->graph == GR_USER || pg->graph == GR_PATS) && k == 0u)
+            || pg->graph == GR_MOD || (pg->graph == GR_MACRO && macro_is_assigned(k)) || pg->graph == GR_SONG || (pg->graph == GR_SLICES && k < 2u) || fop_page(pg->graph)) {   /* (not an empty
                                                                                                           * column) */
             ui.hot_col = (uint8_t)k;
             ui.hot_t = 40;

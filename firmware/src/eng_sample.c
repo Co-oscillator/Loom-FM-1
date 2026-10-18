@@ -150,14 +150,22 @@ static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
     v->s[0] = clamp(v->s[0] + ((code & 8u) ? -vd : vd), -32768, 32767);
     v->s[1] = clamp(v->s[1] + IMA_IDX[code & 7u], 0, 88);
     pos++;
-    if (pos > z->le && z->looped && loop) {
-        pos = z->ls;
-        v->s[0] = z->pred;
-        v->s[1] = z->idx;
+    if (loop) {
+        if (z->looped && z->le > z->ls && pos > z->le) {
+            pos = z->ls;
+            v->s[0] = z->pred;
+            v->s[1] = z->idx;
+        } else if (pos >= z->n) {
+            pos = (z->looped && z->ls < z->le) ? z->ls : 0;
+            v->s[0] = z->looped ? z->pred : 0;
+            v->s[1] = z->looped ? z->idx : 0;
+        }
     }
     v->ph[0] = pos;
     return v->s[0];
 }
+
+static const char *const N_SMP_MODE[] = {"ONE", "SUS", "LOOP"};
 
 static void sample_note_on(track_t *t, voice_t *v)
 {
@@ -181,12 +189,14 @@ static void sample_note_on(track_t *t, voice_t *v)
         }
         v->s[4] = (int32_t)(zi == 0xFFFFu ? 0 : zi);
     }
-    v->ph[0] = 0;
+    const smp_zone_t *z = smp_zone((uint32_t)v->s[4]);
+    uint32_t start_pct = (uint32_t)clamp(t->p[P_E5], 0, 100);
+    v->ph[0] = z && z->n ? (uint32_t)((uint64_t)z->n * start_pct / 100u) : 0;
     v->ph[1] = 0;
     v->s[0] = 0;
     v->s[1] = 0;
     v->s[2] = v->s[3] = 0;
-    v->s[6] = zi == 0xFFFFu;     /* 1 = sample ended (one-shot); a kit key with no sound stays silent */
+    v->s[6] = zi == 0xFFFFu;     /* 1 = sample ended; kit key with no sound stays silent */
     v->s[7] = 0;                 /* lo-pass state */
     if (smp_set_missing(si))
         v->s[6] = 2;             /* 2 = no sample data: the sine (smp_sine; ph[0] its phase) */
@@ -197,12 +207,24 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     const int16_t *p = t->p;
     const smp_zone_t *z = smp_zone((uint32_t)v->s[4]);
     uint32_t i, frac = v->ph[1];
-    int32_t d16 = clamp(m->pitch16 + p[P_E1] * 16 - z->root16, -1536, 576);   /* <= 3 octaves up: bounded decode load */
-    uint32_t r = pow2_q16(d16), stepq = (r >> 8) * (z->rate >> 8);   /* Q16 samples per output */
-    int32_t bits = p[P_E2], lp = 4000 + ((clamp((p[P_E4] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
-    int32_t drv = p[P_E6], sh = bits / 10;
-    if (v->s[6] == 2) {                               /* no sample data: the sine at the note's pitch + TUNE */
-        smp_sine(out, n, m, p[P_E1] * 16, lp, &v->ph[0], &v->s[7]);
+    /* Pitch tuning: note pitch + PTCH (P_E2) */
+    int32_t d16 = clamp(m->pitch16 + p[P_E2] * 16 - z->root16, -1536, 576);
+    uint32_t r = pow2_q16(d16);
+    /* SPEED (P_E3): 10%..400% */
+    uint32_t speed_pct = (uint32_t)clamp(p[P_E3] ? p[P_E3] : 100, 10, 400);
+    uint32_t stepq = (uint32_t)((((uint64_t)(r >> 8) * (z->rate >> 8)) * speed_pct) / 100u);
+    /* STRCH (P_E4): 25%..400% - alters the sample advance step */
+    uint32_t strch_pct = (uint32_t)clamp(p[P_E4] ? p[P_E4] : 100, 25, 400);
+    uint32_t stepq_adv = (stepq * 100u) / strch_pct;
+
+    int32_t lp = 4000 + ((clamp((p[P_E7] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
+    uint32_t mode = (uint32_t)p[P_E1] % 3u; /* 0=ONE, 1=SUS, 2=LOOP */
+    uint32_t start_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E5], 0, 100) / 100u);
+    uint32_t end_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E6], 0, 100) / 100u);
+    if (end_pos <= start_pos) end_pos = (start_pos + 1u <= z->n) ? start_pos + 1u : z->n;
+
+    if (v->s[6] == 2) {                               /* no sample data: the sine at the note's pitch + PTCH */
+        smp_sine(out, n, m, p[P_E2] * 16, lp, &v->ph[0], &v->s[7]);
         return;
     }
     if (v->s[6] || !z->n) {
@@ -210,29 +232,32 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
         return;
     }
     if (v->ph[0] == 0 && v->ph[1] == 0 && v->s[3] == 0)
-        v->s[3] = sample_next(z, v, p[P_E3]);         /* prime the interpolator */
+        v->s[3] = sample_next(z, v, mode == 2);         /* prime the interpolator */
     for (i = 0; i < n; i++) {
         int32_t s;
-        frac += stepq;
+        frac += stepq_adv;
         while (frac >= 65536u) {
             frac -= 65536u;
             v->s[2] = v->s[3];
-            if (v->ph[0] >= z->n) {                   /* one-shot reached its end */
-                v->s[6] = 1;
-                v->s[3] = 0;
-                if (frac >= 65536u) {                /* past the last sample-to-zero interval */
-                    v->s[2] = 0;
-                    frac &= 65535u;
+            if (v->ph[0] >= end_pos || v->ph[0] >= z->n) {                   /* reached end of sample or trim */
+                if (mode == 2 && v->gate) {                        /* LOOP mode: wrap to beginning or loop start */
+                    v->ph[0] = (z->looped && z->ls < z->le && z->ls >= start_pos && z->le <= end_pos) ? z->ls : start_pos;
+                    v->s[0] = z->looped ? z->pred : 0;
+                    v->s[1] = z->looped ? z->idx : 0;
+                    v->s[3] = sample_next(z, v, 1);
+                } else {
+                    v->s[6] = 1;
+                    v->s[3] = 0;
+                    if (frac >= 65536u) {                /* past the last sample-to-zero interval */
+                        v->s[2] = 0;
+                        frac &= 65535u;
+                    }
+                    break;
                 }
-                break;
             }
-            v->s[3] = sample_next(z, v, p[P_E3]);
+            v->s[3] = sample_next(z, v, mode == 2);
         }
         s = v->s[2] + (((v->s[3] - v->s[2]) * (int32_t)(frac >> 1)) >> 15);
-        if (sh)                                       /* BITS: 0 = clean, up to 12 bits removed */
-            s = (s >> sh) << sh;
-        if (drv)
-            s = softclip(s + (((s >> 2) * (drv * 150)) >> 11));   /* = s * drv * 600 / 32768, no overflow */
         v->s[7] += mulq15(s - v->s[7], lp);           /* gentle tone control (CUT) */
         out[i] += voice_amp(v->s[7], m, i) << 1;
         if (v->s[6])
@@ -241,23 +266,41 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     v->ph[1] = frac;
 }
 
+static int32_t sample_amp(track_t *t, voice_t *v, int32_t adsr)
+{
+    const int16_t *p = t->p;
+    uint32_t mode = (uint32_t)p[P_E1] % 3u;
+    if (mode == 0 && v->stage == 3u && v->s[6] == 0) {
+        v->stage = 2; /* ONE: note-off does not cut off the sample; plays to end */
+    }
+    return adsr;
+}
+
+static const preset_t SAMPLE_PRESETS[] = {
+    {"PIANO", {0, 1, 0, 100, 100, 0, 100, 127}, {0, 127, 127, 70}, 0, 0},
+    {"EP",    {1, 1, 0, 100, 100, 0, 100, 127}, {0, 127, 127, 70}, 0, 0},
+    {"FLUTE", {2, 2, 0, 100, 100, 0, 100, 127}, {12, 80, 120, 60}, 0, 0},
+    {"SAX",   {3, 2, 0, 100, 100, 0, 100, 127}, {12, 80, 120, 60}, 0, 0},
+};
+
 static const engine_t ENG_SAMPLE = {
     .name = "SAMPLE",
-    .page_title = {"SET", "TONE"},
+    .page_title = {"PLAY", "TRIM"},
     .edit = {
         {"SET", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES, 0},
-        {"TUNE", F_SEMI, -24, 24, 0, 0, 0},
-        {"BITS", F_INT, 0, 127, 0, 0, 0},
-        {"LOOP", F_ENUM, 0, 1, 1, N_ONOFF_E, 0},
+        {"MODE", F_ENUM, 0, 2, 1, N_SMP_MODE, 0},
+        {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
+        {"SPEED", F_PCT, 10, 400, 100, 0, 0},
+        {"STRCH", F_PCT, 25, 400, 100, 0, 0},
+        {"START", F_PCT, 0, 100, 0, 0, 0},
+        {"END", F_PCT, 0, 100, 100, 0, 0},
         {"CUT", F_INT, 0, 127, 127, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
     },
-    .presets = SMP_PRESET_TABLE,
-    .npresets = SMP_NPRESETS,
+    .presets = SAMPLE_PRESETS,
+    .npresets = NELEM(SAMPLE_PRESETS),
     .note_on = sample_note_on,
     .render = sample_render,
-    .knob = {P_E0, P_E4, P_ATK, P_REL},
+    .amp = sample_amp,
+    .knob = {P_E2, P_E3, P_E5, P_E6},
     .sampled = 1,
 };

@@ -135,8 +135,8 @@
   .grid button.tie { border-style: dashed; border-color: var(--fg); }
   .grid button.beat { border-left-color: var(--fg); }
   #steps tr.hl td { outline: 1px solid var(--fg); }
-  /* mixer: four channel strips as on the device's TRACKS page */
-  .mixer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 640px; margin: 6px 0; }
+  /* mixer: five channel strips as on the device's TRACKS page */
+  .mixer { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 640px; margin: 6px 0; }
   .strip { border: 1px solid var(--line); padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
   .strip.sel { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
   .strip .num { font-size: 18px; font-weight: 600; line-height: 1; }
@@ -230,7 +230,10 @@
       <h2 data-t="steps" data-ic="note_eight"></h2>
       <p class="bar"><button id="reloadsteps" data-t="reload" data-ic="control_arrow_loop"></button>
         <button id="clearseq" data-t="clearSeq" data-ic="symbol_trash"></button>
+        <button id="importmidibtn" type="button" data-ic="symbol_folder_open">Import .MID / .MIDI…</button>
+        <input type="file" id="midifile" accept=".mid,.midi,audio/midi,audio/x-midi" hidden>
         <span class="dim" id="noteshelp"></span></p>
+      <div id="midi-import-box" class="group" hidden style="margin: 10px 0 14px; padding: 12px; border: 1px solid var(--fg);"></div>
       <div class="grid" id="stepgrid"></div>
       <div class="stepcols" id="steptables"></div>
     </div>
@@ -618,7 +621,7 @@ const req = {
     return [CMD.SONG, op === 1 ? [op, rows.length, ...rows.flatMap((r) => [r.slot, r.repeat])] : [op]];
   },
   motion: (track, op = 0, arg = {}) => {
-    if (!Number.isInteger(track) || track < 0 || track > 3 || ![0, 1, 2, 3, 4].includes(op)) throw new Error("Invalid motion request");
+    if (!Number.isInteger(track) || track < 0 || track > 4 || ![0, 1, 2, 3, 4].includes(op)) throw new Error("Invalid motion request");
     return [CMD.MOTION, [track, ...(op === 0 ? [] : op === 1 ? [op, arg.on ? 1 : 0] : op === 2 ? [op] :
       [op, arg.step & 63, arg.param & 127, ...(op === 3 ? v14enc(arg.value) : [])])]];
   },
@@ -1663,18 +1666,18 @@ function makeMockDevice(opt = {}) {
   const D = (label, fmt, min, max, def, names = null, unit = "") => ({ label, fmt, min, max, def, names, unit });
   const E = (label, names, def) => D(label, F.ENUM, 0, names.length - 1, def, names);
   const MSRC = ["OFF", "LFO", "ENV", "VEL", "KEY", "RAND", "MODW", "AT", "EXPR", "S&H", "SLEW"];   /* (append-only: S&H SLEW, #132) */
-  const MDST = ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DIST", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"];   /* (DEPTH: #132) */
+  const MDST = ["OFF", "PITCH", "CUT", "SHP", "AMP", "PAN", "DUCK", "CHO", "DLY", "REV", "RATE", "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"];   /* (DEPTH: #132) */
   const TP = [
     D("LVL", F.DB, 0, 127, 104),
     D("ATK", F.TIME, 0, 127, 10), D("DEC", F.TIME, 0, 127, 70), D("SUS", F.PCT, 0, 127, 90), D("REL", F.TIME, 0, 127, 60),
     D("FLT", F.BIPCT, -64, 63, 0), D("PIT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("FX", F.BIPCT, -64, 63, 0),
     D("RATE", F.LFOHZ, 0, 127, 60), E("WAVE", ["SIN", "TRI", "SAW", "SQR", "S&H"], 0), D("PHS", F.INT, 0, 127, 0), D("FADE", F.TIME, 0, 127, 0),
     D("PIT", F.BIPCT, -64, 63, 0), D("FLT", F.BIPCT, -64, 63, 0), D("SHP", F.BIPCT, -64, 63, 0), D("AMP", F.PCT, 0, 127, 0),
-    E("MODE", ["OFF", "UP", "DN", "UPDN", "RND", "ORD", "REPEAT", "DNUP", "UP+8", "CONV", "DIVG", "PINKY", "THUMB", "WALK", "CHORD"], 0), E("RATE", NDIV, 2), D("OCT", F.INT, 1, 4, 1), D("GATE", F.PCT, 1, 127, 64),
+    E("MODE", ["OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG"], 0), E("RATE", NDIV, 2), D("OCT", F.INT, -3, 3, 0), D("GATE", F.PCT, 1, 127, 64),
     D("SWG", F.PCT, 0, 100, 0), D("PROB", F.PCT, 0, 127, 127), E("HOLD", NONOFF, 0), E("ORD", ["NOTE", "PLAY"], 0),
     D("ROOT", F.NOTE, 0, 11, 0), E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 0), E("QNT", ["OFF", "SNAP", "WHITE", "SEQ"], 0), D("TRN", F.SEMI, -24, 24, 0),
     D("LEN", F.STEPS, 1, 64, 16), E("DIV", NDIV, 2), D("SWG", F.PCT, 0, 100, 0), D("GATE", F.PCT, 1, 127, 64),
-    D("DST", F.PCT, 0, 127, 0), D("CHO", F.PCT, 0, 127, 0), D("DLY", F.PCT, 0, 127, 0), D("REV", F.PCT, 0, 127, 0),
+    D("DUCK", F.PCT, 0, 127, 0), D("CHO", F.PCT, 0, 127, 0), D("DLY", F.PCT, 0, 127, 0), D("REV", F.PCT, 0, 127, 0),
     E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0), D("GLD", F.TIME, 0, 127, 0), D("PAN", F.BIPCT, -64, 63, 0), E("MUTE", NONOFF, 0),
     E("GLMOD", ["RATE", "TIME"], 0), E("PRIO", ["LAST", "LOW", "HIGH"], 0), E("ALLOC", ["ROT", "REUSE"], 0), D("DTUNE", F.INT, 0, 127, 40),
     E("SLCR", ["OFF", "GATE", "STUT"], 0), D("PAT", F.INT, 1, 16, 1), E("RATE", ["1/8", "1/16", "1/32", "8T", "16T", "32T"], 1), D("DEPTH", F.PCT, 0, 127, 127),
@@ -2870,21 +2873,28 @@ async function connect() {
   connecting = true;
   let connectedDevice = null;
   wantConnected = true;
-  if (!MOCK && !navigator.requestMIDIAccess) { connecting = false; sayK("nomidi"); return; }
+  const inWorkbench = typeof window !== "undefined" && window.parent && window.parent !== window;
+  if (!MOCK && !inWorkbench && !navigator.requestMIDIAccess) { connecting = false; sayK("nomidi"); return; }
   $("connect").disabled = true;
   sayK("connecting");
   try {
     if (!access) {
       if (MOCK) { mock = makeMockDevice({ legacy: QS.get("legacy") === "1" }); access = mock.access; }
-      else {
+      else if (navigator.requestMIDIAccess) {
         try { access = await navigator.requestMIDIAccess({ sysex: true }); }
-        catch (e) { sayK("denied"); return; }
+        catch (e) { if (!inWorkbench) { sayK("denied"); return; } }
       }
-      access.onstatechange = onState;
+      if (access) access.onstatechange = onState;
     }
-    const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";
-    const input = [...access.inputs.values()].find(isF);
-    const output = [...access.outputs.values()].find(isF);
+    const isF = (p) => /felucca|loom/i.test(p.name || "") && p.state !== "disconnected";
+    let input = access ? [...access.inputs.values()].find(isF) : null;
+    let output = access ? [...access.outputs.values()].find(isF) : null;
+    if ((!input || !output) && inWorkbench) {
+      mock = makeMockDevice({ auto: false });
+      access = mock.access;
+      input = [...access.inputs.values()][0];
+      output = [...access.outputs.values()][0];
+    }
     if (!input || !output) { sayK("nodevice"); return; }
     const link = new Link((d) => output.send(d), {
       timeout: 300,
@@ -2936,7 +2946,7 @@ function disconnect(reasonKey = "disconnected") {
 
 function onState(e) {
   const p = e.port;
-  if (!p || !/felucca/i.test(p.name || "")) return;
+  if (!p || !/felucca|loom/i.test(p.name || "")) return;
   if (dev && p.state === "disconnected" && (p.id === dev.input.id || p.id === dev.output.id)) {
     disconnect("lost");
   } else if (!dev && wantConnected && p.state === "connected" && p.type === "output") {
@@ -3052,7 +3062,7 @@ function renderTrackbar() {
   if (box.children.length !== ntrk || box.dataset.lang !== lang) {
     box.dataset.lang = lang;
     box.replaceChildren(...Array.from({ length: ntrk }, (_, i) => el("button", { type: "button", "data-i": i,
-      onclick: () => selectTrack(i) }, String(i + 1))));
+      onclick: () => selectTrack(i) }, i === 4 ? "D" : String(i + 1))));
   }
   for (const b of box.children) b.setAttribute("aria-pressed", +b.dataset.i === (dev.sel || 0) ? "true" : "false");
 }
@@ -3082,6 +3092,13 @@ function updateBrowser() {
   const e = dev.dump.engine;
   const sel = $("engine");
   renderTrackbar();
+  if (dev.sel === 4) {
+    sel.replaceChildren(el("option", { value: 10, text: dev.info.engines[10] || "DRUM" }));
+    sel.disabled = true;
+  } else {
+    sel.replaceChildren(...engineOrder(dev.info.engines).filter((i) => i !== 10).map((i) => el("option", { value: i, text: dev.info.engines[i] })));
+    sel.disabled = false;
+  }
   if (document.activeElement !== sel) sel.value = String(e);
   const ps = $("preset");
   const names = dev.names[e] || [];
@@ -3578,6 +3595,243 @@ $("clearseq").addEventListener("click", async () => {
   } catch (err) { report(err); } finally { releaseBusy(); }
 });
 
+/* ---- Standard MIDI File (.mid / .midi) multi-track parser & Loom sequencer importer ---- */
+function gmDrumToLane(pitch) {
+  if (pitch === 35 || pitch === 36) return 0; /* KICK */
+  if (pitch === 38 || pitch === 40) return 1; /* SNARE */
+  if (pitch === 37 || pitch === 39) return 2; /* CLAP / RIM */
+  if (pitch === 42 || pitch === 44) return 3; /* CLOSED HAT */
+  if (pitch === 46) return 4;                 /* OPEN HAT */
+  if ([41, 43, 45, 47, 48, 50].includes(pitch)) return 5; /* TOM */
+  if ([49, 51, 52, 53, 55, 57, 59].includes(pitch)) return 6; /* CYMBAL */
+  return 7;                                   /* PERC / OTHER */
+}
+
+function parseStandardMidi(buf) {
+  const u = new Uint8Array(buf), dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+  const str = (o, n) => String.fromCharCode(...u.subarray(o, o + n));
+  if (u.length < 14 || str(0, 4) !== "MThd") throw new Error("Not a valid .MID / .MIDI file");
+  const hdrLen = dv.getUint32(4, false);
+  const format = dv.getUint16(8, false);
+  const ntrks = dv.getUint16(10, false);
+  const div = dv.getUint16(12, false);
+  const ticksPerBeat = (div & 0x8000) ? 480 : (div || 480);
+  let pos = 8 + hdrLen, bpm = 120;
+  const streams = [];
+
+  for (let t = 0; t < ntrks && pos + 8 <= u.length; t++) {
+    const cid = str(pos, 4), clen = dv.getUint32(pos + 4, false);
+    pos += 8;
+    const end = Math.min(u.length, pos + clen);
+    if (cid !== "MTrk") { pos = end; continue; }
+    let p = pos, tick = 0, status = 0, trkName = "";
+    const open = new Map(), notesByCh = new Map();
+    const readVar = () => {
+      let v = 0, b;
+      do { if (p >= end) break; b = u[p++]; v = (v << 7) | (b & 0x7F); } while (b & 0x80);
+      return v;
+    };
+    while (p < end) {
+      tick += readVar();
+      if (p >= end) break;
+      let b = u[p];
+      if (b & 0x80) { status = b; p++; }
+      if (status === 0xFF) {
+        const metaType = u[p++], mlen = readVar();
+        if (metaType === 0x03 && mlen > 0) {
+          trkName = str(p, Math.min(mlen, 32)).replace(/[^\x20-\x7E]/g, "").trim();
+        } else if (metaType === 0x51 && mlen === 3 && p + 3 <= end) {
+          const us = (u[p] << 16) | (u[p + 1] << 8) | u[p + 2];
+          if (us > 0) bpm = Math.max(40, Math.min(240, Math.round(60000000 / us)));
+        }
+        p += mlen;
+      } else if (status === 0xF0 || status === 0xF7) {
+        p += readVar();
+      } else {
+        const hi = status & 0xF0, ch = status & 0x0F;
+        if (hi === 0xC0 || hi === 0xD0) { p += 1; }
+        else if (hi === 0x90 || hi === 0x80) {
+          const note = u[p++] & 0x7F, vel = u[p++] & 0x7F;
+          const key = (ch << 8) | note;
+          if (hi === 0x90 && vel > 0) {
+            open.set(key, { ch, pitch: note, vel, startTick: tick });
+          } else if (open.has(key)) {
+            const st = open.get(key);
+            open.delete(key);
+            if (!notesByCh.has(ch)) notesByCh.set(ch, []);
+            notesByCh.get(ch).push({ ...st, endTick: Math.max(st.startTick + 1, tick) });
+          }
+        } else { p += 2; }
+      }
+    }
+    for (const st of open.values()) {
+      if (!notesByCh.has(st.ch)) notesByCh.set(st.ch, []);
+      notesByCh.get(st.ch).push({ ...st, endTick: Math.max(st.startTick + 1, tick) });
+    }
+    const multiCh = notesByCh.size > 1;
+    for (const [ch, notes] of notesByCh.entries()) {
+      if (!notes.length) continue;
+      let lo = 127, hi = 0;
+      for (const n of notes) { if (n.pitch < lo) lo = n.pitch; if (n.pitch > hi) hi = n.pitch; }
+      const isDrum = ch === 9 || /drum|perc|kick|snare|hat|kit/i.test(trkName);
+      const label = trkName ? (multiCh ? `${trkName} (Ch ${ch + 1})` : `${trkName} [Ch ${ch + 1}]`) : `MIDI Track ${t + 1} (Ch ${ch + 1})`;
+      streams.push({ id: streams.length, label, ch, notes, isDrum, lo, hi });
+    }
+    pos = end;
+  }
+  let melIdx = 0;
+  for (const s of streams) {
+    if (s.isDrum) s.target = 4;
+    else if (melIdx < 4) s.target = melIdx++;
+    else s.target = -1;
+  }
+  return { format, ticksPerBeat, bpm, streams };
+}
+
+function quantizeMidiStreams(midi, startBar, stepCount) {
+  const stepTicks = midi.ticksPerBeat / 4;
+  const offsetTicks = Math.max(0, (startBar - 1) * 4 * midi.ticksPerBeat);
+  const byLoomTrack = new Map();
+  for (const s of midi.streams) {
+    if (s.target < 0 || s.target > 4) continue;
+    if (!byLoomTrack.has(s.target)) byLoomTrack.set(s.target, []);
+    byLoomTrack.get(s.target).push(...s.notes);
+  }
+  const result = [];
+  for (const [ti, notes] of byLoomTrack.entries()) {
+    const steps = Array.from({ length: stepCount }, (_, i) => ({
+      step: i, n: 0, notes: [0, 0, 0, 0], time: 2, flags: 0, vel: 0, hit: 0, acc: 0, on: [], held: []
+    }));
+    let poly = false;
+    if (ti === 4) {
+      for (const n of notes) {
+        const s0 = Math.round((n.startTick - offsetTicks) / stepTicks);
+        if (s0 >= 0 && s0 < stepCount) {
+          const lane = gmDrumToLane(n.pitch);
+          steps[s0].hit |= (1 << lane);
+          if (n.vel >= 110) steps[s0].acc |= (1 << lane);
+          steps[s0].vel = Math.max(steps[s0].vel || 96, n.vel);
+          steps[s0].time = 0;
+        }
+      }
+    } else {
+      for (const n of notes) {
+        const s0 = Math.round((n.startTick - offsetTicks) / stepTicks);
+        const s1 = Math.max(s0 + 1, Math.round((n.endTick - offsetTicks) / stepTicks));
+        if (s0 >= 0 && s0 < stepCount) {
+          if (!steps[s0].on.includes(n.pitch) && steps[s0].on.length < 4) steps[s0].on.push(n.pitch);
+          steps[s0].vel = Math.max(steps[s0].vel, n.vel);
+          if (n.vel >= 115) steps[s0].flags |= 1;
+        }
+        for (let s = Math.max(0, s0 + 1); s < Math.min(stepCount, s1); s++) {
+          if (!steps[s].held.includes(n.pitch) && steps[s].held.length < 4) steps[s].held.push(n.pitch);
+        }
+      }
+      for (const st of steps) {
+        if (st.on.length) {
+          st.on.sort((a, b) => a - b);
+          st.n = st.on.length;
+          if (st.n > 1) poly = true;
+          for (let k = 0; k < st.n; k++) st.notes[k] = st.on[k];
+          st.time = 0;
+        } else if (st.held.length) {
+          st.held.sort((a, b) => a - b);
+          st.n = st.held.length;
+          for (let k = 0; k < st.n; k++) st.notes[k] = st.held[k];
+          st.time = 1;
+          st.vel = 96;
+        }
+      }
+    }
+    result.push({ track: ti, len: stepCount, poly, steps });
+  }
+  return result;
+}
+
+if ($("importmidibtn")) {
+  $("importmidibtn").addEventListener("click", () => $("midifile").click());
+  $("midifile").addEventListener("change", async () => {
+    const f = $("midifile").files[0];
+    $("midifile").value = "";
+    if (!f) return;
+    try {
+      const midi = parseStandardMidi(await f.arrayBuffer());
+      const box = $("midi-import-box");
+      if (!midi.streams.length) { alert("No MIDI notes found in " + f.name); return; }
+      const barSel = el("input", { type: "number", min: 1, max: 128, value: 1, style: "width:4em" });
+      const lenSel = el("select", {}, ...[16, 32, 48, 64].map((n) => el("option", { value: n, text: `${n} steps` })));
+      lenSel.value = "64";
+      const bpmChk = el("input", { type: "checkbox", checked: true });
+      const tbl = el("table", {}, el("tr", {},
+        el("th", { text: "MIDI File Track / Channel" }),
+        el("th", { text: "Notes & Range" }),
+        el("th", { text: "Assign to Loom Track" })));
+      const opts = [
+        [-1, "— Skip (Do not import) —"],
+        [0, "Track 1 (Melodic Synth 1)"],
+        [1, "Track 2 (Melodic Synth 2)"],
+        [2, "Track 3 (Melodic Synth 3)"],
+        [3, "Track 4 (Melodic Synth 4)"],
+        [4, "Track 5 (DRUM Track — GM Drum Map)"],
+      ];
+      midi.streams.forEach((s) => {
+        const sel = el("select", {}, ...opts.map(([v, txt]) => el("option", { value: v, text: txt })));
+        sel.value = String(s.target);
+        sel.addEventListener("change", () => { s.target = +sel.value; });
+        tbl.append(el("tr", {},
+          el("td", { text: s.label }),
+          el("td", { text: `${s.notes.length} notes (${noteName(s.lo)}–${noteName(s.hi)})` }),
+          el("td", {}, sel)));
+      });
+      const applyBtn = el("button", { type: "button", ic: "symbol_upload", onclick: async () => {
+        const startBar = Math.max(1, +barSel.value || 1);
+        const stepCount = Math.max(1, Math.min(64, +lenSel.value || 64));
+        const tracks = quantizeMidiStreams(midi, startBar, stepCount);
+        if (!tracks.length) return;
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: "loom-emu-midi-seq", bpm: bpmChk.checked ? midi.bpm : 0, tracks }, "*");
+          }
+          if (dev) {
+            const releaseBusy = beginBusy();
+            const origSel = dev.sel || 0;
+            try {
+              if (bpmChk.checked) await rq(req.set(1, 0, midi.bpm));
+              for (const tr of tracks) {
+                if (hasTracks()) await rq(req.track(tr.track));
+                await rq(req.set(0, pSlen(), tr.len));
+                for (let i = 0; i < tr.len; i++) {
+                  if (i % 16 === 0) sayK("applying", `T${tr.track + 1} ${i}/${tr.len}`);
+                  const s = tr.steps[i];
+                  await rq(req.stepSet(i, { n: s.n, notes: s.notes, time: s.time, flags: s.flags, vel: s.vel, hit: s.hit, acc: s.acc, ...(dev.info.chance ? {chance:100} : {}), ...(dev.info.ratchet ? {ratchet:1} : {}) }));
+                }
+              }
+              if (hasTracks()) {
+                dev.sel = parse[CMD.TRACK](await rq(req.track(origSel))).sel;
+                await afterSoundChange();
+              } else {
+                await loadSteps();
+              }
+              sayK("ready");
+            } finally { releaseBusy(); }
+          }
+          box.hidden = true;
+        } catch (err) { report(err); }
+      } }, "Import Assigned Tracks to Sequencer");
+      const cancelBtn = el("button", { type: "button", onclick: () => { box.hidden = true; } }, "Cancel");
+      box.replaceChildren(
+        el("p", { class: "bar" }, el("b", { text: `MIDI File: ${f.name} (${midi.bpm} BPM)` }),
+          el("label", {}, "Start Bar: ", barSel),
+          el("label", {}, "Length: ", lenSel),
+          el("label", {}, bpmChk, ` Sync Tempo (${midi.bpm} BPM)`)),
+        tbl,
+        el("p", { class: "bar", style: "margin-top:8px" }, applyBtn, cancelBtn)
+      );
+      box.hidden = false;
+    } catch (err) { alert("MIDI import error: " + (err.message || err)); }
+  });
+}
+
 /* ---------------------------------------------------------- samples --- */
 const smpDraft = [0, 1, 2].map(() => ({ name: "", files: [] }));
 let smpBusy = false;
@@ -3601,11 +3855,12 @@ async function decodeFile(f) {
   try {
     const w = parseWav(buf);
     x = resample(w.x, w.sr, SMP.RATE);
-  } catch (e) {                                     /* not a plain WAV: let the browser decode it */
+  } catch (e) {                                     /* MP3 / FLAC / OGG / M4A / non-PCM WAV: decode via Web Audio & resample to 22050 Hz */
     const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    const ab = await new Ctx(1, 1, SMP.RATE).decodeAudioData(buf.slice(0));
-    x = new Float64Array(ab.length);
-    for (let c = 0; c < ab.numberOfChannels; c++) { const d = ab.getChannelData(c); for (let i = 0; i < d.length; i++) x[i] += d[i] / ab.numberOfChannels; }
+    const ab = await new Ctx(1, 1, 44100).decodeAudioData(buf.slice(0));
+    const mono = new Float64Array(ab.length);
+    for (let c = 0; c < ab.numberOfChannels; c++) { const d = ab.getChannelData(c); for (let i = 0; i < d.length; i++) mono[i] += d[i] / ab.numberOfChannels; }
+    x = ab.sampleRate === SMP.RATE ? mono : resample(mono, ab.sampleRate, SMP.RATE);
   }
   if (!x.length) throw new Error("no audio");
   const raw = Float64Array.from(x);                 /* kept for trimming: s is raw[a, b) (takeSample) */
@@ -3868,15 +4123,27 @@ function preview(f) {
 
 async function addFiles(k, list) {
   const d = smpDraft[k];
+  let trimmedMsg = "";
   for (const f of list) {
     try {
       const z = await decodeFile(f);
       if (d.files.length >= SMP.MAX_ZONES) break;
+      const [ta, tb] = autoTrim(z.raw);
+      z.a = ta;
+      z.b = tb;
+      const remBytes = Math.max(128, SMP.MAX_DATA - draftBytes(d));
+      const maxSamples = remBytes * 2;
+      if (z.b - z.a > maxSamples) {
+        z.b = z.a + maxSamples;
+        trimmedMsg = `${f.name}: auto-trimmed to ${(maxSamples / SMP.RATE).toFixed(2)}s to fit USR${k + 1} (drag waveform handles to select section)`;
+      }
+      z.s = takeSample(z.raw, z.a, z.b);
       d.files.push(z);
       if (!d.name) d.name = f.name.replace(/\.[^.]*$/, "").toUpperCase().replace(/[^\x20-\x7E]/g, "").slice(0, 8);
     } catch (e) { sayK("smpDecodeFail", `${f.name} (${e.message})`); }
   }
   renderSamples();
+  if (trimmedMsg) say("ready", trimmedMsg);
 }
 
 /* a slot's recording row: Record / Stop, the input, the time and the level */
@@ -3903,7 +4170,7 @@ function renderSamples() {
     const d = smpDraft[k];
     const status = u.zones ? `${u.name || "—"}, ${u.zones} ${t("zones")}, ${u.kib} KiB` : t("empty");
     const bar = el("progress", { max: dev.smp.slotKiB, value: u.kib, title: `${u.kib} / ${dev.smp.slotKiB} KiB` });
-    const file = el("input", { type: "file", accept: ".wav,audio/wav,audio/x-wav,audio/*", multiple: true, hidden: true });
+    const file = el("input", { type: "file", accept: ".wav,.mp3,.flac,.ogg,.m4a,.aac,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/*", multiple: true, hidden: true });
     file.addEventListener("change", () => { addFiles(k, [...file.files]); file.value = ""; });
     const name = el("input", { type: "text", class: "name", maxlength: 8, value: d.name, spellcheck: "false", placeholder: "NAME" });
     name.addEventListener("input", () => {
@@ -3919,7 +4186,7 @@ function renderSamples() {
       el("div", { class: "head" }, el("b", { text: `USR${k + 1}` }), el("span", { text: status }), bar,
         el("button", { ic: "symbol_trash", disabled: smpBusy || !u.zones, onclick: () => smpErase(k) }, t("erase"))),
       el("div", { class: "head" }, el("span", { text: t("smpName") }), name,
-        el("button", { ic: "symbol_folder_open", disabled: smpBusy || recActive(), onclick: () => file.click() }, t("chooseFiles")), file,
+        el("button", { ic: "symbol_folder_open", disabled: smpBusy || recActive(), onclick: () => file.click() }, t("chooseFiles") + " (.WAV / .MP3)"), file,
         el("button", { ic: "symbol_upload", disabled: smpBusy || recActive() || !d.files.length || tooBig || !d.name, onclick: () => smpUpload(k, prog) }, t("upload")),
         d.files.length ? el("button", { text: t("clearList"), disabled: smpBusy || recActive(), onclick: () => { d.files = []; renderSamples(); } }) : "",
         size, prog),
@@ -3946,6 +4213,8 @@ function renderSamples() {
               el("button", { text: t("preview"), onclick: () => preview(f) }),
               el("button", { text: t("autoTrim"), disabled: smpBusy || recActive(), onclick: () => {
                 [f.a, f.b] = autoTrim(f.raw);
+                const maxSmp = Math.max(256, SMP.MAX_DATA * 2);
+                if (f.b - f.a > maxSmp) f.b = f.a + maxSmp;
                 f.s = takeSample(f.raw, f.a, f.b);
                 renderSamples();
               } }))));
@@ -3970,7 +4239,7 @@ async function smpUpload(k, prog) {
   let built;
   try { built = buildSlot(d.name, d.files.map((f) => ({ s: f.s, root: f.root }))); }
   catch (e) { sayK("smpFail", e.message); return; }
-  if (!confirm(t("confirmUpload").replace("{n}", k + 1))) return;
+  if (!dev?.emuBridge && !confirm(t("confirmUpload").replace("{n}", k + 1))) return;
   const { hdr, data } = built;
   const session = dev;
   const releaseBusy = beginBusy();
@@ -3991,7 +4260,17 @@ async function smpUpload(k, prog) {
     }
     r = parse[CMD.SMP_END](await rq(req.smpEnd(k, hdr), { timeout: 2000, retries: 0 }));
     if (r.rc) throw new Error(`end rc ${r.rc} (${SMP_RC[r.rc] || "?"})`);
-    sayK("smpDone", `${k + 1}  ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: "loom-emu-sample",
+        slot: k,
+        name: d.name,
+        hdr: Array.from(hdr),
+        data: Array.from(data),
+        select: true
+      }, "*");
+    }
+    say("ready", `USR${k + 1} (${d.name}) uploaded (${((performance.now() - t0) / 1000).toFixed(1)} s) & loaded into Emulator`);
   } catch (e) {
     if (e.message !== "closed") sayK("smpFail", e.message);
   } finally {
@@ -4003,7 +4282,7 @@ async function smpUpload(k, prog) {
 }
 
 async function smpErase(k) {
-  if (!dev || !confirm(t("confirmErase").replace("{n}", k + 1))) return;
+  if (!dev || (!dev.emuBridge && !confirm(t("confirmErase").replace("{n}", k + 1)))) return;
   const session = dev;
   const releaseBusy = beginBusy();
   smpBusy = true;
@@ -4011,6 +4290,9 @@ async function smpErase(k) {
   try {
     const r = parse[CMD.SMP_ERASE](await rq(req.smpErase(k), { timeout: 2500, retries: 0 }));
     if (r.rc) throw new Error("erase rc " + r.rc);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "loom-emu-sample-erase", slot: k }, "*");
+    }
     sayK("smpErased", String(k + 1));
   } catch (e) {
     if (e.message !== "closed") sayK("smpFail", e.message);
@@ -4102,7 +4384,7 @@ function buildStrip(i) {
   pan.addEventListener("dblclick", () => setPan(i, pDesc.def, true));
   const c = {
     lvDesc, pDesc, fader, pan,
-    num: el("button", { type: "button", class: "tog num", title: t("selectTrack"), onclick: () => selectTrack(i) }, String(i + 1)),
+    num: el("button", { type: "button", class: "tog num", title: t("selectTrack"), onclick: () => selectTrack(i) }, i === 4 ? "D" : String(i + 1)),
     snd: el("div", { class: "snd" }),
     rec: el("span", { class: "rec", ic: "control_rec_f", title: t("rec") }, t("rec")),
     lvOut: el("span", { class: "v lv" }),
@@ -4110,7 +4392,7 @@ function buildStrip(i) {
     panOut: el("span", { class: "v" }),
     selb: el("button", { type: "button", class: "selb", onclick: () => selectTrack(i) }),
   };
-  c.strip = el("div", { class: "strip", role: "group", "aria-label": `${t("track")} ${i + 1}` },
+  c.strip = el("div", { class: "strip", role: "group", "aria-label": i === 4 ? "Drum Track" : `${t("track")} ${i + 1}` },
     c.num, c.snd, c.rec, fader, c.lvOut, c.mute, el("span", { class: "v dim", ic: "symbol_pan" }, t("pan")), pan, c.panOut, c.selb);
   mixCtl[i] = c;
   return c.strip;
@@ -5049,10 +5331,25 @@ $("fm6export").addEventListener("click", () => downloadBytes(`${fileSlug(FM6.nam
 $("connect").addEventListener("click", () => {
   if (dev) { wantConnected = false; disconnect(); } else connect();
 });
+window.addEventListener("message", async (e) => {
+  const m = e.data;
+  if (!m || m.type !== "loom-editor-action") return;
+  if (!dev) { try { await connect(); } catch (_) {} }
+  if (m.action === "open-samples") {
+    showTab("samples");
+  } else if (m.action === "open-midi") {
+    showTab("pattern");
+    setTimeout(() => $("importmidibtn")?.click(), 60);
+  }
+});
 applyLang();
 showTab(tab);
 libInit();
-if (!MOCK && !navigator.requestMIDIAccess) sayK("nomidi");
+if (window.parent && window.parent !== window) {
+  setTimeout(() => { if (!dev) connect(); }, 150);
+} else if (!MOCK && !navigator.requestMIDIAccess) {
+  sayK("nomidi");
+}
 })();
 </script>
 </body>

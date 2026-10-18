@@ -35,11 +35,10 @@
  * State: 8 lanes per part in the part's engine memory (engines.c eng_mem; drum_kit_of: the parameters, coefficients, voice and metal
  * source of each lane). */
 #include "drum_voice.c"
+#include "loom_drum.c"
 
-enum { DK_STD, DK_HAND, DK_CYM, DK_HCYM, DK_80, DK_10, DK_66, DK_55, DK_77, DK_COUNT };   /* (stored values) */
-/* the kit a stored KIT value plays: HAND CYM H+CYM (retired after 1.0.4) -> 66 (a conga on TOM), 10 (a cymbal on
- * BELL), 77 (claves on RIM, a cymbal on BELL) */
-static const uint8_t DK_PLAYS[DK_COUNT] = {DK_STD, DK_66, DK_10, DK_77, DK_80, DK_10, DK_66, DK_55, DK_77};
+enum { DK_ANALOG, DK_FM, DK_80, DK_90, DK_66, DK_55, DK_77, DK_COUNT };   /* Kits: Loom Analog, Loom FM, + TR models */
+static const uint8_t DK_PLAYS[DK_COUNT] = {DK_ANALOG, DK_FM, DK_80, DK_90, DK_66, DK_55, DK_77};
 static uint32_t drum_kit_plays(int32_t v) { return DK_PLAYS[clamp(v, 0, DK_COUNT - 1)]; }
 /* the model kits' pieces where a lane plays another than its own (the lane's name): 1 TOM -> CONGA, 2 RIM -> CLAVE,
  * 4 BELL -> CYM */
@@ -60,14 +59,10 @@ typedef struct {
 } drum_lane_t;
 
 ENG_MEM_FITS("DRUM", sizeof(drum_lane_t) * DV_NLANE);
-/* 1.4.1: each part's lanes muted (bit l: lane l), the EDIT layer's black keys 1..8 (ui_layer.c EQA_DRUM): a channel
- * mute. The lane plays on as always (hits, keys, MIDI: its voice, the CPU, the choke) and drum_render drops its output,
- * so unmuted it sounds as if it never was. Performance state: not saved, not recorded, no undo; a sound load into the
- * track (ui.c load_begin) and a project load (project_restore_runtime) clear it, power-off too */
-static uint8_t drum_mute[NPART];
+static drum_lane_t drum_track_lanes[DV_NLANE];
+static uint8_t drum_mute[NTRK];
 
-/* 1..3 named as the kit they play: aliases, never shown or offered (EDITOR_PROTOCOL.md: retired values) */
-static const char *const N_DRUM_KIT[] = {"STD", "66", "10", "77", "80", "10", "66", "55", "77"};
+static const char *const N_DRUM_KIT[] = {"ANALOG", "FM", "808", "909", "606", "505", "707"};
 static const char *const N_DRUM_KICK[] = {"PUNCH", "ROUND"};
 
 /* General MIDI notes 35..81 -> the drum (DVT_*; DVT_PUNCH: the kick KICK picks) and semitones from its
@@ -180,7 +175,11 @@ static void step_to_grid(step_t *s)
 
 static drum_lane_t *drum_kit_of(const track_t *t)
 {
-    return t >= &trk[0] && t < &trk[NPART] ? (drum_lane_t *)ENG_MEM(t - trk) : 0;
+    if (t >= &trk[0] && t < &trk[NPART])
+        return (drum_lane_t *)ENG_MEM(t - trk);
+    if (t >= &trk[0] && t < &trk[NTRK])
+        return drum_track_lanes;
+    return 0;
 }
 
 /* the lane voice v plays, 0 when it plays none (any more) */
@@ -215,6 +214,14 @@ static void drum_note_on(track_t *t, voice_t *v)
         return;
     role = drum_gm(t->p, v->note, &st);
     lane = drum_lane(v->note);
+    fx_sidechain_trigger(lane, v->vel);
+    if (t->p[P_E0] < 2) {
+        loom_drum_trigger(lane, v->vel, t->p);
+        v->s[0] = (int32_t)lane;
+        v->env_out = v->vel * 258;
+        v->env = 1 << 24;
+        return;
+    }
     L = &K[(uint32_t)v->s[0] & (DV_NLANE - 1u)];
     if (L->owner == i + 1u)                              /* this voice played another lane: it stops there */
         L->owner = 0;
@@ -228,9 +235,7 @@ static void drum_note_on(track_t *t, voice_t *v)
     L->owner = (uint8_t)(i + 1u);                        /* (its last voice, if another, ends: drum_amp) */
     v->s[0] = (int32_t)lane;
     v->env_out = v->vel * 258;                           /* the hit starts at its level (no ramp from 0) */
-    v->env = 1 << 24;                                    /* the ADSR held at full from here, not from drum_amp:
-                                                          * a key-off before the first block (zero-length MIDI
-                                                          * notes) would end a fresh voice at env 0 in env_tick */
+    v->env = 1 << 24;
     dv_trigger(&L->v);
     if (lane == DV_HATC && K[DV_HATO].v.live)            /* a closed hat chokes the open one */
         dv_choke(&K[DV_HATO].v);
@@ -240,10 +245,20 @@ static void drum_note_on(track_t *t, voice_t *v)
  * it). A voice that plays no lane any more, or whose drum has rung out, ends here */
 static int32_t drum_amp(track_t *t, voice_t *v, int32_t adsr)
 {
-    const drum_lane_t *L = drum_lane_of(t, v);
     (void)adsr;
     if (!v->active)                                      /* (taken for another part: env_tick ended it) */
         return 0;
+    if (t->p[P_E0] < 2) {
+        if (!loom_drum_active()) {
+            v->active = v->gate = 0;
+            v->stage = 0;
+            v->env = 0;
+            return 0;
+        }
+        v->env = 1 << 24;
+        return 32767;
+    }
+    const drum_lane_t *L = drum_lane_of(t, v);
     if (!L || (!L->v.live && !L->v.trig)) {
         v->active = v->gate = 0;
         v->stage = 0;
@@ -257,11 +272,23 @@ static int32_t drum_amp(track_t *t, voice_t *v, int32_t adsr)
 static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
+    uint32_t i;
+    if (t->p[P_E0] < 2) {
+        if ((drum_mute[(uint32_t)(t - trk) % NTRK] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u)
+            return;
+        int32_t y[CTL];
+        for (i = 0; i < n; i++) y[i] = 0;
+        loom_drum_render(y, n, (uint32_t)t->p[P_E0], t->p);
+        for (i = 0; i < n; i++) {
+            out[i] += voice_amp(y[i], m, i);
+        }
+        return;
+    }
     drum_lane_t *L = drum_lane_of(t, v);
     dv_param_t k;
     int32_t y[CTL], mb[CTL], acc = clamp(p[P_E5] * v->vel * 4, 0, 65536), drv = p[P_E7], g = 0, mk = 0;   /* acc Q16 */
     int32_t lv = clamp(p[P_LN0 + ((uint32_t)v->s[0] & (DV_NLANE - 1u))], 0, 127);
-    uint32_t i, r;
+    uint32_t r;
     vmod_t ml;                                           /* (only its amplitude ramp is read: voice_amp) */
     if (!L)
         return;
@@ -291,7 +318,7 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (dv_uses_metal(L->c.type) && (L->v.live || L->v.trig))
         dv_metal_run(&L->mb, mb, n);
     dv_run(&L->c, &L->v, mb, y, n);
-    if ((drum_mute[(uint32_t)(t - trk) % NPART] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u)
+    if ((drum_mute[(uint32_t)(t - trk) % NTRK] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u)
         return;                                          /* (a muted lane rings on unheard) */
     if (drv > 0) {                                       /* DRV: x1..x4 into the soft clip, the level kept (Q12) */
         g = 4096 + drv * 3 * 4096 / 127;
@@ -308,20 +335,27 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 /* the GM drum map, the first C (key 7) is the kick (C2, 36) */
 static int32_t drum_keys(const track_t *t, uint32_t k)
 {
-    (void)t;
+    /* On track 5 (dedicated drum track), the 8 keyboard pads map directly to drum sounds */
+    if ((uint32_t)(t - trk) >= 4u && k < 8u) {
+        static const uint8_t DRUM_PAD_NOTES[8] = {36, 38, 39, 42, 46, 49, 45, 37};
+        return DRUM_PAD_NOTES[k];
+    }
     return clamp(29 + 12 * song.octave + (int32_t)k, 0, 127);
 }
 
 /* {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK, DRV}; every kit suggests the BEAT pattern (GM notes) */
 static const preset_t DRUM_PRESETS[] = {
-    {"DRUM KIT", DRUM_KIT_E, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},   /* (core.h: SAMPLE PERC's too) */
+    {"ANALOG",  {0, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
+    {"FM DRUM", {1, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
+    {"808 KIT", {2, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
+    {"909 KIT", {3, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
 };
 
 static const engine_t ENG_DRUM = {
     .name = "DRUM",
     .page_title = {"KIT", "HIT"},
     .edit = {
-        {"KIT", F_ENUM, 0, DK_COUNT - 1, DK_STD, N_DRUM_KIT, 0},
+        {"KIT", F_ENUM, 0, DK_COUNT - 1, 0, N_DRUM_KIT, 0},
         {"TUNE", F_PCT, 0, 127, 64, 0, 0},
         {"TONE", F_PCT, 0, 127, 64, 0, 0},
         {"DECY", F_PCT, 0, 127, 64, 0, 0},

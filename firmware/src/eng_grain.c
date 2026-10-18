@@ -39,14 +39,14 @@
  * over notes and engine switches); per voice s[0] the zone, s[1] the countdown to the next grain,
  * s[2] the low-pass, voice_t's phases are unused. */
 #define GR_POLY 3                /* voices per part */
-#define GR_NG 12                 /* grains per part */
+#define GR_NG 24                 /* grains per part (dense Loom cloud) */
 #define GR_SEG_LOG2 8
 #define GR_SEG (1u << GR_SEG_LOG2)   /* seek index interval, source samples */
-#define GR_NIDX 1024             /* seek index entries per part (sized for the retired PERC: 1001; it keeps user slots room) */
-#define GR_MAXZ 32               /* zones per set (a user slot <= 16; the retired PERC had 24) */
-#define GR_RB 128                /* reverse window, source samples */
+#define GR_NIDX 1024             /* seek index entries per part (sized for user slots room) */
+#define GR_MAXZ 32               /* zones per set (a user slot <= 16) */
+#define GR_RB 64                 /* reverse window, source samples */
 #define GR_STEP_MAX (2u << 16)   /* grain rate cap: 2 source samples per output sample */
-#define GR_LOAD_MAX (8u << 16)   /* decodes per output sample of all a part's grains (a reverse grain counts twice) */
+#define GR_LOAD_MAX (16u << 16)  /* decodes per output sample cap */
 
 /* sin^2(pi i / 256), Q15: the grain window */
 static const int16_t GR_HANN[257] = {
@@ -69,8 +69,11 @@ static const int16_t GR_HANN[257] = {
     0,
 };
 /* grain level by overlap (grains sounding at once on average): 1 / sqrt(n), Q15 */
-static const int16_t GR_NORM[GR_NG + 1] = {32767, 32767, 23170, 18918, 16384, 14654, 13377,
-                                           12385, 11585, 10922, 10362, 9880, 9459};
+static const int16_t GR_NORM[GR_NG + 1] = {
+    32767, 32767, 23170, 18918, 16384, 14654, 13377, 12385, 11585, 10922,
+    10362, 9880, 9459, 9088, 8757, 8460, 8192, 7947, 7723, 7517,
+    7327, 7150, 6986, 6832, 6689
+};
 
 typedef struct {
     const smp_zone_t *z;
@@ -236,12 +239,13 @@ static void gr_spawn(gr_part_t *P, const track_t *t, uint32_t vi, uint32_t zl, u
         return;
     /* length: 441 * 2^(SIZE / 24) output samples (10 ms .. 390 ms) */
     len = (441u * pow2_q16(p[P_E2] * 8)) >> 16;
-    /* rate: the note against the zone's root, PITCH, the random detune (RAND^2, up to +-1 oct) */
-    amt = p[P_E6] * p[P_E6] * 192 / (127 * 127);
+    /* rate: the note against the zone's root, PITCH, subtle detune from SPRY */
+    amt = p[P_E5] * p[P_E5] * 128 / (127 * 127);
     d16 = m->pitch16 - z->root16 + p[P_E4] * 16 + (((int32_t)(r1 & 0xFFFFu) - 32768) * amt >> 15);
     step = (pow2_q16(clamp(d16, -1536, 576)) >> 8) * (z->rate >> 8);
     step = step > GR_STEP_MAX ? GR_STEP_MAX : step < 256u ? 256u : step;
-    rev = ((r1 >> 16) & 255u) < (uint32_t)p[P_E6];  /* RAND 127: half of them */
+    /* REV (P_E6): 0..127 sets probability of reverse grains (0% .. 100%) */
+    rev = ((r1 >> 16) * 128u >> 16) < (uint32_t)p[P_E6];
     span = (len * step) >> 16;                      /* source samples the grain reads */
     if (span + 3u > n) {                            /* a short zone: shorter grain */
         span = n - 3u;
@@ -433,24 +437,24 @@ static void grain_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 }
 
 static const preset_t GRAIN_PRESETS[] = {
-    /* name, {SRC, POS, SIZE, DENS, PTCH, SPRD, RAND, TONE}, {A D S R}, fenv, mono */
+    /* name, {SRC, POS, SIZE, DENS, PTCH, SPRY, REV, TONE}, {A D S R}, fenv, mono */
     {"CLOUD PAD", {2, 50, 92, 88, 0, 40, 14, 100}, {70, 90, 120, 90}, 0, 0, FX(0, 40, 25, 85), PAT(5)},
     {"GLITCH", {3, 64, 24, 112, 0, 100, 90, 127}, {0, 70, 100, 30}, 0, 0, FX(10, 0, 50, 25), PAT(4)},
-    {"FROZEN", {0, 40, 108, 72, 0, 0, 10, 92}, {50, 100, 127, 100}, 0, 0, FX(0, 30, 20, 95), PAT(5)},
+    {"FROZEN", {0, 40, 108, 72, 0, 0, 0, 92}, {50, 100, 127, 100}, 0, 0, FX(0, 30, 20, 95), PAT(5)},
     {"SHIMMER", {0, 30, 70, 100, 12, 30, 24, 110}, {30, 90, 110, 90}, 0, 0, FX(0, 50, 40, 90), PAT(7)},
 };
 
 static const engine_t ENG_GRAIN = {
     .name = "GRAIN",
-    .page_title = {"GRAN", "SPRY"},
+    .page_title = {"CLOUD", "MOTION"},
     .edit = {
         {"SRC", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES, 0},
         {"POS", F_PCT, 0, 127, 32, 0, 0},
         {"SIZE", F_PCT, 0, 127, 80, 0, 0},
         {"DENS", F_PCT, 0, 127, 80, 0, 0},
         {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
-        {"SPRD", F_PCT, 0, 127, 30, 0, 0},
-        {"RAND", F_PCT, 0, 127, 10, 0, 0},
+        {"SPRY", F_PCT, 0, 127, 30, 0, 0},
+        {"REV", F_PCT, 0, 127, 0, 0, 0},
         {"TONE", F_PCT, 0, 127, 127, 0, 0},
     },
     .presets = GRAIN_PRESETS,

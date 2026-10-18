@@ -136,7 +136,7 @@ static void palette_set(uint32_t i)
 {
     const ui_pal_t *p = &UI_PALETTES[i % NPALETTES];
     i %= NPALETTES;
-    ux.mono = i == UI_GREY_INDEX;
+    ux.mono = i == UI_BW_INDEX;
     ux.bg = p->bg; ux.surf = ux.style ? p->bg : p->surf; ux.text = p->text; ux.theme = p->theme; ux.accent = p->accent;
     ux.mid = ux_mix(p->bg, p->text, UI_MID_PCT);
     ux.dim = ux_mix(p->bg, p->text, UI_DIM_PCT);
@@ -156,6 +156,21 @@ static void palette_set(uint32_t i)
         ux.tint = ux.grid = p->bg;
     }
     ux.gen++;                                    /* the text ramps change with the coverage curve */
+}
+
+/* Update UX theme & accent colors for the active engine (Loom dynamic theming) */
+static void ux_theme_engine(uint16_t theme, uint16_t accent)
+{
+    if (ux.mono || ux.light)
+        return;
+    if (ux.theme == theme && ux.accent == accent)
+        return;
+    ux.theme = theme;
+    ux.accent = accent;
+    ux.sel = ux_mix(ux.bg, theme, UI_SEL_PCT);
+    ux.tint = ux_mix(ux.bg, theme, UI_TINT_PCT);
+    ux.lane = ux_mix(ux.surf, theme, 10);
+    ux.gen++;
 }
 
 /* settings store a tagged id; ids below 20 are the palettes of earlier firmware */

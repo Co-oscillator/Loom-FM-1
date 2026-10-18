@@ -10,7 +10,8 @@
 /* ------------------------------------------------------------ sizes --- */
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
 #define NPART 4                  /* synth parts: tracks 1..4 */
-#define NTRK NPART               /* tracks (the formats and the protocol count these): every track is a part */
+#define NDRUM_TRK 1              /* dedicated drum track: track 5 */
+#define NTRK (NPART + NDRUM_TRK) /* tracks: 5 tracks total (4 melodic + 1 drum) */
 #define NSTEP 64
 #define HALF_FRAMES 128          /* I2S half buffer: 2.9 ms at 44.1 kHz (a key waits 0..1 half, then plays 1 half later) */
 #ifndef FELUCCA_SLICE
@@ -20,17 +21,21 @@
 #define FELUCCA_FM4 0            /* the DIGITAL engine (eng_digital.c, four-operator FM): kept in the tree, not built
                                   * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
 #endif
-#define NENGINES (13 + FELUCCA_SLICE)   /* SLICE (13) comes last: the other engines keep their numbers */
+#define ENGI_ANALOG 0u           /* SUBTRACT: 4-oscillator subtractive analog engine */
+#define ENGI_WAVETABLE (13u + FELUCCA_SLICE) /* WAVETABLE: Loom Multi-Frame Wavetable engine */
+#define NENGINES (ENGI_WAVETABLE + 1u)
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
-#define NENG_SHOWN (NENGINES - !FELUCCA_FM4)   /* the engines one can pick: PRESETS, the EDIT layer, the editor,
-                                                * in the display order of engines.c ENGINE_ORDER */
+#define ENGI_SCRUB 6u            /* SCRUB: Tape & Turntable Platter Scrubbing engine */
+#define ENGI_TRIO 6u             /* legacy alias */
+#define KB_SILENT 255u           /* a silent/unmapped key note value */
+#define NENG_SHOWN (NENGINES - !FELUCCA_FM4)   /* the engines one can pick (excluding DIGITAL only) */
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
 /* ------------------------------------------------------- parameters --- */
 enum {
     F_INT, F_PCT, F_BIPCT, F_TIME, F_LFOHZ, F_CUTOFF, F_DB, F_SEMI, F_ENUM, F_BPM, F_NOTE,
-    F_ONOFF, F_OCT, F_STEPS
+    F_ONOFF, F_OCT, F_STEPS, F_XSPD
 };
 
 typedef struct {
@@ -52,6 +57,7 @@ enum {                          /* per-track parameters */
     P_ROOT, P_SCALE, P_QUANT, P_TRANS,
     P_SLEN, P_SDIV, P_SSWING, P_SGATE,
     P_DIST, P_CHOR, P_DLY, P_REV,
+#define P_DUCK P_DIST                   /* Loom: Per-track Sidechain Ducking Depth (0..100%) */
     P_VOICE, P_GLIDE, P_PAN, P_MUTE,
     P_GLMODE, P_PRIO, P_ALLOC, P_DETUNE,
     P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH,      /* SLICER insert (slicer.c) */
@@ -71,9 +77,19 @@ enum {                          /* per-track parameters */
     P_ITYPE, P_IA, P_IB, P_IC, P_IMIX,         /* 1.5 (#78, #177): the INSERT, its TYPE, three values and MIX (fx.c) */
     P_FTYPE,                                   /* 1.5 (#104): ANALOG's filter TYPE, LP (as before) / BP / HP (eng_analog.c) */
     P_ESYNC,                                   /* 1.5 (#175): ENV SYNC: ATK DEC REL as note values of the tempo (voice.c) */
+    P_CMOOD,                                   /* Loom Chord Mood (0..7) */
+    P_CCMPX,                                   /* Loom Chord Complexity (0..2) */
+    P_AWEIRD,                                  /* Loom Arp Weirdness (0..127) */
     P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
     P_COUNT
 };
+
+/* Aliases for Loom Progression parameters to preserve flash sector packing limit (P_COUNT <= 114) */
+#define P_PRATE P_ED_FX
+#define P_PINV  P_FM4_ATK
+#define P_POCT  P_FM4_DEC
+#define P_PHOLD P_FM4_SUS
+#define P_SHUMAN P_FM4_REL
 
 enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
@@ -93,6 +109,12 @@ enum {                          /* global parameters */
                                  * the import of an old project reads them: proj_drums_to_part) */
     G_COUNT
 };
+#define G_SAVEINIT G_DRLVL      /* Loom: Save current project as default boot Init snapshot */
+#define G_RESETINIT G_DRREV     /* Loom: Reset boot Init snapshot back to factory defaults */
+#define G_RTONE G_ENGGO         /* Loom: Reverb Tone: Warmer (-64) to Harder (+63) */
+#define G_CTONE G_SYNC          /* Loom: Chorus Tone: BBD Warm (-64) to Shimmer (+63) */
+#define G_CVOICE G_INFO         /* Loom: Chorus Voices: 1..4 voices (0..3) */
+
 
 /* stored parameters of an older layout -> today's P_* order. A store keeps np = the P_COUNT it was
  * written with; common parameters are only ever added just before P_E0, so the first np - 8 are
@@ -287,7 +309,7 @@ _Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
  * nothing there) and its repeats (1..16). Up to 1.1 a row was {slot, repeat}, all four tracks on that slot
  * (chain_v9_t, FUN6..FUN9): it loads as a section with the four on it (song_chain.c chain_from_v9) */
 #define CHAIN_SILENT 4u
-typedef struct { uint8_t slot[NTRK], repeat; } chain_row_t;
+typedef struct { uint8_t slot[4], repeat; } chain_row_t;
 typedef struct {
     uint8_t count, rsv[3];
     chain_row_t row[CHAIN_ROWS];
@@ -356,7 +378,7 @@ typedef struct track {
     int32_t dist_hp, dist_lp1, dist_lp2;   /* DIST insert state (fx.c) */
     uint8_t tail;                /* blocks to mix after the last voice (the DIST / INSERT tail) */
     uint8_t ins_run;             /* the INSERT still sounds (fx.c track_insert: its wet share above 0) */
-    uint8_t rsv_sz[15];          /* (sizeof(track_t) a multiple of 16: below) */
+    uint8_t rsv_sz[13];          /* (sizeof(track_t) a multiple of 16: below) */
     int16_t armp, aholdp;        /* P_AMODE / P_AHOLD as last seen by the ISR */
     /* engine switch (voice.c engine_block): the old engine's voices fade out, then it switches */
     uint8_t xf_on, xf;           /* fading; blocks of the fade still to render */
@@ -375,8 +397,19 @@ typedef struct track {
  * loaded first: +3 % on the ISR's static cost, target_budget.py): one pad, rsv_sz, keeps it */
 _Static_assert(sizeof(track_t) % 16u == 0, "track_t: a multiple of 16 bytes (a cheap trk[] index on the target)");
 
+/* the 27 physical keys: black or white, and place among keys of same colour (white 0..15, black 0..10) */
+static inline int key_black(uint32_t k) { return (int)((0x54Au >> ((k + 5u) % 12u)) & 1u); }
+static inline uint32_t key_place(uint32_t k)
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < k; i++)
+        n += (uint32_t)(key_black(i) == key_black(k));
+    return n;
+}
+
 typedef struct {
     int16_t g[G_COUNT];
+    int16_t sc[4];               /* Loom: Sidechain [0]REL, [1]ATK, [2]FX, [3]SRC */
     uint8_t playing, seq_mode;
     uint8_t grid;                /* 1: the keys are the DRUM grid (ui.c grid_on): only the lane keys play (seq.c);
                                   * 2: NAME (ui_name.c): no key plays; 3: SONG, A..D are its (seq.c song_key) */
@@ -388,6 +421,9 @@ typedef struct {
     uint32_t master_q12;
     int32_t batt_raw;            /* smoothed ADC ch3 (battery divider), 0 = not read yet */
 } song_t;
+
+void fx_sidechain_trigger(uint32_t lane, uint32_t vel);
+int32_t fx_sidechain_env(void);
 
 static track_t trk[NTRK];        /* the instrument: four parts */
 static song_t song;

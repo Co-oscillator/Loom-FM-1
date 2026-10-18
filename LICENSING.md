@@ -1,31 +1,30 @@
-# Felucca licensing
+# Loom FM-1 & Felucca Licensing
 
-Felucca is free software, licensed under the GNU General Public License, version 3 only
-(`GPL-3.0-only`, full text in `LICENSE`). That covers the code and its own assets. A few
-bundled or ported parts keep their own licences; they are listed below, and their licence
-texts are in `LICENSES/`.
+**Loom FM-1** (`loom-groovebox.fswc` / `loom-groovebox.fwsc`) and the underlying **Felucca** firmware platform on which it is built are free software, licensed under the **GNU General Public License, version 3 only** (`GPL-3.0-only`, full text in [`LICENSE`](LICENSE)). That covers the firmware source code, synthesis engines, UI, web workbench/installer, and build tools. A few bundled or ported components keep their own compatible open-source licences; they are listed below, and their full licence texts are in [`LICENSES/`](LICENSES/).
 
-Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+- **Loom FM-1 modifications, 5-track groovebox architecture, Loom synthesis engines (`SUB`, `FM`, `ADD`, `WAVETBL`, `KARPLUS`, `MODAL`, `BOWED`, `GRAIN`, `SCRUB`, `CHORD`, `WAVETRN`, `NOISE`, `SPEECH`, `ACID`), 64-step sequencer, and Web Workbench:** Copyright (C) 2026 Daniel Miller
+- **Felucca base firmware, FM-1 HAL, USB/MIDI stack, bootloader, and base engines:** Copyright (C) 2026 Leo Kuroshita (`@kurogedelic`), Hügelton Instruments
 
-## What is GPL-3.0-only
+## Why `GPL-3.0-only` is Required
 
-Every file in this tree that carries an `SPDX-License-Identifier: GPL-3.0-only` header:
+Because Loom FM-1 is a derivative work built upon **Felucca** (`SPDX-License-Identifier: GPL-3.0-only`) and includes code derived from **fm1-x0x** (`GPL-3.0`) as well as **Apache-2.0** components (`msfa` and JieLi AC79 SDK boot files, which are compatible with GPLv3), the combined firmware and repository **must be distributed under `GPL-3.0-only`**.
 
-- the firmware: `firmware/` (app, HAL, update loader)
+Every file in this tree that carries an `SPDX-License-Identifier: GPL-3.0-only` header is covered by the GNU GPL v3:
+
+- the firmware: `firmware/` (app, Loom engines, sequencer, HAL, update loader)
+- the prebuilt installer packages at the repository root: `loom-groovebox.fswc` and `loom-groovebox.fwsc`
 - the build script and tools: `build.sh`, `tools/`
-- the web pages (installer, editor, the browser emulator `web/emu/`) and their tests: `web/` (not the Fukiai and DotGothic16 fonts, below)
+- the web pages (installer, workbench editor, browser emulator `web/emu/`) and their tests: `web/` (excluding the Fukiai and DotGothic16 fonts, listed below)
 - the host tests: `tests/`
 
-Three source files are ports and keep the licence of their originals:
+Three source files are ports and keep the permissive licence of their originals:
 `firmware/src/phys_dsp.c` (DaisySP, MIT), `firmware/src/phys_symp.c` (Rings, MIT) and
-`firmware/src/fm6_core.c` (msfa, Apache-2.0). The firmware built with them is GPL-3.0-only as
+`firmware/src/fm6_core.c` (msfa, Apache-2.0). The firmware built with them is `GPL-3.0-only` as
 a whole.
 
-You may use, study, change and share Felucca under the GPL. If you distribute Felucca, or
-firmware derived from it, you must also give your recipients its complete corresponding
-source under the same licence. That includes devices that ship with modified Felucca inside.
+You may use, study, change and share Loom FM-1 and Felucca under the GPLv3. If you distribute Loom FM-1, Felucca, or firmware derived from them, you must also provide recipients with the complete corresponding source code under the same `GPL-3.0-only` licence.
 
-## Hügelton Instruments' own work
+## Upstream Felucca & Hügelton Instruments' work
 
 All by Hügelton Instruments (Leo Kuroshita), in this tree:
 
@@ -57,10 +56,11 @@ CREDITS, a short list of these authors, licences and source URLs.
 
 ## JieLi SDK files in the packages (Apache-2.0)
 
-A `.fwsc` package made by `tools/build.py` (with `tools/fm1pkg_make.py`; this is the package the
-web installer installs) holds three unmodified files from the JieLi AC79 SDK
-(<https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK>, `cpu/wl82/tools/`). They are read from your SDK
-checkout at build time (see BUILDING.md); no SDK files are in this tree.
+A `.fswc` / `.fwsc` package made by `tools/build.py` (with `tools/fm1pkg_make.py`; this is the package the
+web installer installs, provided at the repository root as `loom-groovebox.fswc` and `loom-groovebox.fwsc`)
+holds three unmodified files from the JieLi AC79 SDK
+(<https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK>, `cpu/wl82/tools/`), included in `tools/sdk_pack/`
+or read from `$AC79_SDK` at build time:
 
 | File in the package | What it is |
 | --- | --- |
@@ -70,7 +70,7 @@ checkout at build time (see BUILDING.md); no SDK files are in this tree.
 
 They are licensed under the Apache License, Version 2.0 (`LICENSES/Apache-2.0.txt`), not under
 the GPL, and their copyright stays with JieLi Technology. The SDK has no NOTICE file. Apache-2.0
-files may be distributed together with GPL-3.0 code; Felucca itself stays GPL-3.0-only.
+files may be distributed together with GPL-3.0 code; Loom FM-1 and Felucca themselves stay `GPL-3.0-only`.
 
 Every distribution of a package carries the licence texts with it: the release folder
 (`tools/build.py --release`) and the site (`web/make_site.py`, next to the package in

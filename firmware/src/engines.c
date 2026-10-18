@@ -40,6 +40,8 @@ static uint8_t eng_mem_owner[NPART];       /* engine index + 1 whose state is in
 #if FELUCCA_SLICE
 #include "eng_slice.c"
 #endif
+#include "eng_scrub.c"
+#include "eng_wavetable.c"
 
 /* the editor protocol, user presets and projects store these indices: append, never reorder */
 static const engine_t *const ENGINES[NENGINES] = {
@@ -53,7 +55,7 @@ static const engine_t *const ENGINES[NENGINES] = {
     &ENG_LOFI,                   /* 3 */
     &ENG_SAMPLE,                 /* 4 */
     &ENG_FORMANT,                /* 5 VOICE (eng_formant.c: "voice" is a sounding note in voice.c) */
-    &ENG_TRIO,                   /* 6 */
+    &ENG_SCRUB,                  /* 6 (ENGI_SCRUB: Tape & Platter Scrub) */
     &ENG_WHEEL,                  /* 7 */
     &ENG_GRAIN,                  /* 8 */
     &ENG_PHYS,                   /* 9 (ENGI_PHYS) */
@@ -63,10 +65,44 @@ static const engine_t *const ENGINES[NENGINES] = {
 #if FELUCCA_SLICE
     &ENG_SLICE,                  /* 13 (FELUCCA_SLICE=0 builds without it) */
 #endif
+    &ENG_WAVETABLE,              /* 14 (ENGI_WAVETABLE) */
 };
 
 /* a track's engine number as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
 static inline uint32_t eng_idx(uint32_t e) { return e < NENGINES ? e : 0u; }
+
+/* Loom Neon Engine Theme Colors (RGB565) */
+typedef struct {
+    uint16_t theme;   /* primary neon identity */
+    uint16_t accent;  /* hot knob / active cursor accent */
+} eng_neon_t;
+
+static const eng_neon_t ENG_NEON[NENGINES] = {
+    [0]  = { 0x3FE2, 0x07FF }, /* ANALOG:   Neon Lime (#39FF14), Accent Cyan (#00FFFF) */
+#if FELUCCA_FM4
+    [1]  = { 0x07FF, 0xF80F }, /* DIGITAL:  Neon Cyan (#00FFFF), Accent Magenta (#FF007F) */
+#else
+    [1]  = { 0x07FF, 0xF80F }, /* GONE:     Neon Cyan */
+#endif
+    [2]  = { 0x073F, 0x3FE2 }, /* PHASE:    Electric Aqua (#00E5FF), Accent Lime (#39FF14) */
+    [3]  = { 0xFCC0, 0x07FF }, /* LOFI:     Neon Amber (#FF9900), Accent Cyan (#00FFFF) */
+    [4]  = { 0xF80F, 0x07FF }, /* SAMPLE:   Neon Pink (#FF007F), Accent Cyan (#00FFFF) */
+    [5]  = { 0xF8B2, 0xFEE0 }, /* VOICE:    Neon Coral Pink (#FF1493), Accent Gold (#FFD700) */
+    [6]  = { 0xF80F, 0x07FF }, /* SCRUB:    Neon Hot Pink (#FF007F), Accent Cyan (#00FFFF) */
+    [7]  = { 0xFD40, 0x1C9F }, /* WHEEL:    Warm Amber (#FFAA00), Accent Blue (#1E90FF) */
+    [8]  = { 0xB81F, 0x07FF }, /* GRAIN:    Neon Purple (#BD00FF), Accent Cyan (#00FFFF) */
+    [9]  = { 0x1C9F, 0xFEE0 }, /* PHYS:     Electric Blue (#1E90FF), Accent Gold (#FFD700) */
+    [10] = { 0xFEE0, 0xFA20 }, /* DRUM:     Neon Gold (#FFD700), Accent Orange-Red (#FF4500) */
+    [11] = { 0x87FF, 0xF80F }, /* NOISE:    Ice Cyan (#80FFFF), Accent Hot Pink (#FF007F) */
+    [12] = { 0x07FF, 0xF80F }, /* FM6:      Neon Cyan (#00FFFF), Accent Magenta (#FF007F) */
+#if FELUCCA_SLICE
+    [13] = { 0xF80F, 0x3FE2 }, /* SLICE:    Neon Hot Pink (#FF007F), Accent Lime (#39FF14) */
+#endif
+    [14] = { 0x07FF, 0x3FE2 }, /* WAVETABLE: Electric Cyan (#00FFFF), Accent Lime (#39FF14) */
+};
+
+static inline uint16_t eng_theme_color(uint32_t eng) { return ENG_NEON[eng_idx(eng)].theme; }
+static inline uint16_t eng_accent_color(uint32_t eng) { return ENG_NEON[eng_idx(eng)].accent; }
 
 /* part t's engine memory goes to its engine (t->engine; voice.c engine_block, once a block: on a switch, after
  * the old engine's fade, before any note on the new one): zeroed (its engine_t.mem bytes) when another
@@ -102,6 +138,20 @@ static const char *snd_missing(const track_t *t, uint32_t *code)
         return slc_get(si) ? 0 : N_SLC_SRC[si];
     }
 #endif
+    if (e == &ENG_SCRUB) {
+        si = (uint32_t)clamp(t->p[P_E4], 0, SLC_NSRC - 1);
+        *code = 96u + si;
+        return slc_get(si) ? 0 : N_SLC_SRC[si];
+    }
+    if (e == &ENG_WAVETABLE) {
+        uint32_t wsrc = (uint32_t)clamp(t->p[P_E0], 0, WT_NSRC - 1u);
+        if (wsrc >= 5 && wsrc <= 7) {
+            uint32_t slot = wsrc - 5u;
+            *code = 128u + slot;
+            return usr_nz[slot] ? 0 : N_WT_SRC[wsrc];
+        }
+        return 0;
+    }
     if (e != &ENG_SAMPLE && e != &ENG_GRAIN)
         return 0;
     *code = (e == &ENG_GRAIN ? 32u : 1u) + si % 32u;
@@ -117,30 +167,54 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
 #if FELUCCA_FM4
     1,                           /* DIGITAL */
 #endif
-    2, 3, 4, 5, 6, 7, 8, 9,      /* PHASE LOFI SAMPLE VOICE TRIO WHEEL GRAIN PHYS */
-    11,                          /* NOISE */
+    2, 3,
+    14,                          /* WAVETABLE */
+    4,
 #if FELUCCA_SLICE
     13,                          /* SLICE */
 #endif
+    6,                           /* SCRUB (Tape & Platter) */
+    8,                           /* GRAIN */
+    5, 7, 9,                     /* VOICE WHEEL PHYS */
+    11,                          /* NOISE */
     10,                          /* DRUM */
 };
 
 /* the engines one can pick (engine 1 only with FELUCCA_FM4), in ENGINE_ORDER: eng_ok(e), the n-th of them
- * eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps) */
-static int eng_ok(uint32_t e) { return e < NENGINES && (FELUCCA_FM4 || e != ENGI_DIGITAL); }
-static uint32_t eng_vis(uint32_t n) { return ENGINE_ORDER[n % NENG_SHOWN]; }
+ * eng_vis(n), e's place among them eng_rank(e), the next / previous one eng_step(e, dir) (wraps).
+ * Track 5 (song.sel >= NPART) is strictly DRUM; Tracks 1-4 are strictly Melodic (no DRUM). */
+static int eng_ok(uint32_t e)
+{
+    if (song.sel >= NPART)
+        return e == ENGI_DRUM;
+    return e < NENGINES && (FELUCCA_FM4 || e != ENGI_DIGITAL) && e != ENGI_DRUM;
+}
+
+static uint32_t eng_vis(uint32_t n)
+{
+    if (song.sel >= NPART)
+        return ENGI_DRUM;
+    return ENGINE_ORDER[n % (NENG_SHOWN - 1u)];
+}
+
 static uint32_t eng_rank(uint32_t e)
 {
-    uint32_t n;
+    if (song.sel >= NPART)
+        return 0;
     if (!eng_ok(e))
-        e = ENGI_FM6;                            /* (DIGITAL without FELUCCA_FM4: its sounds play as FM6) */
-    for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
+        e = ENGI_ANALOG;
+    uint32_t n;
+    for (n = 0; n < NENG_SHOWN - 1u && ENGINE_ORDER[n] != e; n++)
         ;
-    return n < NENG_SHOWN ? n : 0u;
+    return n < NENG_SHOWN - 1u ? n : 0u;
 }
+
 static uint32_t eng_step(uint32_t e, int32_t dir)
 {
-    return eng_vis((eng_rank(e % NENGINES) + (dir > 0 ? 1u : NENG_SHOWN - 1u)) % NENG_SHOWN);
+    if (song.sel >= NPART)
+        return ENGI_DRUM;
+    uint32_t count = NENG_SHOWN - 1u;
+    return ENGINE_ORDER[(eng_rank(e % NENGINES) + (dir > 0 ? 1u : count - 1u)) % count];
 }
 
 /* factory sequence patterns: SAVE > PHRASES loads one into the selected track (ui.c pat_load); a preset
@@ -186,7 +260,12 @@ static const struct {
 #undef T_
 #define NPATTERNS (sizeof PATTERNS / sizeof PATTERNS[0])
 
-/* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): bass, pad, lead, drums */
-static const uint8_t TRK_DEF[NPART][3] = {{0, 4, 0}, {ENGI_FM6, 4, 0}, {3, 0, 0}, {ENGI_DRUM, 0, 0}}; /* ANALOG ACID,
-                                                                       * FM6 PAD (was DIGITAL PAD), LOFI PULSE LD, DRUM KIT */
-static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NPART][0]; }
+/* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): T1..T4 melodic + DRUM */
+static const uint8_t TRK_DEF[NTRK][3] = {
+    {0, 4, 0},         /* T1: SUBTRACTIVE (Acid Bass) */
+    {ENGI_FM6, 4, 0},  /* T2: FM6 (FM Pad) */
+    {2, 0, 0},         /* T3: WAVETABLE */
+    {3, 0, 0},         /* T4: SAMPLER */
+    {ENGI_DRUM, 0, 0}  /* DRUM: DEDICATED LOOM DRUM KIT */
+};
+static uint32_t trk_def_engine(uint32_t i) { return TRK_DEF[i % NTRK][0]; }

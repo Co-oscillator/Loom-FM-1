@@ -41,7 +41,6 @@
  * presets read and write t->p from the main loop, which the ISR preempts; TIMER5 only fills the MIDI rings),
  * and the engines read t->p as before. An engine reads its parameters in note_on (events_block) unmodulated.
  * Nothing active (every slot with SRC, DST or AMT at 0): no work, and the sound is bit-identical. */
-enum { MS_OFF, MS_LFO, MS_ENV, MS_VEL, MS_KEY, MS_RAND, MS_MODW, MS_AT, MS_EXPR, MS_SH, MS_SLEW, MS_N };
 enum { MD_OFF, MD_PITCH, MD_CUT, MD_SHP, MD_AMP, MD_PAN, MD_DIST, MD_CHO, MD_DLY, MD_REV, MD_RATE, MD_VIB, MD_E1,
        MD_DEPTH = MD_E1 + 8, MD_N };              /* (append-only: the stored values keep their meaning) */
 _Static_assert(NELEM(N_MSRC) == MS_N && NELEM(N_MDST) == MD_N, "N_MSRC / N_MDST == MS_* / MD_*");
@@ -67,8 +66,8 @@ static struct {                  /* the part in mix_part (one at a time) */
     int32_t ldep;                /* DEPTH: the track LFO's gain (Q15; 32767 = none, track_render leaves it alone) */
     uint8_t vsrc[NMSLOT], vdst[NMSLOT];
     int8_t vamt[NMSLOT];
-    uint8_t kid[NMSLOT];         /* per-block: the parameter, its stored value */
-    int16_t keep[NMSLOT];
+    uint8_t kid[16];             /* per-block: the parameter, its stored value */
+    int16_t keep[16];
 } mod;
 
 static uint32_t mod_seed = 0x2545F491u;
@@ -154,59 +153,79 @@ static __attribute__((noinline)) int32_t mod_depth(const track_t *t, int32_t lfo
 static __attribute__((noinline)) int mod_begin(track_t *t)
 {
     const int16_t *p = t->p;
-    int32_t lfo, off[NMSLOT];
-    uint32_t k, j;
+    int32_t lfo, off[16];
+    uint32_t m, d, j;
+    uint32_t t_idx = (uint32_t)(t - trk);
+
     mod.on = 0;
-    for (k = 0; k < NMSLOT; k++)
-        if (p[P_M1SRC + 3u * k] && p[P_M1DST + 3u * k] && p[P_M1AMT + 3u * k])
-            break;
-    if (k == NMSLOT)
-        return 0;
-    lfo = mulq15(t->lfo_val, t->lfo_fade);              /* (the LFO of the block before: track_render ticks it) */
-    mod.on = 1;
     mod.amp = 0;
     mod.nv = mod.nk = 0;
     mod.pit = mod.cut = mod.shp = 0;
     mod.gain = 32767;
-    mod.ldep = mod_depth(t, lfo);                       /* DEPTH first: the other slots see the LFO it leaves */
-    if (mod.ldep < 32767)
-        lfo = mulq15(lfo, mod.ldep);
-    for (; k < NMSLOT; k++) {
-        uint32_t s = (uint32_t)p[P_M1SRC + 3u * k], d = (uint32_t)p[P_M1DST + 3u * k];
-        int32_t a = p[P_M1AMT + 3u * k], x;
-        if (!s || !d || !a || s >= MS_N || d >= MD_N || d == MD_DEPTH)
+
+    for (m = 0; m < NMACROS; m++) {
+        const macro_t *mc = &loom_macros[m];
+        uint32_t s = mc->src;
+        if (!s || s >= MS_N)
             continue;
-        if (d <= MD_AMP) {                              /* per voice */
-            mod.amp |= d == MD_AMP;
-            if (MS_VOICE(s)) {
-                mod.vsrc[mod.nv] = (uint8_t)s;
-                mod.vdst[mod.nv] = (uint8_t)d;
-                mod.vamt[mod.nv++] = (int8_t)a;
-            } else {                                    /* (a UNI LFO, 0..1, takes AMP as ENV does) */
-                mod_voice_add(s == MS_LFO && p[P_LPOL] ? MS_ENV : s, d, mod_tsrc(t, s, lfo), a, &mod.pit, &mod.cut,
-                              &mod.shp, &mod.gain);
-            }
-            continue;
+
+        int32_t x = 0;
+        if (s == MS_KNOB) {
+            x = (int32_t)mc->val * 258;
+        } else {
+            const track_t *st = &trk[m < NTRK ? m : 0];
+            lfo = mulq15(st->lfo_val, st->lfo_fade);
+            x = mod_tsrc(st, s, lfo);
         }
-        {                                               /* per block: AMT 64 = the whole range */
-            uint32_t id = mod_param(d);
-            const param_desc_t *pd = id >= P_E0 ? &ENGINES[t->engine]->edit[id - P_E0] : &TP[id];
-            x = mod_tsrc(t, s, lfo);
-            for (j = 0; j < mod.nk && mod.kid[j] != id; j++)
-                ;
-            if (j == mod.nk) {
-                mod.kid[j] = (uint8_t)id;
-                mod.keep[j] = p[id];
-                off[j] = 0;
-                mod.nk++;
+
+        for (d = 0; d < NMACRO_DESTS; d++) {
+            const macro_dest_t *dst = &mc->dest[d];
+            if (!dst->dest || !dst->amt || dst->trk != t_idx)
+                continue;
+
+            mod.on = 1;
+            uint32_t did = dst->dest;
+            int32_t a = dst->amt;
+
+            if (did == 1) { /* PITCH */
+                mod.pit += (x * a * 3) >> 15;
+            } else if (did == 2) { /* CUT */
+                mod.cut += (x * a) >> 7;
+            } else if (did == 3) { /* AMP */
+                mod.amp = 1;
+                mod.gain = mulq15(mod.gain, mod_gain(s, x, a));
+            } else {
+                uint32_t id;
+                if (did == 4) id = P_PAN;
+                else if (did == 5) id = P_DLY;
+                else if (did == 6) id = P_REV;
+                else if (t_idx == 4) id = P_LN0 + (did - 7);
+                else id = P_E0 + (did - 7);
+
+                const param_desc_t *pd = track_desc(t, id);
+                for (j = 0; j < mod.nk && mod.kid[j] != id; j++)
+                    ;
+                if (j == mod.nk && mod.nk < 16) {
+                    mod.kid[j] = (uint8_t)id;
+                    mod.keep[j] = p[id];
+                    off[j] = 0;
+                    mod.nk++;
+                }
+                if (j < 16 && pd) {
+                    off[j] += (((x * a) >> 6) * (pd->max - pd->min)) >> 15;
+                }
             }
-            off[j] += (((x * a) >> 6) * (pd->max - pd->min)) >> 15;
         }
     }
+
+    if (!mod.on)
+        return 0;
+
     for (j = 0; j < mod.nk; j++) {
         uint32_t id = mod.kid[j];
-        const param_desc_t *pd = id >= P_E0 ? &ENGINES[t->engine]->edit[id - P_E0] : &TP[id];
-        t->p[id] = (int16_t)clamp(mod.keep[j] + off[j], pd->min, pd->max);
+        const param_desc_t *pd = track_desc(t, id);
+        if (pd)
+            t->p[id] = (int16_t)clamp(mod.keep[j] + off[j], pd->min, pd->max);
     }
     return 1;
 }
@@ -218,6 +237,7 @@ static __attribute__((noinline)) void mod_end(track_t *t)
     for (j = 0; j < mod.nk; j++)
         t->p[mod.kid[j]] = mod.keep[j];
     mod.on = 0;
+    mod.nk = 0;
 }
 
 /* a voice's modulation (voice.c track_render, when mod.on), onto its vmod_t m as track_render made it:

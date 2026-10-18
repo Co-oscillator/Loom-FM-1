@@ -96,8 +96,13 @@ def key_blob(key):
 
 
 def sdk_file(rel):
+    bundled = Path(__file__).resolve().parent / "sdk_pack" / rel
+    if not SDK and not os.environ.get("AC79_SDK") and bundled.exists():
+        return bundled.read_bytes()
     root = Path(SDK or os.environ.get("AC79_SDK", ""))
     path = root / "cpu" / "wl82" / "tools" / rel
+    if not path.exists() and bundled.exists():
+        return bundled.read_bytes()
     try:
         return path.read_bytes()
     except OSError as e:

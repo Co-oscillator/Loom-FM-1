@@ -29,10 +29,10 @@
 #define FELUCCA_UART 1           /* TRS MIDI IN on UART1 / PH8 */
 #endif
 #ifndef FELUCCA_ID
-#define FELUCCA_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */
+#define FELUCCA_ID "FM-1_985"    /* Loom FM-1 unique package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "v1.5.1" /* shown in the menu, the console and the editor; build.py --release X.Y */
+#define FELUCCA_VERSION "Loom v0.1" /* shown in the menu, the console and the editor */
 #endif
 #if FELUCCA_OTA && !FELUCCA_FLASH
 #error "FELUCCA_OTA needs FELUCCA_FLASH"
@@ -60,6 +60,8 @@
 #include "core.h"
 #include "engines.c"             /* dsp.c, the eng_*.c files, the factory patterns */
 #include "params.c"
+#include "loom_macro.h"
+#include "loom_macro.c"
 #include "mod.c"               /* the modulation matrix, used by voice.c and fx.c */
 #include "voice.c"
 #include "slicer.c"              /* per-track SLICER insert, used by fx.c */

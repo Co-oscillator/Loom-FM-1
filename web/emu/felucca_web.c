@@ -268,7 +268,7 @@ static void web_power_on(void)
     audio_init();
     boot_leds();                          /* main.c: the power-on LED sweep, from the scan's start */
     autosave_boot(boot_clean);            /* main.c: the last session's music (1.2, project.c) */
-    web_boot_ms = fm1_ms + 430u;         /* main.c: 30 + 400 ms before the first frame */
+    web_boot_ms = fm1_ms + 1500u;        /* main.c: 1500 ms splash before first frame */
     web_booted = 1;
 }
 
@@ -310,9 +310,11 @@ static void web_ms(void)
         }
         web_half ^= 1u;
     }
-    if (!web_booted || (int32_t)(fm1_ms - web_boot_ms) < 0)
+    if (!web_booted)
         return;
     if (web_boot_ms) {                                    /* main.c: the splash goes, the loop starts */
+        if ((int32_t)(fm1_ms - web_boot_ms) < 0 && !fm1_in.buttons && !fm1_in.notes)
+            return;
         web_boot_ms = 0;
         kb_boot_hold = 0;
         lcd_fill(0, 0, 240, 240, T_BG);
@@ -484,3 +486,79 @@ EXPORT uint32_t web_screen_draws(void) { return web_draws; }
 EXPORT uint32_t web_now_ms(void) { return fm1_ms; }
 EXPORT uint32_t web_playing(void) { return song.playing; }
 EXPORT uint32_t web_sample_rate(void) { return FS; }
+EXPORT const char *web_cur_page(void) { return cur_page()->title; }
+EXPORT uint32_t web_cur_fam(void) { return cur_page()->fam; }
+EXPORT uint32_t web_cur_graph(void) { return cur_page()->graph; }
+EXPORT uint32_t web_home(void) { return ui.home; }
+EXPORT uint32_t web_confirm(void) { return ui.confirm; }
+EXPORT uint32_t web_act(void) { return ui.act; }
+EXPORT uint32_t web_sel_track(void) { return song.sel; }
+EXPORT uint32_t web_ntrk(void) { return NTRK; }
+EXPORT int web_test_do_save_init(void) {
+    project_save_init();
+    return (int)web_flash_writes;
+}
+
+/* Live user sample reload & active engine slot selection for the browser emulator */
+EXPORT void web_smp_reload(uint32_t k)
+{
+    if (k < SMP_USER_SLOTS) {
+        smp_user_scan(k);
+        web_flash_writes++;
+        ui.force = 1;
+    }
+}
+
+EXPORT void web_smp_select_slot(uint32_t k)
+{
+    if (k >= SMP_USER_SLOTS) return;
+    track_t *t = TSEL;
+    const engine_t *e = ENGINES[t->eng_req % NENGINES];
+    if (e == &ENG_SAMPLE || e == &ENG_GRAIN || e == &ENG_WAVETABLE) {
+        t->p[P_E0] = (int16_t)(5u + k);
+    } else if (e == &ENG_SLICE) {
+        t->p[P_E0] = (int16_t)(1u + k);
+    } else if (e == &ENG_SCRUB) {
+        t->p[P_E4] = (int16_t)(1u + k);
+    }
+    ui.force = 1;
+}
+
+/* Live MIDI file sequence import hooks for the browser emulator */
+EXPORT void web_seq_clear_track(uint32_t ti, uint32_t len, uint32_t poly)
+{
+    if (ti >= NTRK) return;
+    track_t *t = &trk[ti];
+    memset(t->step, 0, sizeof t->step);
+    for (uint32_t i = 0; i < NSTEP; i++) t->step[i].time = ST_REST;
+    t->p[P_SLEN] = (int16_t)clamp((int32_t)len, 1, NSTEP);
+    if (poly && ti < NPART) t->p[P_VOICE] = V_POLY;
+    ui.force = 1;
+}
+
+EXPORT void web_seq_set_step(uint32_t ti, uint32_t si, uint32_t n,
+                             uint32_t n0, uint32_t n1, uint32_t n2, uint32_t n3,
+                             uint32_t time, uint32_t flags, uint32_t vel,
+                             uint32_t hit, uint32_t acc)
+{
+    if (ti >= NTRK || si >= NSTEP) return;
+    step_t *st = &trk[ti].step[si];
+    st->n = (uint8_t)(n > 4u ? 4u : n);
+    st->note[0] = (uint8_t)(n0 & 127u);
+    st->note[1] = (uint8_t)(n1 & 127u);
+    st->note[2] = (uint8_t)(n2 & 127u);
+    st->note[3] = (uint8_t)(n3 & 127u);
+    st->time = (uint8_t)(time > 2u ? ST_REST : time);
+    st->flags = (uint8_t)flags;
+    st->vel = (uint8_t)(vel > 127u ? 127u : vel);
+    st->hit = (uint8_t)(hit & 0xFFu);
+    st->acc = (uint8_t)(acc & 0xFFu);
+    st->probability = 0;
+    ui.force = 1;
+}
+
+EXPORT void web_set_bpm(uint32_t bpm)
+{
+    song.g[G_BPM] = (int16_t)clamp((int32_t)bpm, 40, 240);
+    ui.force = 1;
+}

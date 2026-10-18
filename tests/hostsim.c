@@ -31,6 +31,8 @@ static struct { volatile uint32_t notes, buttons; } fm1_in;
 #include "../firmware/src/core.h"
 #include "../firmware/src/engines.c"
 #include "../firmware/src/params.c"
+#include "../firmware/src/loom_macro.h"
+#include "../firmware/src/loom_macro.c"
 #include "../firmware/src/mod.c"
 #include "../firmware/src/voice.c"
 #include "../firmware/src/slicer.c"

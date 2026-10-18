@@ -13,7 +13,7 @@
  * engine that maps the keys itself) ignores CHRD. Every source keeps the notes it started (kb_chord for a
  * key, mchord for a MIDI note) and its release ends exactly those, so CHRD / VOIC changed while it is held
  * leave nothing hanging. A note several sources hold sounds once and ends with the last of them. */
-enum { CH_OFF, CH_DIA3, CH_DIA7, CH_MAJ, CH_MIN, CH_DOM7, CH_MAJ7, CH_MIN7, CH_SUS4, CH_POW };
+enum { CH_OFF, CH_PROG, CH_DIA3, CH_DIA7, CH_MAJ, CH_MIN, CH_DOM7, CH_MAJ7, CH_MIN7, CH_SUS4, CH_POW };
 enum { VC_CLOSE, VC_OPEN, VC_INV1, VC_INV2, VC_BASS };
 #define CHORD_MAX 4u
 #define MCHORD_N 24u                     /* MIDI notes held as chords at once (more: their root alone) */
@@ -27,7 +27,66 @@ typedef struct { uint8_t id, ch, src, n, note[CHORD_MAX]; } mchord_t;   /* id: t
 static mchord_t mchord[MCHORD_N];
 /* the last chord played per track (the CHORD page shows it): its root, notes, and the shape's tones above the
  * root (bit i = i semitones, 0..11) */
-static struct { uint8_t root, n, note[CHORD_MAX]; uint16_t mask; uint8_t gen; } chord_last[NTRK];
+static struct { uint8_t root, n, note[CHORD_MAX]; uint16_t mask; uint8_t gen; uint8_t step; } chord_last[NTRK];
+static loom_chord_prog_t trk_prog[NTRK];
+static uint32_t trk_prog_sig[NTRK];
+
+static void ensure_track_prog(const track_t *t)
+{
+    uint32_t k = trk_index(t);
+    uint32_t sig = ((uint32_t)(t->p[P_ROOT] & 15u)) |
+                   (((uint32_t)(t->p[P_SCALE] & 31u)) << 4) |
+                   (((uint32_t)(t->p[P_CMOOD] & 15u)) << 9) |
+                   (((uint32_t)(t->p[P_CCMPX] & 3u)) << 13) |
+                   (((uint32_t)(t->p[P_PINV] + 7u)) << 16) |
+                   (((uint32_t)(t->p[P_POCT] + 7u)) << 20) |
+                   (((uint32_t)(t->nheld & 7u)) << 24);
+    for (uint8_t h = 0; h < t->nheld && h < 4u; h++) {
+        sig ^= ((uint32_t)t->held[h]) << (h * 7u + 1u);
+    }
+
+    if (sig != trk_prog_sig[k] || !trk_prog[k].chords[0].count) {
+        trk_prog_sig[k] = sig;
+        uint32_t mask = scale_mask(t);
+        uint8_t sc_iv[12];
+        uint8_t sc_len = 0;
+        for (uint32_t b = 0; b < 12u; b++) {
+            if ((mask >> b) & 1u)
+                sc_iv[sc_len++] = (uint8_t)b;
+        }
+        if (sc_len == 0) { sc_iv[0] = 0; sc_len = 1; }
+
+        uint32_t rng_seed = 0x87654321u + k * 10139u + ((uint32_t)t->p[P_CMOOD] * 65537u) + ((uint32_t)t->p[P_CCMPX] * 4099u);
+        uint8_t tonic = (uint8_t)clamp(60 + t->p[P_ROOT] + 12 * t->p[P_POCT], 0, 127);
+        loom_chord_generate(&trk_prog[k], tonic, sc_iv, sc_len,
+                            (loom_mood_t)clamp(t->p[P_CMOOD], 0, LOOM_MOOD_COUNT - 1),
+                            (loom_complexity_t)clamp(t->p[P_CCMPX], 0, LOOM_COMPLEXITY_COUNT - 1),
+                            t->nheld > 0 ? t->held : 0,
+                            t->nheld > 0 ? (t->nheld > 4 ? 4 : t->nheld) : 0,
+                            &rng_seed);
+
+        int32_t inv = t->p[P_PINV];
+        if (inv != 0) {
+            for (uint8_t s = 0; s < LOOM_CHORD_STEPS; s++) {
+                loom_chord_t *ch = &trk_prog[k].chords[s];
+                if (ch->count > 1) {
+                    if (inv > 0) {
+                        for (int32_t v = 0; v < inv; v++) {
+                            ch->notes[0] = (uint8_t)clamp((int32_t)ch->notes[0] + 12, 0, 127);
+                            sort_chord(ch);
+                        }
+                    } else {
+                        for (int32_t v = 0; v < -inv; v++) {
+                            uint8_t top_idx = ch->count - 1;
+                            ch->notes[top_idx] = (uint8_t)clamp((int32_t)ch->notes[top_idx] - 12, 0, 127);
+                            sort_chord(ch);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /* 1 = the track's keys are a kit: no chords */
 static int chord_kit(const track_t *t)
@@ -41,7 +100,40 @@ static int chord_kit(const track_t *t)
 static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int32_t *iv)
 {
     uint32_t n = 0, i;
-    if (mode >= CH_MAJ) {
+    if (mode == CH_PROG) {
+        ensure_track_prog(t);
+        uint32_t k = trk_index(t);
+
+        static const uint8_t RATE_STEPS[6] = {8, 16, 32, 64, 16, 32};
+        uint32_t r_idx = (uint32_t)clamp(t->p[P_PRATE], 0, 5);
+        uint32_t step_div = RATE_STEPS[r_idx];
+
+        uint32_t step = 0;
+        if (t->p[P_PHOLD] == 1) { /* KEYS 1-8: direct key trigger */
+            if (in_key > 0)
+                step = (in_key - 1u) % LOOM_CHORD_STEPS;
+            else
+                step = chord_last[k].step % LOOM_CHORD_STEPS;
+        } else if (song.playing) {
+            step = (t->seq_idx / step_div) % LOOM_CHORD_STEPS;
+        } else {
+            if (in_key > 0)
+                step = (in_key - 1u) % LOOM_CHORD_STEPS;
+            else
+                step = chord_last[k].step % LOOM_CHORD_STEPS;
+        }
+
+        trk_prog[k].active_step = (uint8_t)step;
+        chord_last[k].step = (uint8_t)step;
+
+        const loom_chord_t *ch = &trk_prog[k].chords[step];
+        for (i = 0; i < ch->count && n < CHORD_MAX; i++) {
+            iv[n++] = (int32_t)ch->notes[i] - (int32_t)ch->notes[0];
+        }
+        *root = (int32_t)ch->notes[0];
+        return n;
+    }
+    if (mode >= CH_MAJ && mode <= CH_POW) {
         for (i = 0; i < CHORD_MAX && CHORD_SHAPE[mode - CH_MAJ][i] >= 0; i++)
             iv[n++] = CHORD_SHAPE[mode - CH_MAJ][i];
         return n;
