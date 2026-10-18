@@ -573,11 +573,43 @@ static int32_t slice_amp(track_t *t, voice_t *v, int32_t adsr)
     return v->s[6] == 3 ? 0 : adsr;
 }
 
+static const char *const N_SLC_SYNC[] = {
+    "--", "1 STEP", "2 STEPS", "1 BEAT", "2 BEATS", "1 BAR", "2 BARS", "4 BARS"
+};
+static const uint8_t SLC_SYNC_STEPS[8] = {
+    0, 1, 2, 4, 8, 16, 32, 64
+};
+
+static void slice_tempo_sync(track_t *t, int sync_idx)
+{
+    if (sync_idx <= 0 || sync_idx > 7)
+        return;
+    uint32_t steps = SLC_SYNC_STEPS[sync_idx];
+    uint32_t bpm = song.g[G_BPM] ? (uint32_t)song.g[G_BPM] : 120u;
+
+    uint32_t src = slc_src_of(t->p);
+    const slc_src_t *s = slc_get(src);
+    if (!s || !s->len)
+        return;
+
+    int32_t semi = clamp((int32_t)t->p[P_E2] * 16, -1536, 576);
+    uint32_t speed_fac = (uint32_t)clamp(t->p[P_E3] ? t->p[P_E3] : 100, 10, 400);
+    uint32_t stepq = (uint32_t)((((uint64_t)(pow2_q16(semi) >> 8) * (s->rate >> 8)) * speed_fac) / 100u);
+    if (!stepq) stepq = 65536u;
+
+    uint32_t s_target = (steps * 661500u) / bpm;
+    uint64_t num = (uint64_t)s_target * (uint64_t)stepq * 100ULL;
+    uint64_t den = (uint64_t)s->len * 65536ULL;
+    uint32_t strch = (uint32_t)(num / (den ? den : 1ULL));
+
+    t->p[P_E4] = (int16_t)clamp((int32_t)strch, 25, 400);
+}
+
 static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {
     const int16_t *p = t->p;
     uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 7) & 1u, stepq, stepq_adv, rem;
-    int32_t lp = 4000 + ((clamp((p[P_E7] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15), x;
+    int32_t lp = 4000 + ((clamp((127 << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15), x;
     int loop = p[P_E5] == SLC_LOOP && v->gate;
     const slc_src_t *s = v->s[6] == 2 || (pk & 7u) == SLC_SINE ? 0 : slc_get(pk & 7u);
     int16_t *rb = slc_rb(t, v);
@@ -641,8 +673,8 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 
 /* two factory sounds, both on BREAK (always there) */
 static const preset_t SLICE_PRESETS[] = {
-    {"CHOP", {0, 16, 0, 100, 100, SLC_ONE, 0, 127}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 12), PAT(9)},
-    {"STUTTER", {0, 8, 0, 100, 100, SLC_GATE, 0, 110}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 20, 10), PAT(10)},
+    {"CHOP", {0, 16, 0, 100, 100, SLC_ONE, 0, 0}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 12), PAT(9)},
+    {"STUTTER", {0, 8, 0, 100, 100, SLC_GATE, 0, 0}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 20, 10), PAT(10)},
 };
 
 /* Each of the 16 white keys plays one of up to 16 slices; black keys are silent */
@@ -665,7 +697,7 @@ static const engine_t ENG_SLICE = {
         {"STRCH", F_PCT, 25, 400, 100, 0, 0},
         {"MODE", F_ENUM, 0, 2, 0, N_SLC_MODE, 0},
         {"REV", F_ENUM, 0, 1, 0, N_SLC_REV, 0},
-        {"TONE", F_INT, 0, 127, 127, 0, 0},
+        {"SYNC", F_ENUM, 0, 7, 0, N_SLC_SYNC, 0},
     },
     .presets = SLICE_PRESETS,
     .npresets = NELEM(SLICE_PRESETS),

@@ -22,6 +22,7 @@
                                   * by default; replaced by FM6, its sounds convert (fm4_convert.c) */
 #endif
 #define ENGI_ANALOG 0u           /* SUBTRACT: 4-oscillator subtractive analog engine */
+#define ENGI_SLICE 13u           /* SLICE: Slicer engine */
 #define ENGI_WAVETABLE (13u + FELUCCA_SLICE) /* WAVETABLE: Loom Multi-Frame Wavetable engine */
 #define NENGINES (ENGI_WAVETABLE + 1u)
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */

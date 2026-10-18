@@ -1264,18 +1264,14 @@ static void draw_columns(void)
     }
     if (cur_page()->scope == SC_STEP) {                       /* Loom 4x4 STEP and 8x8 STEP */
         const step_t *st = &seq_steps(TSEL)[ui.cursor];
-        char sn[8], sl[8], bn[8], gn[8];
+        char sn[8], sl[8], bn[8];
         const char *opt_name = "OFF";
         int active = 0;
         int is_8x8 = (cur_page()->graph == GR_STEPS);
-        uint32_t gate_pct = (uint32_t)TSEL->p[P_SGATE] * 100u / 128u;
-        if (gate_pct < 1u) gate_pct = 1u;
 
         fmt_int(sn, (int32_t)ui.cursor + 1);
         str_cpy(sl, "/", 8);
         fmt_int(sl + 1, TSEL->p[P_SLEN]);
-
-        fmt_int(gn, (int32_t)gate_pct);
 
         if (drum_track(TSEL)) {
             uint32_t b = 1u << ui.lane;
@@ -1308,8 +1304,43 @@ static void draw_columns(void)
             }
         }
 
+        const char *tgt_label = "NOTE";
+        char tgt_val[12];
+        int tgt_active = 0;
+        str_cpy(tgt_val, "--", sizeof(tgt_val));
+
+        if (ENGINES[eng_idx(TSEL->eng_req)] == &ENG_SLICE) {
+            tgt_label = "SLICE";
+            uint32_t max_slc = (uint32_t)clamp(TSEL->p[P_E1], 1, 16);
+            if (st->time == ST_NOTE && st->n > 0) {
+                int32_t j = ((int32_t)st->note[0] - SLC_BASE - TSEL->p[P_ROOT]) % (int32_t)max_slc;
+                if (j < 0) j += max_slc;
+                snprintf(tgt_val, sizeof(tgt_val), "SLC %d", (int)(j + 1));
+                tgt_active = 1;
+            }
+        } else if (drum_track(TSEL)) {
+            tgt_label = "INST";
+            uint32_t l = ui.lane;
+            if (st->hit & (1u << ui.lane)) {
+                l = ui.lane;
+                tgt_active = 1;
+            } else if (st->hit != 0) {
+                l = (uint32_t)__builtin_ctz(st->hit);
+                tgt_active = 1;
+            }
+            if (tgt_active) {
+                str_cpy(tgt_val, drum_lane_name(TSEL, l), sizeof(tgt_val));
+            }
+        } else {
+            tgt_label = "NOTE";
+            if (st->time == ST_NOTE && st->n > 0) {
+                note_name(tgt_val, st->note[0]);
+                tgt_active = 1;
+            }
+        }
+
         if (is_8x8) {
-            /* 8x8 STEP: [K1] STEP, [K2] GATE, [K3] OPT, [K4] CLEAR */
+            /* 8x8 STEP: [K1] STEP, [K2] SLICE/INST/NOTE, [K3] OPT, [K4] CLEAR */
             int has_seq = motion_lock_steps(song.sel) != 0;
             uint32_t si;
             for (si = 0; !has_seq && si < NSTEP; si++) {
@@ -1318,15 +1349,15 @@ static void draw_columns(void)
                     has_seq = 1;
             }
             draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-            draw_column(1, "GATE", gn, "%", VAL(1u), (int32_t)gate_pct, ICON_GATE);
+            draw_column(1, tgt_label, tgt_val, "", tgt_active ? VAL(1u) : T_DIM, -1, ICON_AUTO);
             draw_column(2, "OPT", opt_name, "", active ? VAL(2u) : T_DIM, -1, ICON_AUTO);
             draw_column(3, "CLEAR", "--", "", has_seq ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         } else {
-            /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] GATE, [K4] OPT */
+            /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] SLICE/INST/NOTE, [K4] OPT */
             draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
             fmt_int(bn, (int32_t)ui.bank + 1);
             draw_column(1, "BANK", bn, "/4", VAL(1u), -1, ICON_AUTO);
-            draw_column(2, "GATE", gn, "%", VAL(2u), (int32_t)gate_pct, ICON_GATE);
+            draw_column(2, tgt_label, tgt_val, "", tgt_active ? VAL(2u) : T_DIM, -1, ICON_AUTO);
             draw_column(3, "OPT", opt_name, "", active ? VAL(3u) : T_DIM, -1, ICON_AUTO);
         }
         return;

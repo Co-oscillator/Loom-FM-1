@@ -70,6 +70,14 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
     for (j = 0; j < h && y + j < 240u; j++)
         for (i = 0; i < w && x + i < 240u; i++) host_put((y + j) * 240u + x + i, p[j * w + i]);
 }
+static void dump_screen_raw(const char *path)
+{
+    FILE *f = fopen(path, "wb");
+    if (f) {
+        fwrite(host_screen, sizeof(uint16_t), 240 * 240, f);
+        fclose(f);
+    }
+}
 static struct { uint32_t stage; } felucca_dbg;
 #define FELUCCA_FLASH 0
 #ifndef FELUCCA_VERSION
@@ -184,14 +192,16 @@ static void test_sequencer_section(void)
     assert(ui.bank == 0 && ui.cursor == 0);
     printf("  4x4 Knob 2 Bank navigation: seamlessly navigates Banks 1..4 (OK)\n");
 
-    /* Knob 3 (Slot 2): Gate length (percentage 1..127) */
-    t->p[P_SGATE] = 64;
-    step_edit(2, 1);
-    assert(t->p[P_SGATE] == 68);
-    step_edit(2, -2);
-    assert(t->p[P_SGATE] == 60);
-    t->p[P_SGATE] = 64;
-    printf("  4x4 Knob 3 Gate length: smoothly edits P_SGATE without note-ahead errors (OK)\n");
+    /* Knob 3 (Slot 2): Note / Target selector (replaces GATE) */
+    t->step[0].time = ST_REST;
+    t->step[0].n = 0;
+    cursor_set(0);
+    step_edit(2, 1); /* Puts note on step 0 */
+    assert(t->step[0].time == ST_NOTE && t->step[0].n == 1);
+    uint8_t n0 = t->step[0].note[0];
+    step_edit(2, 2); /* Increment note pitch by +2 */
+    assert(t->step[0].note[0] == n0 + 2);
+    printf("  4x4 Knob 3 NOTE target: directly edits chromatic note pitch on current step (OK)\n");
 
     /* Knob 4 (Slot 3): Loom Step Options */
     t->step[0].time = ST_REST;
@@ -237,7 +247,7 @@ static void test_sequencer_section(void)
     assert(strcmp(ti, "4x4 STEP 1/4") == 0 && "Title should be '4x4 STEP 1/4'");
     printf("  Page title: '%s' verified (clean Loom 4x4 STEP title) (OK)\n", ti);
 
-    /* 5. Test 8x8 STEP Knobs: 1: STEP, 2: GATE, 3: OPT, 4: LEN */
+    /* 5. Test 8x8 STEP Knobs: 1: STEP, 2: NOTE/TARGET, 3: OPT, 4: CLEAR */
     /* Advance to page 3 (8x8 STEP): open_family(FAM_SEQ) twice */
     open_family(FAM_SEQ); /* -> 4x4 PAT */
     assert(strcmp(cur_page()->title, "4x4 PAT") == 0);
@@ -253,12 +263,11 @@ static void test_sequencer_section(void)
     step_edit(0, -5);
     assert(ui.cursor == 0);
 
-    /* 8x8 Knob 2 (Slot 1): Gate length */
-    t->p[P_SGATE] = 64;
-    step_edit(1, 2);
-    assert(t->p[P_SGATE] == 72);
-    step_edit(1, -2);
-    assert(t->p[P_SGATE] == 64);
+    /* 8x8 Knob 2 (Slot 1): Note / Target selector (replaces GATE) */
+    uint8_t n_before = t->step[0].note[0];
+    step_edit(1, 3);
+    assert(t->step[0].note[0] == n_before + 3);
+    printf("  8x8 Knob 2 NOTE target: directly edits chromatic note pitch on current step (OK)\n");
 
     /* 8x8 Knob 3 (Slot 2): Step options */
     t->step[0].time = ST_REST;
@@ -271,7 +280,7 @@ static void test_sequencer_section(void)
     /* 8x8 Knob 4 (Slot 3): CLEAR */
     step_edit(3, 1);
     assert(t->step[0].time == ST_REST && "Knob 4 on 8x8 STEP should clear the current track sequence");
-    printf("  8x8 Knob controls: [K1] STEP, [K2] GATE, [K3] OPT, [K4] CLEAR verified (OK)\n");
+    printf("  8x8 Knob controls: [K1] STEP, [K2] NOTE, [K3] OPT, [K4] CLEAR verified (OK)\n");
 
     /* 6. Test Humanize in seq.c */
     t->p[P_SHUMAN] = 100;
@@ -620,9 +629,23 @@ static void test_engine_edit_pages(void)
     assert(strcmp(ENG_SLICE.edit[4].label, "STRCH") == 0);
     assert(strcmp(ENG_SLICE.edit[5].label, "MODE") == 0);
     assert(strcmp(ENG_SLICE.edit[6].label, "REV") == 0);
-    assert(strcmp(ENG_SLICE.edit[7].label, "TONE") == 0);
+    assert(strcmp(ENG_SLICE.edit[7].label, "SYNC") == 0);
     assert(ENG_SLICE.knob[0] == P_E2 && ENG_SLICE.knob[1] == P_E3 &&
            ENG_SLICE.knob[2] == P_E4 && ENG_SLICE.knob[3] == P_E1);
+
+    /* Test SLICE tempo sync (1-2 steps, 1-2 beats, 1-4 bars) */
+    trk[0].p[P_E0] = 0;   /* BREAK */
+    trk[0].p[P_E1] = 16;  /* 16 slices */
+    trk[0].p[P_E2] = 0;   /* PTCH 0 */
+    trk[0].p[P_E3] = 100; /* SPEED 100% */
+    trk[0].p[P_E4] = 100; /* STRCH 100% */
+    song.g[G_BPM] = 120;
+    slice_tempo_sync(&trk[0], 5); /* 1 BAR (16 steps) */
+    assert(trk[0].p[P_E4] >= 25 && trk[0].p[P_E4] <= 400);
+    int16_t strch_1bar = trk[0].p[P_E4];
+    slice_tempo_sync(&trk[0], 6); /* 2 BARS (32 steps -> double duration) */
+    assert(trk[0].p[P_E4] > strch_1bar);
+    printf("  SLICE tempo sync (P_E7 SYNC -> recalculates STRCH) verified (OK)\n");
 
     /* Test 16 white keys mapping to 16 slices, black keys silent */
     assert(slice_keys(&trk[0], 0) == SLC_BASE);       /* F3 -> white key 0 -> slice 0 */
@@ -630,6 +653,58 @@ static void test_engine_edit_pages(void)
     assert(slice_keys(&trk[0], 2) == SLC_BASE + 1);   /* G3 -> white key 1 -> slice 1 */
     assert(slice_keys(&trk[0], 3) == KB_SILENT);     /* G#3 -> black key -> silent */
     assert(slice_keys(&trk[0], 26) == SLC_BASE + 15); /* G5 -> white key 15 -> slice 15 */
+
+    /* Test SLICE step sequencing: Knob 3 on 4x4 STEP sequences slices */
+    track_select(0);
+    trk[0].eng_req = ENGI_SLICE;
+    trk[0].step[0].time = ST_REST;
+    trk[0].step[0].n = 0;
+    cursor_set(0);
+    open_family(FAM_SEQ);
+    while (strcmp(cur_page()->title, "4x4 STEP") != 0) open_family(FAM_SEQ);
+    step_edit(2, 1); /* Puts Slice 1 on step 0 */
+    assert(trk[0].step[0].time == ST_NOTE && trk[0].step[0].n == 1);
+    assert(trk[0].step[0].note[0] == SLC_BASE + trk[0].p[P_ROOT] + 0);
+    step_edit(2, 4); /* Move to Slice 5 */
+    assert(trk[0].step[0].note[0] == SLC_BASE + trk[0].p[P_ROOT] + 4);
+    printf("  SLICE sequencer target: [K3] directly sequences SLC 1..16 on step (OK)\n");
+
+    /* Test DRUM step sequencing: Knob 3 on 4x4 STEP sequences drum instruments */
+    track_select(4); /* Track 5 = DRUM */
+    trk[4].step[0].time = ST_REST;
+    trk[4].step[0].hit = 0;
+    ui.lane = 0;
+    step_edit(2, 1); /* Places SNARE (lane 1) */
+    assert(trk[4].step[0].time == ST_NOTE);
+    assert(trk[4].step[0].hit == (1u << 1));
+    assert(ui.lane == 1);
+    step_edit(2, 1); /* Moves to CLAP (lane 2) */
+    assert(trk[4].step[0].hit == (1u << 2));
+    assert(ui.lane == 2);
+    printf("  DRUM sequencer target: [K3] directly sequences drum voices (KICK, SNARE, CLAP...) on step (OK)\n");
+    ui.force = 1;
+    ui_draw();
+    dump_screen_raw("build/seq_drum_4x4.raw");
+
+    track_select(0);
+    open_family(FAM_SEQ);
+    while (strcmp(cur_page()->title, "4x4 STEP") != 0) open_family(FAM_SEQ);
+    ui.force = 1;
+    ui_draw();
+    dump_screen_raw("build/seq_slice_4x4.raw");
+
+    open_family(FAM_SEQ); /* 4x4 PAT */
+    open_family(FAM_SEQ); /* 8x8 STEP */
+    ui.force = 1;
+    ui_draw();
+    dump_screen_raw("build/seq_slice_8x8.raw");
+
+    open_family(FAM_EDIT);
+    while (strcmp(cur_page()->title, "EDIT 2") != 0) open_family(FAM_EDIT);
+    trk[0].p[P_E7] = 5; /* 1 BAR */
+    ui.force = 1;
+    ui_draw();
+    dump_screen_raw("build/slice_edit_sync.raw");
 
     cv_begin(240, 122, T_BG);
     graph_slices();

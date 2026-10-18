@@ -1007,6 +1007,67 @@ static void sd_reset(void)
     ui_message("STEP RESET");
 }
 
+static void step_target_turn(track_t *t, int32_t steps)
+{
+    step_t *st = &t->step[ui.cursor];
+    step_undo_take(t, 0x2000u);
+    if (ENGINES[eng_idx(t->eng_req)] == &ENG_SLICE) {
+        uint32_t max_slc = (uint32_t)clamp(t->p[P_E1], 1, 16);
+        int32_t cur = 0;
+        if (st->time == ST_NOTE && st->n > 0) {
+            cur = ((int32_t)st->note[0] - SLC_BASE - t->p[P_ROOT]) % (int32_t)max_slc;
+            if (cur < 0) cur += max_slc;
+            cur = clamp(cur + steps, 0, (int32_t)max_slc - 1);
+        } else {
+            cur = clamp(steps > 0 ? steps - 1 : 0, 0, (int32_t)max_slc - 1);
+        }
+        st->note[0] = (uint8_t)(SLC_BASE + t->p[P_ROOT] + cur);
+        st->n = 1;
+        st->time = ST_NOTE;
+        if (!st->vel) st->vel = 96;
+    } else if (drum_track(t)) {
+        uint32_t cur_l = ui.lane;
+        int active = 0;
+        if (st->hit & (1u << ui.lane)) {
+            cur_l = ui.lane;
+            active = 1;
+        } else if (st->hit != 0) {
+            cur_l = (uint32_t)__builtin_ctz(st->hit);
+            active = 1;
+        }
+        int32_t next_l;
+        if (active) {
+            next_l = clamp((int32_t)cur_l + steps, 0, NLANE - 1);
+            int was_acc = (st->acc & (1u << cur_l)) != 0;
+            st->hit &= (uint8_t)~(1u << cur_l);
+            st->acc &= (uint8_t)~(1u << cur_l);
+            st->hit |= (uint8_t)(1u << next_l);
+            if (was_acc) st->acc |= (uint8_t)(1u << next_l);
+        } else {
+            next_l = clamp((int32_t)cur_l + steps, 0, NLANE - 1);
+            st->hit |= (uint8_t)(1u << next_l);
+        }
+        st->time = ST_NOTE;
+        ui.lane = (uint8_t)next_l;
+        if (!st->vel) st->vel = 96;
+    } else {
+        int32_t cur = last_note ? last_note : 60;
+        if (st->time == ST_NOTE && st->n > 0) {
+            cur = (int32_t)st->note[0];
+        }
+        cur = clamp(cur + steps, 0, 127);
+        st->note[0] = (uint8_t)cur;
+        st->n = 1;
+        st->time = ST_NOTE;
+        if (!st->vel) st->vel = 96;
+        last_note = (uint8_t)cur;
+    }
+    if ((ui_prefs2 & (PREF_PREVIEW >> 16)) && !song.playing && !seq_counting() && transport_req != 1u && !chain_busy())
+        aud_req = (uint16_t)((uint32_t)ui.cursor << 8 | (song.sel + 1u));
+    motion_undo_done(t);
+    ui.force = 1;
+}
+
 static void step_edit(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
@@ -1018,14 +1079,14 @@ static void step_edit(uint32_t slot, int32_t steps)
     }
 
     if (is_8x8) {
-        /* 8x8 STEP: [K1] STEP, [K2] GATE, [K3] OPT, [K4] CLEAR */
+        /* 8x8 STEP: [K1] STEP, [K2] SLICE/INST/NOTE, [K3] OPT, [K4] CLEAR */
         switch (slot) {
         case 0: /* STEP */
             cursor_move(ui.cursor + steps);
             ui.bank = (uint8_t)(ui.cursor / 16u);
             break;
-        case 1: /* GATE */
-            t->p[P_SGATE] = (int16_t)clamp((int32_t)t->p[P_SGATE] + steps * 4, 1, 127);
+        case 1: /* SLICE / INST / NOTE */
+            step_target_turn(t, steps);
             break;
         case 2: /* OPT */
             step_edit_opt(t, steps);
@@ -1051,7 +1112,7 @@ static void step_edit(uint32_t slot, int32_t steps)
         }
         }
     } else {
-        /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] GATE, [K4] OPT */
+        /* 4x4 STEP: [K1] STEP, [K2] BANK, [K3] SLICE/INST/NOTE, [K4] OPT */
         switch (slot) {
         case 0: /* STEP */
             cursor_move(ui.cursor + steps);
@@ -1061,8 +1122,8 @@ static void step_edit(uint32_t slot, int32_t steps)
             ui.bank = (uint8_t)clamp((int32_t)ui.bank + steps, 0, 3);
             cursor_move(ui.bank * 16u + (ui.cursor % 16u));
             break;
-        case 2: /* GATE */
-            t->p[P_SGATE] = (int16_t)clamp((int32_t)t->p[P_SGATE] + steps * 4, 1, 127);
+        case 2: /* SLICE / INST / NOTE */
+            step_target_turn(t, steps);
             break;
         case 3: /* OPT */
             step_edit_opt(t, steps);
@@ -1251,6 +1312,13 @@ static void edit_param(uint32_t slot, int32_t steps)
     if (ENGINES[TSEL->eng_req % NENGINES] == &ENG_SAMPLE) {
         if (vp == &TSEL->p[P_E7]) {
             sample_tempo_sync(TSEL, v);
+            ui.force = 1;
+        } else if (vp == &TSEL->p[P_E4]) {
+            TSEL->p[P_E7] = 0; /* Reset SYNC to '--' when STRCH is adjusted manually */
+        }
+    } else if (ENGINES[TSEL->eng_req % NENGINES] == &ENG_SLICE) {
+        if (vp == &TSEL->p[P_E7]) {
+            slice_tempo_sync(TSEL, v);
             ui.force = 1;
         } else if (vp == &TSEL->p[P_E4]) {
             TSEL->p[P_E7] = 0; /* Reset SYNC to '--' when STRCH is adjusted manually */
@@ -1985,6 +2053,8 @@ static void ui_input(void)
             for (uint32_t ti = 0; ti < NTRK; ti++) {
                 if (ENGINES[trk[ti].eng_req % NENGINES] == &ENG_SAMPLE && trk[ti].p[P_E7] > 0)
                     sample_tempo_sync(&trk[ti], trk[ti].p[P_E7]);
+                else if (ENGINES[trk[ti].eng_req % NENGINES] == &ENG_SLICE && trk[ti].p[P_E7] > 0)
+                    slice_tempo_sync(&trk[ti], trk[ti].p[P_E7]);
             }
         } else {                                        /* MENU > BPM LOCK ON (#58): only with GLO held (and on HOME >
                                                          * CLOCK, GLO's F4 TAP); a turn burst says so once */

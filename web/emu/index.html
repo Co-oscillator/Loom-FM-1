@@ -425,7 +425,7 @@ footer small { font-size: 11px; opacity: .8; }
           <div class="mag-pill"><strong>STRCH (Time Stretch Length):</strong> Granular time-stretch length factor (25% to 400%) preserving transient punch.</div>
           <div class="mag-pill"><strong>MODE (Trigger Gate):</strong> Gate mode (<code>SHOT</code> plays slice to completion; <code>GATE</code> sounds only while held; <code>LOOP</code> continuously loops the slice).</div>
           <div class="mag-pill"><strong>REV (Slice Reverse):</strong> Playback direction (<code>OFF</code> forward; <code>REV</code> reversed slice playback).</div>
-          <div class="mag-pill"><strong>TONE (Filter Tone):</strong> 1-pole low-pass filter tone to tame harsh high frequencies or warm up lo-fi breakbeat chops.</div>
+          <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps loop duration to song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> so slices divide evenly into the beat/bar length at the current BPM.</div>
         </div>
       </div>
     </div>
@@ -510,8 +510,8 @@ footer small { font-size: 11px; opacity: .8; }
         <p>Loom features an expressive dual-view 64-step sequencer across four dedicated pages (<code>4x4 STEP 1/4</code>, <code>4x4 PAT 2/4</code>, <code>8x8 STEP 3/4</code>, <code>8x8 PAT 4/4</code>). Tap <strong>SEQ</strong> to cycle between views. Notes can be recorded live from the hardware keys, step-entered, or motion-automated with full per-step parameter locks:</p>
         <div class="mag-grid">
           <div class="mag-pill"><strong>STEP (Step Cursor):</strong> Active step selection (1–64). Turn K1 to scrub across the pattern with live pitch preview.</div>
-          <div class="mag-pill"><strong>BANK (16-Step Banks 1–4):</strong> Jumps between Bank 1 (steps 1–16), Bank 2 (17–32), Bank 3 (33–48), and Bank 4 (49–64).</div>
-          <div class="mag-pill"><strong>GATE (Gate Length):</strong> Step gate duration (1% to 100% of the step, or tied across multiple steps).</div>
+          <div class="mag-pill"><strong>BANK (16-Step Banks 1–4):</strong> Jumps between Bank 1 (steps 1–16), Bank 2 (17–32), Bank 3 (33–48), and Bank 4 (49–64) on 4x4 view.</div>
+          <div class="mag-pill"><strong>SLICE / INST / NOTE (Step Target):</strong> Directly puts or edits a specific sound target on the step: selects <code>SLICE</code> (<code>SLC 1</code>..<code>16</code>) when on the SLICE engine, drum voice (<code>KICK</code>, <code>SNARE</code>, <code>CLAP</code>...) when on the DRUM engine, or chromatic pitch (<code>C-1</code> to <code>G9</code>) on synths and samplers. Available on Knob 3 in 4x4 STEP and Knob 2 in 8x8 STEP.</div>
           <div class="mag-pill"><strong>OPT (Trigger Behavior):</strong> Selects trigger behavior: <code>OFF</code> (silent rest), <code>PLAY</code> (standard note strike), <code>TIE</code> (legato tie sustaining previous note without re-triggering envelopes), <code>PUNCH</code> (hard accented strike with maximum velocity), <code>RATCH 2</code> (2-hit sub-step burst), <code>RATCH 3</code> (3-hit triplet sub-step roll), <code>RATCH 4</code> (4-hit rapid burst), and <code>P+RATCH</code> (accented burst).</div>
           <div class="mag-pill"><strong>VEL (Step Velocity):</strong> Dynamic strike velocity (1–127). Hold any step and adjust velocity.</div>
           <div class="mag-pill"><strong>P-LOCKS (Parameter Locks):</strong> Hold any active sequencer step and turn any knob to lock specific cutoff, resonance, pitch, or effect values to that individual step.</div>
