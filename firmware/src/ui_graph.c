@@ -1029,7 +1029,7 @@ static void graph_reverb(uint16_t c)
     static const uint16_t BASE_COLS[4] = {
         0xE509, /* 0 ROOM: Amber limestone RGB(225, 160, 75) */
         0x36B7, /* 1 SPRING: Surf teal RGB(55, 215, 190) */
-        0x9B5E, /* 2 HALL: Cathedral deep royal violet RGB(155, 105, 245) */
+        0xF1C7, /* 2 HALL: Cathedral crimson red RGB(240, 55, 60) */
         0xBA9F  /* 3 SPACE: Cosmic purple RGB(190, 85, 255) */
     };
     uint16_t col = fx_tone_color(BASE_COLS[rtype], tone);
@@ -1126,20 +1126,12 @@ static void graph_chorus(uint16_t c)
     int32_t tone = clamp(song.g[G_CTONE], -64, 63);
     int32_t voices = clamp(song.g[G_CVOICE], 0, 3) + 1; /* 1..4 */
 
-    uint16_t col;
-    if (tone < 0) {
-        int32_t t = (tone + 64);
-        int32_t r = 30 - (t * 10) / 64;
-        int32_t g = 32 + (t * 28) / 64;
-        int32_t b = 6 + (t * 25) / 64;
-        col = (uint16_t)((r << 11) | (g << 5) | b);
-    } else {
-        int32_t t = tone;
-        int32_t r = 20 - (t * 12) / 63;
-        int32_t g = 60 + (t * 3) / 63;
-        int32_t b = 31;
-        col = (uint16_t)((r << 11) | (g << 5) | b);
-    }
+    /* Vivid color spectrum: Warm Red (-64) -> Magenta/Purple (0) -> Cool Electric Blue (+63) */
+    int32_t u = clamp(tone + 64, 0, 127);
+    int32_t r = 31 - (u * 25) / 127;  /* 31 down to 6 */
+    int32_t b = 6 + (u * 25) / 127;   /* 6 up to 31 */
+    int32_t g = (u < 64) ? (6 + (u * 10) / 64) : (16 + ((u - 64) * 20) / 63); /* 6 .. 16 .. 36 */
+    uint16_t col = (uint16_t)((r << 11) | (g << 5) | b);
     uint16_t dim_col = fx_tone_color(col, -40);
 
     int32_t x0 = 54, y0 = 60, R = 24;
@@ -1208,11 +1200,11 @@ static void graph_chorus(uint16_t c)
     }
     cv_line(mx0 - 3, my0 + 5, mx0 + 3, my0 + 5, dim_col);
 
-    /* 3. Sine wave on right side (exact 1.0 to 5.0 full cycles) */
+    /* 3. Sine wave on right side: density scales visibly with RATE from 1.0 to 10.0 full cycles */
     int32_t x_start = 98, x_end = 226, wave_w = x_end - x_start;
-    int32_t amp = 3 + (depth * 32) / 127;
-    uint32_t lfo_inc = 0x02000000u + ((uint32_t)rate * 0x08000000u) / 127u;
-    uint32_t ph_anim = (ui.frame * 0x04000000u);
+    int32_t amp = 3 + (depth * 30) / 127;
+    uint32_t lfo_inc = 0x02000000u + ((uint32_t)rate * 0x12000000u) / 127u;
+    uint32_t ph_anim = (ui.frame * 0x02800000u);
     int32_t prev_wx = x_start, prev_wy = y0;
     for (int32_t x = x_start; x <= x_end; x++) {
         uint32_t ph = ph_anim + (uint32_t)(x - x_start) * lfo_inc;
