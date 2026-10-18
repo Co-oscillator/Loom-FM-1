@@ -514,17 +514,18 @@ static void graph_loom_seq_grid(const track_t *t, uint16_t c)
     uint64_t locks = motion_lock_steps(trk_index(t));
     /* ---------------------------------------------------------
      * 4x4 Mode: 16 steps (4 columns x 4 rows) for current bank
+     * Scaled up to 24px diameter circles for maximum visibility
      * --------------------------------------------------------- */
     uint32_t base = ui.bank * 16u;
     uint32_t row, col;
-    int32_t r = 10;
+    int32_t r = 12;
 
     for (row = 0; row < 4u; ++row) {
-        int32_t yc = 21 + (int32_t)row * 26;
+        int32_t yc = 20 + (int32_t)row * 27;
         for (col = 0; col < 4u; ++col) {
             uint32_t step_in_bank = row * 4u + col;
             uint32_t si = base + step_in_bank;
-            int32_t xc = 45 + (int32_t)col * 50;
+            int32_t xc = 42 + (int32_t)col * 52;
             int in_len = (si < len);
             int is_cursor = (si == ui.cursor);
             int is_playing = (song.playing && si == t->seq_idx);
@@ -532,7 +533,7 @@ static void graph_loom_seq_grid(const track_t *t, uint16_t c)
             const step_t *st = &seq_steps(t)[si];
 
             if (!in_len) {
-                cv_circle_ring(xc, yc, 3, T_DIM);
+                cv_circle_ring(xc, yc, 4, T_DIM);
                 continue;
             }
 
@@ -563,25 +564,25 @@ static void graph_loom_seq_grid(const track_t *t, uint16_t c)
                     cv_circle_fill(xc, yc, r, contrast_c);
 
                     if (has_accent) {
-                        cv_circle_fill(xc, yc, 3, T_INK);
+                        cv_circle_fill(xc, yc, 4, T_INK);
                     }
 
                     if (step_ratchet(st) > 1u) {
                         uint32_t ratch = step_ratchet(st);
                         if (ratch == 2u) {
-                            cv_rect(xc - 3, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc + 2, yc - 4, 2, 8, T_INK);
+                            cv_rect(xc - 4, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc + 2, yc - 5, 2, 11, T_INK);
                         } else if (ratch == 3u) {
-                            cv_rect(xc - 4, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc - 1, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc + 3, yc - 4, 2, 8, T_INK);
+                            cv_rect(xc - 5, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc - 1, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc + 3, yc - 5, 2, 11, T_INK);
                         } else {
-                            cv_circle_ring(xc, yc, 5, T_INK);
+                            cv_circle_ring(xc, yc, 6, T_INK);
                         }
                     }
                 } else if (!drum_track(t) && st->time == ST_TIE) {
                     cv_circle_fill(xc, yc, r, ux_mix(contrast_c, T_SURF, 40));
-                    cv_rect(xc - 5, yc - 1, 11, 2, contrast_c);
+                    cv_rect(xc - 6, yc - 1, 13, 2, contrast_c);
                 } else if (drum_track(t) && other_hit) {
                     cv_circle_ring(xc, yc, r, contrast_c);
                     cv_circle_fill(xc, yc, 4, contrast_c);
@@ -592,36 +593,36 @@ static void graph_loom_seq_grid(const track_t *t, uint16_t c)
                     cv_circle_fill(xc, yc, 4, contrast_c);
                 }
                 /* Outer glowing playhead indicator ring */
+                cv_circle_ring(xc, yc, r + 2, contrast_c);
                 cv_circle_ring(xc, yc, r + 3, contrast_c);
-                cv_circle_ring(xc, yc, r + 4, contrast_c);
             } else {
                 if (has_hit) {
                     uint16_t fill_c = has_accent ? T_ACCENT : c;
                     cv_circle_fill(xc, yc, r, fill_c);
 
                     if (has_accent) {
-                        cv_circle_fill(xc, yc, 3, T_TEXT);
+                        cv_circle_fill(xc, yc, 4, T_TEXT);
                     }
 
                     if (step_ratchet(st) > 1u) {
                         uint32_t ratch = step_ratchet(st);
                         if (ratch == 2u) {
-                            cv_rect(xc - 3, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc + 2, yc - 4, 2, 8, T_INK);
+                            cv_rect(xc - 4, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc + 2, yc - 5, 2, 11, T_INK);
                         } else if (ratch == 3u) {
-                            cv_rect(xc - 4, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc - 1, yc - 4, 2, 8, T_INK);
-                            cv_rect(xc + 3, yc - 4, 2, 8, T_INK);
+                            cv_rect(xc - 5, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc - 1, yc - 5, 2, 11, T_INK);
+                            cv_rect(xc + 3, yc - 5, 2, 11, T_INK);
                         } else {
-                            cv_circle_ring(xc, yc, 5, T_INK);
+                            cv_circle_ring(xc, yc, 6, T_INK);
                         }
                     }
                 } else if (!drum_track(t) && st->time == ST_TIE) {
                     cv_circle_fill(xc, yc, r, ux_mix(c, T_SURF, 40));
-                    cv_rect(xc - 5, yc - 1, 11, 2, T_TEXT);
+                    cv_rect(xc - 6, yc - 1, 13, 2, T_TEXT);
                 } else if (drum_track(t) && other_hit) {
                     cv_circle_ring(xc, yc, r, T_RAISE);
-                    cv_circle_fill(xc, yc, 3, ux_mix(c, T_SURF, 50));
+                    cv_circle_fill(xc, yc, 4, ux_mix(c, T_SURF, 50));
                 } else {
                     cv_circle_ring(xc, yc, r, T_RAISE);
                 }
@@ -629,17 +630,17 @@ static void graph_loom_seq_grid(const track_t *t, uint16_t c)
 
             if (is_cursor) {
                 /* Top-left */
-                cv_rect(xc - r - 4, yc - r - 4, 4, 1, T_TEXT);
-                cv_rect(xc - r - 4, yc - r - 4, 1, 4, T_TEXT);
+                cv_rect(xc - r - 3, yc - r - 3, 5, 1, T_TEXT);
+                cv_rect(xc - r - 3, yc - r - 3, 1, 5, T_TEXT);
                 /* Top-right */
-                cv_rect(xc + r + 1, yc - r - 4, 4, 1, T_TEXT);
-                cv_rect(xc + r + 4, yc - r - 4, 1, 4, T_TEXT);
+                cv_rect(xc + r - 1, yc - r - 3, 5, 1, T_TEXT);
+                cv_rect(xc + r + 3, yc - r - 3, 1, 5, T_TEXT);
                 /* Bottom-left */
-                cv_rect(xc - r - 4, yc + r + 4, 4, 1, T_TEXT);
-                cv_rect(xc - r - 4, yc + r + 1, 1, 4, T_TEXT);
+                cv_rect(xc - r - 3, yc + r + 3, 5, 1, T_TEXT);
+                cv_rect(xc - r - 3, yc + r - 1, 1, 5, T_TEXT);
                 /* Bottom-right */
-                cv_rect(xc + r + 1, yc + r + 4, 4, 1, T_TEXT);
-                cv_rect(xc + r + 4, yc + r + 1, 1, 4, T_TEXT);
+                cv_rect(xc + r - 1, yc + r + 3, 5, 1, T_TEXT);
+                cv_rect(xc + r + 3, yc + r - 1, 1, 5, T_TEXT);
             }
         }
     }
@@ -652,23 +653,23 @@ static void graph_steps(const track_t *t, uint16_t c)
     uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP);
     uint64_t locks = motion_lock_steps(trk_index(t));
     uint32_t r, col;
+    int32_t dot_r = 5;
 
-    /* 8 rows x 8 columns of round step circles (no row labels) */
+    /* 8 rows x 8 columns of round step circles (scaled up to 10px diameter) */
     for (r = 0; r < 8u; ++r) {
-        int32_t yc = 15 + (int32_t)r * 13;
+        int32_t yc = 13 + (int32_t)r * 14;
 
         for (col = 0; col < 8u; ++col) {
             uint32_t si = r * 8u + col;
-            int32_t xc = 57 + (int32_t)col * 18;
+            int32_t xc = 36 + (int32_t)col * 24;
             int in_len = si < len;
             int is_cursor = (si == ui.cursor);
             int is_playing = (song.playing && si == t->seq_idx);
             int has_lock = (int)((locks >> si) & 1u);
             const step_t *st = &seq_steps(t)[si];
-            int32_t dot_r = 4;
 
             if (!in_len) {
-                cv_rect(xc - 1, yc - 1, 2, 2, T_DIM);
+                cv_rect(xc - 1, yc - 1, 3, 3, T_DIM);
                 continue;
             }
 
@@ -697,17 +698,17 @@ static void graph_steps(const track_t *t, uint16_t c)
                 /* Active playing step: strongly contrasting color from current theme */
                 if (has_hit) {
                     cv_circle_fill(xc, yc, dot_r, contrast_c);
-                    if (has_accent) cv_rect(xc, yc, 1, 1, T_INK);
+                    if (has_accent) cv_rect(xc - 1, yc - 1, 3, 3, T_INK);
                     if (step_ratchet(st) > 1u) {
-                        cv_rect(xc - 1, yc, 1, 1, T_INK);
-                        cv_rect(xc + 1, yc, 1, 1, T_INK);
+                        cv_rect(xc - 2, yc, 1, 1, T_INK);
+                        cv_rect(xc + 2, yc, 1, 1, T_INK);
                     }
                 } else if (!drum_track(t) && st->time == ST_TIE) {
                     cv_circle_fill(xc, yc, dot_r, ux_mix(contrast_c, T_SURF, 40));
-                    cv_rect(xc - 2, yc, 5, 1, contrast_c);
+                    cv_rect(xc - 3, yc - 1, 7, 2, contrast_c);
                 } else if (drum_track(t) && other_hit) {
                     cv_circle_ring(xc, yc, dot_r, contrast_c);
-                    cv_circle_fill(xc, yc, 2, contrast_c);
+                    cv_circle_fill(xc, yc, 3, contrast_c);
                 } else {
                     /* Active empty step: ring + illuminated center in contrasting color */
                     cv_circle_ring(xc, yc, dot_r, contrast_c);
@@ -718,17 +719,17 @@ static void graph_steps(const track_t *t, uint16_t c)
             } else {
                 if (has_hit) {
                     cv_circle_fill(xc, yc, dot_r, has_accent ? T_ACCENT : c);
-                    if (has_accent) cv_rect(xc, yc, 1, 1, T_TEXT);
+                    if (has_accent) cv_rect(xc - 1, yc - 1, 3, 3, T_TEXT);
                     if (step_ratchet(st) > 1u) {
-                        cv_rect(xc - 1, yc, 1, 1, T_INK);
-                        cv_rect(xc + 1, yc, 1, 1, T_INK);
+                        cv_rect(xc - 2, yc, 1, 1, T_INK);
+                        cv_rect(xc + 2, yc, 1, 1, T_INK);
                     }
                 } else if (!drum_track(t) && st->time == ST_TIE) {
                     cv_circle_fill(xc, yc, dot_r, ux_mix(c, T_SURF, 40));
-                    cv_rect(xc - 2, yc, 5, 1, T_TEXT);
+                    cv_rect(xc - 3, yc - 1, 7, 2, T_TEXT);
                 } else if (drum_track(t) && other_hit) {
                     cv_circle_ring(xc, yc, dot_r, T_RAISE);
-                    cv_circle_fill(xc, yc, 2, ux_mix(c, T_SURF, 50));
+                    cv_circle_fill(xc, yc, 3, ux_mix(c, T_SURF, 50));
                 } else {
                     cv_circle_ring(xc, yc, dot_r, T_RAISE);
                 }

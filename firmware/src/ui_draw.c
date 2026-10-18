@@ -788,6 +788,9 @@ static void draw_foot(void)
         int32_t kw = kh_w(KC_OCTUP, "DONE");
         cv_free_text(8, 2, &AF_S, ln, T_ACCENT, T_BG, 232 - kw - 8 - 8);
         cv_key_row(232 - kw, 232, 2, &kh, 1, 1u, T_BG);
+    } else if (pg->fam == FAM_SEQ) {
+        /* Sequencer screens (4x4 STEP, 4x4 PAT, 8x8 STEP, 8x8 PAT):
+         * The step grid above already displays the steps; omit duplicate 16-step bars */
     } else if (grid_on() && !detail_on()) {          /* row 1: the page, and what the keys do (DETAIL: the steps) */
         char b[16];
         uint32_t len = (uint32_t)t->p[P_SLEN];
