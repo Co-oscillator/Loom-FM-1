@@ -21,6 +21,8 @@ static struct {
     int32_t dly_cur;                     /* Tape Echo smoothed delay length */
     int32_t cho_lp;                      /* Chorus Tone filter */
     int32_t rev_tone_lp;                 /* Reverb Tone filter */
+    uint32_t dly_ping_ph;                /* Tape Echo ping-pong cross phase */
+    int32_t dly_side[CTL];               /* Tape Echo ping-pong stereo difference */
     uint16_t comb_i[4], ap_i[2];
     int32_t comb_lp[4];
     uint8_t rtype;                       /* the reverb model running (G_RTYPE: 0 ROOM, 1 SPRING, 2 HALL) */
@@ -732,7 +734,8 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     int32_t col = 32000 - (tape_amt * 120); /* tape head high-cut damping */
     int32_t sat_gain = 4096 + (tape_amt * 48);
     int32_t inv_sat_q15 = (4096 * 32768) / sat_gain;
-    int32_t dmix = song.g[G_DMIX] * 258;
+    int32_t cross_amt = clamp(song.g[G_DMIX], 0, 127);
+    uint32_t ping_inc = dl > 64u ? (uint32_t)(0x80000000ULL / (uint64_t)dl) : 0u;
     int32_t cdepth = song.g[G_CDEPTH] * 6, rt;
     uint32_t cinc = LFO_INC[song.g[G_CRATE] & 127] / CTL;
     uint32_t nvoices = (uint32_t)clamp(song.g[G_CVOICE], 0, 3) + 1u; /* 1..4 chorus voices */
@@ -816,7 +819,10 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
             (int16_t)clamp((dly_in[i] >> 1) + sat_fb, -32768, 32767);
         fx.dly_w++;
-        y += mulq15(x << 1, dmix);
+        fx.dly_ping_ph += ping_inc;
+        int32_t pan = (osc_sine(fx.dly_ping_ph) * cross_amt) >> 7;
+        fx.dly_side[i] = (x * pan) >> 15;
+        y += x;
         wet[i] = y;
     }
 
@@ -1410,10 +1416,17 @@ static void mix_block(int32_t *out, uint32_t n)
             wet[i] = (wet[i] * gain) >> 15;
             if (hl.side)
                 rev_side[i] = (rev_side[i] * gain) >> 15;
+            fx.dly_side[i] = (fx.dly_side[i] * gain) >> 15;
         }
     }
     if (hl.side)
         rev_side_mix(mix_l, mix_r, n);                  /* HALL: stereo */
+    if (song.g[G_DMIX] > 0) {
+        for (i = 0; i < n; i++) {
+            mix_l[i] += fx.dly_side[i];
+            mix_r[i] -= fx.dly_side[i];
+        }
+    }
     if (scope_mix)
         scope_take_mix(n);
     if (perf) {

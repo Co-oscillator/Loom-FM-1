@@ -113,6 +113,7 @@ enum {                          /* global parameters */
 #define G_RESETINIT G_DRREV     /* Loom: Reset boot Init snapshot back to factory defaults */
 #define G_RTONE G_ENGGO         /* Loom: Reverb Tone: Warmer (-64) to Harder (+63) */
 #define G_CTONE G_SYNC          /* Loom: Chorus Tone: BBD Warm (-64) to Shimmer (+63) */
+#define G_DCROSS G_DMIX         /* Loom: Delay Cross-Feedback Ping-Pong Spread */
 #define G_CVOICE G_INFO         /* Loom: Chorus Voices: 1..4 voices (0..3) */
 
 
