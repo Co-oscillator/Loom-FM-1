@@ -108,6 +108,29 @@ footer small { font-size: 11px; opacity: .8; }
 .wb-table th { color: #5fe08a; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; }
 .wb-table td code { background: #2c2c2e; color: #fff4d6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 .wb-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #323236; color: #5fe08a; }
+/* Magazine Style Interactive Manual */
+.mag-section { margin-top: 24px; }
+.mag-card { display: flex; gap: 20px; background: #262629; border: 1px solid #38383c; border-radius: 14px; padding: 18px; margin-bottom: 20px; align-items: flex-start; }
+.mag-aside { flex: 0 0 200px; max-width: 200px; }
+.mag-aside img { width: 100%; height: auto; border-radius: 10px; border: 1px solid #4a4a4e; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: block; }
+.mag-caption { font-size: 11px; color: #8e8e93; margin-top: 6px; text-align: center; }
+.mag-content { flex: 1 1 auto; min-width: 0; }
+.mag-content h4 { margin: 0 0 8px; font-size: 16px; color: #5fe08a; display: flex; align-items: center; gap: 8px; }
+.mag-content p { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: #d1d1d6; }
+.mag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 10px; }
+.mag-pill { background: #1c1c1e; border: 1px solid #323236; border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.mag-pill strong { color: #fff; }
+.mag-pill code { color: #5fe08a; background: #2a2a2e; padding: 1px 5px; border-radius: 4px; }
+.mag-links-card { background: #1a1a1d; border: 1px solid rgba(95, 224, 138, 0.35); border-radius: 14px; padding: 22px; margin-top: 28px; }
+.mag-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+.mag-link-btn { display: block; background: #262629; border: 1px solid #3c3c40; border-radius: 10px; padding: 14px; color: #ececee; text-decoration: none; transition: all 0.15s; }
+.mag-link-btn:hover { background: #323236; border-color: #5fe08a; transform: translateY(-2px); }
+.mag-link-btn h5 { margin: 0 0 4px; font-size: 14px; color: #5fe08a; }
+.mag-link-btn p { margin: 0; font-size: 12px; color: #9a9a9e; line-height: 1.4; }
+@media (max-width: 700px) {
+  .mag-card { flex-direction: column; }
+  .mag-aside { max-width: 100%; width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -210,67 +233,195 @@ footer small { font-size: 11px; opacity: .8; }
 <!-- TAB 4: MANUAL & GLOSSARY -->
 <section id="tab-manual" class="wb-panel" role="tabpanel">
   <div class="wb-card">
-    <h2>📖 Loom FM-1 Interactive Manual, Shortcuts &amp; Plain-Language Glossary</h2>
-    <p>Type any button name, parameter label (e.g. <code>QNT</code>, <code>DUCK</code>, <code>SLCS</code>, <code>INERT</code>, <code>INIT+</code>), or feature below to filter the reference tables.</p>
-    <input id="manual-search" class="wb-search" type="search" placeholder="🔍 Search shortcuts, buttons, menus, or parameter names (e.g. Scale, Resample, Save, Duck, Scrub, Slice)...">
+    <h2>📖 Loom FM-1 Illustrated Guide &amp; Interactive Reference Manual</h2>
+    <p>Explore the 5-track groovebox architecture, master send effects, per-track insert DSP, and hardware keyboard shortcuts in an illustrated magazine format. Type in the search box below to instantly filter any parameter, button, or engine across the guide.</p>
+    <input id="manual-search" class="wb-search" type="search" placeholder="🔍 Search shortcuts, buttons, menus, or parameter names (e.g. Scale, Resample, Save, Duck, Scrub, Slice, Chorus, Delay, Drive)...">
 
-    <div class="manual-section">
-      <h3>🎹 Hardware Button Combos, Long-Presses &amp; Piano Key Shortcuts</h3>
-      <table class="wb-table">
-        <thead>
-          <tr><th>Shortcut / Action</th><th>Context</th><th>What It Does (Plain Language)</th></tr>
-        </thead>
-        <tbody id="manual-shortcuts-body">
-          <tr><td><code>Hold HOME</code> + <code>Keys 1–4 (F..G#)</code></td><td>Anywhere</td><td>Select active Track <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
-          <tr><td><code>Hold HOME</code> + <code>Keys 5–8 (A..C)</code></td><td>Anywhere</td><td>Mute or unmute Track <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
-          <tr><td><code>Hold HOME</code> + <code>Turn K1–K4</code></td><td>Anywhere</td><td>Adjust per-track mixer volume for <code>T1</code>, <code>T2</code>, <code>T3</code>, or <code>DRUM</code>.</td></tr>
-          <tr><td><code>Hold FX</code> + <code>Keys 1–4</code></td><td>Anywhere</td><td>Punch-in performance FX (Repeat, Stutter, Tape Stop, Half-Speed) while held.</td></tr>
-          <tr><td><code>Hold FX</code> + <code>Turn K1–K4</code></td><td>Anywhere</td><td>Quick-adjust send levels for <code>DUCK</code> (Sidechain), <code>CHOR</code> (Chorus), <code>DLY</code> (Tape Delay), and <code>RVB</code> (Reverb).</td></tr>
-          <tr><td><code>Hold SEQ</code> + <code>White Keys 1–16</code></td><td>Sequencer</td><td>Select step 1–16 for inspection or step-locking, or toggle drum hits in the <code>DRUM</code> grid.</td></tr>
-          <tr><td><code>Tap EDIT</code> (while on <code>STEP</code> page)</td><td>Step Edit</td><td>Clears the selected sequencer step (removes notes and parameter locks on that step).</td></tr>
-          <tr><td><code>Hold EDIT</code> + <code>Turn Knob</code></td><td>Step Edit</td><td>Parameter-lock (motion lock) that knob's parameter onto the currently selected sequencer step.</td></tr>
-          <tr><td><code>Hold REC</code> (~0.6s)</td><td>Anywhere</td><td>Toggle Metronome click on/off.</td></tr>
-          <tr><td><code>Hold SAVE</code> (~0.6s)</td><td>Anywhere</td><td>Quick-save the current Project into its active project slot (<code>S01</code>–<code>S16</code>).</td></tr>
-          <tr><td><code>Shift + Click</code> (Web Emulator)</td><td>Browser Emulator</td><td>Latches (holds down) any panel button so you can perform <code>Hold + Key</code> or <code>Hold + Knob</code> combos with a mouse.</td></tr>
-        </tbody>
-      </table>
+    <!-- ARTICLE 1: 5-TRACK ARCHITECTURE & SHORTCUTS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/mixer.png" alt="Loom 5-Track Mixer">
+        <div class="mag-caption">5-Track Mixer Screen (HOME Tap)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎛️ 5-Track Architecture &amp; Hardware Shortcuts</h4>
+        <p>Loom FM-1 expands the M-VAVE FM-1 into a 5-track polyphonic groovebox with 4 melodic synth/sampler tracks (<code>1</code>–<code>4</code>) and a dedicated 5th synthesized Drum track (<code>D</code>). Tapping <code>HOME</code> toggles the live 5-column mixer where each track features high-resolution LED dials for <strong>LEVEL</strong> (dB with live meters), <strong>PAN</strong>, and <strong>REV</strong> send. All tracks support full parameter automation, choke groups, and independent sound engines.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>Hold HOME + White Keys 1–5:</strong> Select active Track <code>T1</code>, <code>T2</code>, <code>T3</code>, <code>T4</code>, or <code>DRUM (D)</code>.</div>
+          <div class="mag-pill"><strong>Hold HOME + White Keys 6–10:</strong> Mute or unmute Track <code>T1</code>, <code>T2</code>, <code>T3</code>, <code>T4</code>, or <code>DRUM (D)</code>.</div>
+          <div class="mag-pill"><strong>White Keys 11–16:</strong> Unassigned / spare for future live performance triggers.</div>
+          <div class="mag-pill"><strong>Hold HOME + Turn K1–K4 / ALGO:</strong> Quick volume fader adjustment for Tracks 1–4 (K1–K4) and Drum track (ALGO).</div>
+          <div class="mag-pill"><strong>Hold HOME Alone (~0.6s):</strong> Opens and closes the hardware Settings Menu (Display, Audio, MIDI, System).</div>
+          <div class="mag-pill"><strong>Hold FX + White Keys 1–4:</strong> Punch-in momentary performance FX (Repeat, Stutter, Tape Stop, Half-Speed).</div>
+          <div class="mag-pill"><strong>Hold FX + Turn K1–K4:</strong> Quick send adjustments for <code>DUCK</code>, <code>CHOR</code>, <code>DLY</code>, and <code>RVB</code>.</div>
+          <div class="mag-pill"><strong>Hold SEQ + White Keys 1–16:</strong> Direct step inspection, step parameter-locking, or toggle drum hits on the active lane.</div>
+          <div class="mag-pill"><strong>Tap EDIT (on STEP page):</strong> Clears notes and motion locks on the active sequencer step.</div>
+          <div class="mag-pill"><strong>Hold EDIT + Turn Knob:</strong> Parameter-locks (motion locks) that knob value onto the current step.</div>
+          <div class="mag-pill"><strong>Hold REC (~0.6s):</strong> Toggles the Metronome click on/off.</div>
+          <div class="mag-pill"><strong>Hold SAVE (~0.6s):</strong> Instant quick-save into current project slot (<code>S01</code>–<code>S16</code>).</div>
+          <div class="mag-pill"><strong>Shift + Click (Web Emulator):</strong> Latches (holds down) buttons to execute multi-button combos with a mouse.</div>
+        </div>
+      </div>
     </div>
 
-    <div class="manual-section">
-      <h3>💾 SAVE Menu Pages Explained (Pages 1–6)</h3>
-      <table class="wb-table">
-        <thead>
-          <tr><th>Save Page</th><th>Knobs (K1 / K2 / K3 / K4)</th><th>Plain-Language Explanation</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>1/6 PROJECT</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>NEW</code></td><td><strong>Full Song / Project Slots (S01–S16):</strong> Saves or loads all 4 tracks, their sequences, sounds, FX settings, and tempo together. Turn K2 to load, K3 to save, or K4 to initialize a clean project.</td></tr>
-          <tr><td><code>2/6 TOOLS</code></td><td><code>TRACK</code> / <code>SEQ</code> / <code>SOUND</code> / <code>LOCKS</code></td><td><strong>Quick-Clear Utilities:</strong> Resets parts of the current track without wiping the whole song. <code>TRACK</code> resets the whole track; <code>SEQ</code> clears the step pattern; <code>SOUND</code> resets the synth patch to default; <code>LOCKS</code> removes step automation locks.</td></tr>
-          <tr><td><code>3/6 USER</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>CLR</code></td><td><strong>32 User Patch Slots (U01–U32):</strong> Your personal sound bank! Save your custom synth patch on the active track into one of 32 flash slots (K3), load one into the current track (K2), or clear a slot (K4).</td></tr>
-          <tr><td><code>4/6 PRESETS</code></td><td><code>PATCH</code> / <code>ENG</code> / <code>FAV</code> / <code>LIST</code></td><td><strong>Preset Browser &amp; Favorites:</strong> K1 scrolls presets one-by-one; K2 jumps by Synth Engine; K3 marks/unmarks a preset as a Favorite (<code>★</code>); K4 filters the browser by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.). Leaving this page automatically restores full preset access on tracks.</td></tr>
-          <tr><td><code>5/6 PHRASES</code></td><td><code>SLOT</code> / <code>LOAD</code> / <code>SAVE</code> / <code>CLR</code></td><td><strong>Pattern / Sequence Bank (P01–P16):</strong> Saves or loads a 16-step sequence (notes + motion locks) independently of the project so you can reuse riffs across songs.</td></tr>
-          <tr><td><code>6/6 INIT+</code></td><td><code>SAVE</code> / <code>LOAD</code> / <code>CLR</code> / —</td><td><strong>Custom Default Boot State:</strong> Saves your current project layout as the personal default template that loads whenever you initialize a new project.</td></tr>
-        </tbody>
-      </table>
+    <!-- ARTICLE 2: SIDECHAIN DUCKING COMPRESSOR -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/sidechain.png" alt="Sidechain Ducking Screen">
+        <div class="mag-caption">Sidechain Compressor (FX Menu)</div>
+      </div>
+      <div class="mag-content">
+        <h4>💥 Sidechain Ducking Compressor (Send 1 / Duck Page)</h4>
+        <p>Ducks tracks and/or master FX whenever the selected drum trigger hits. TRIG selects KICK (default), K+SNR (kick + snare), K+TOM (kick + tom), or ALL (responds to every drum part); PUMP sets threshold/ratio depth; RELS sets release recovery speed; FXDK ducks the global Chorus/Delay/Reverb tails.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TRIG (Trigger Source):</strong> Selects drum trigger filtering — <code>KICK</code> (default, standard 4-on-the-floor pumping), <code>K+SNR</code> (kick + snare), <code>K+TOM</code> (kick + tom), or <code>ALL</code> (responds to every drum part).</div>
+          <div class="mag-pill"><strong>PUMP (Compression Depth):</strong> Sets threshold and compression ratio depth, determining how aggressively synth tracks duck below drum hits.</div>
+          <div class="mag-pill"><strong>RELS (Release Time):</strong> Controls recovery speed (10 ms to 800 ms), dialling in the rhythmic bounce and breathing feel of your groove.</div>
+          <div class="mag-pill"><strong>ATK (Attack Time):</strong> Fast transient response (0.5 ms to 25 ms) that squashes volume smoothly without audible audio clicks.</div>
+          <div class="mag-pill"><strong>FXDK (Master FX Duck):</strong> Directly ducks the global Chorus, Delay, and Reverb return buses (0% to 100%), keeping reverb tails and delay repeats punchy and mud-free.</div>
+        </div>
+      </div>
     </div>
 
-    <div class="manual-section">
-      <h3>🎛️ Plain-Language Parameter &amp; Engine Glossary</h3>
-      <table class="wb-table">
-        <thead>
-          <tr><th>Term / Label</th><th>Where Found</th><th>Plain-Language Meaning</th></tr>
-        </thead>
-        <tbody id="manual-glossary-body">
-          <tr><td><code>SCL</code> &amp; <code>QNT</code> (<code>OFF</code>, <code>SNAP</code>, <code>WHITE</code>, <code>SEQ</code>)</td><td><code>SCL</code> Button (Scale Page)</td><td><strong>Scale Quantization:</strong> Selecting any scale automatically enables <code>SNAP</code>. <code>SNAP</code> rounds out-of-scale notes to the nearest note in the chosen scale; <code>WHITE</code> maps consecutive scale degrees across the white keys so every white key is in-key; <code>SEQ</code> quantizes recorded sequencer notes to the scale while leaving live keys chromatic.</td></tr>
-          <tr><td><code>Resampling</code> &amp; <code>USR1..3</code></td><td>Workbench Top Bar &amp; <code>Editor &amp; Samples</code></td><td><strong>Resampling &amp; Custom Samples:</strong> Because the physical FM-1 has no audio input jack, custom audio enters slots <code>USR1..3</code> over USB SysEx via the <strong>Editor &amp; Samples</strong> tab, or by clicking <strong>● Resample Audio</strong> in the top bar while playing the emulator to capture a WAV file of your loop and load it into <code>USR1..3</code> for <code>SLICE</code>, <code>SCRUB</code>, <code>WAVETABLE</code>, or <code>GRAIN</code>.</td></tr>
-          <tr><td><code>SLCS</code> (Slices 1–16)</td><td><code>SLICE</code> Engine (Edit 1 K2)</td><td><strong>Slice Count:</strong> Sets the number of slices (1 to 16) across the full sample waveform. Changing <code>SLCS</code> automatically recalculates slice points to snap to transients across the entire sample. Each white key triggers one slice with its own live playhead.</td></tr>
-          <tr><td><code>POS</code>, <code>MOTOR</code>, <code>INERT</code>, <code>FRIC</code></td><td><code>SCRUB</code> Engine</td><td><strong>Tape / Platter Scrubbing:</strong> <code>POS</code> scrubs the tape playhead directly; <code>MOTOR</code> sets continuous forward/reverse reel speed (<code>-3.0x</code> to <code>+3.0x</code>); <code>INERT</code> controls platter mass/momentum (higher = heavier, more elastic lag); <code>FRIC</code> sets brake friction when the motor stops.</td></tr>
-          <tr><td><code>DUCK</code>, <code>TRIG</code>, <code>PUMP</code>, <code>RELS</code>, <code>FXDK</code></td><td><code>FX</code> Menu (Send 1 &amp; Duck Page)</td><td><strong>Sidechain Ducking Compressor:</strong> Replaces the old send distortion. Ducks tracks and/or master FX whenever the selected drum trigger hits. <code>TRIG</code> selects <code>KICK</code> (default), <code>K+SNR</code>, <code>K+TOM</code>, or <code>ALL</code>; <code>PUMP</code> sets threshold/ratio depth; <code>RELS</code> sets release recovery speed; <code>FXDK</code> ducks the global Chorus/Delay/Reverb tails.</td></tr>
-          <tr><td><code>TAPE DELAY</code> (<code>TIME</code>, <code>FB</code>, <code>TAPE</code>, <code>CROSS</code>)</td><td><code>FX</code> Menu (Delay Page)</td><td><strong>Continuous Tape Echo:</strong> Smooth continuous delay time (5–720 ms) with gentle analog tape-transport inertia for pitch-bent dub sweeps without excessive wobble. <code>TAPE</code> increases both Wow and Flutter (with Wow scaled 3× relative to Flutter).</td></tr>
-          <tr><td><code>CHORUS</code> (<code>RATE</code>, <code>DEPTH</code>, <code>TONE</code>, <code>VOICES</code>)</td><td><code>FX</code> Menu (Chorus Page)</td><td><strong>Multi-Voice Chorus:</strong> <code>TONE</code> shapes warmth vs. shimmer; <code>VOICES</code> selects 1 to 4 detuned quadrature chorus voices.</td></tr>
-          <tr><td><code>REVERB</code> (<code>TYPE</code>, <code>TIME</code>, <code>DAMP</code>, <code>TONE</code>)</td><td><code>FX</code> Menu (Reverb Page)</td><td><strong>Stereo Reverb:</strong> <code>TONE</code> tilts the reverb tank from dark/warm (negative) to bright/hard (positive).</td></tr>
-          <tr><td><code>Insert FX</code> (Track FX)</td><td><code>FX</code> Menu (Insert Page)</td><td><strong>Per-Track Insert Effect:</strong> Each of the 4 tracks (<code>T1..T3</code>, <code>DRUM</code>) has its own dedicated Insert FX processor (Overdrive, Bitcrush, Decimator, Filter, Phaser, Tremolo, RingMod, Compressor, Comb) before feeding the 4 global Send buses.</td></tr>
-        </tbody>
-      </table>
+    <!-- ARTICLE 3: TAPE ECHO DELAY -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/delay.png" alt="Tape Echo Delay Screen">
+        <div class="mag-caption">Continuous Tape Echo (Delay Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>📼 Continuous Analog Tape Echo (Delay Page)</h4>
+        <p>A continuous analog tape echo emulation featuring smooth delay time sweeps with realistic capstan transport inertia for classic pitch-bent dub maneuvers.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TIME (Delay Time):</strong> Continuous delay time from 5 ms to 720 ms with physical inertia; sweeping the knob glides pitch naturally like a tape reel.</div>
+          <div class="mag-pill"><strong>FDBK (Feedback):</strong> Echo regeneration from 0% to 120%, supporting single rhythmic slapbacks up to endless self-oscillating dub feedback.</div>
+          <div class="mag-pill"><strong>TAPE (Wow, Flutter &amp; Saturation):</strong> Simulates vintage tape transport aging. Increases both Wow (slow capstan motor drift) and Flutter (rapid tape transport vibrations) scaled in an authentic 3:1 ratio with tape-head saturation.</div>
+          <div class="mag-pill"><strong>CROSS (Cross-Feedback Ping-Pong):</strong> Routes left channel delay echoes into the right delay line and vice versa, creating wide, spatial bouncing stereo movement across the stereo field instead of rigid mono repeats.</div>
+          <div class="mag-pill"><strong>MIX (Wet Return):</strong> Blends the global delay echo return into the master mix bus.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 4: MULTI-VOICE CHORUS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/chorus.png" alt="Multi-Voice Chorus Screen">
+        <div class="mag-caption">Multi-Voice Chorus (Chorus Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🌊 Multi-Voice Stereo Chorus &amp; Ensemble (Chorus Page)</h4>
+        <p>Lush quadrature multi-voice chorus that thickens tracks into wide stereo textures and vintage analog ensemble pads.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>CRT (Rate):</strong> Modulation speed / LFO frequency. Controls the cycle speed of the quadrature delay modulation, ranging from slow, gentle undulating spatial motion to fast, shimmering vibrato flutter.</div>
+          <div class="mag-pill"><strong>CDP (Depth):</strong> Modulation depth / pitch detune width. Widens the delay sweep amplitude, increasing pitch detuning between voices for a thicker, richer, and more massive ensemble chorus sound.</div>
+          <div class="mag-pill"><strong>TONE / DAMP (Filter Tone):</strong> High-frequency rolloff / damping filter. Negative/lower values roll off high frequencies for dark, warm analog bucket-brigade (BBD) warmth, while positive/higher values let crisp high-frequency chime and glassy stereo shimmer shine through.</div>
+          <div class="mag-pill"><strong>VOIC (Voice Count):</strong> Selects 1, 2, 3, or 4 independent detuned quadrature chorus voices for lush multi-voice spatial width.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 5: STEREO REVERB -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/reverb.png" alt="Stereo Reverb Screen">
+        <div class="mag-caption">Stereo Reverb Tank (Reverb Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🏛️ Stereo Reverb Tank (Reverb Page)</h4>
+        <p>Rich algorithmic stereo reverberation providing acoustic space and ambient atmospheric decay.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TYPE:</strong> Selects the physical chamber model: <code>ROOM</code> (tight acoustic reflections), <code>SPRING</code> (metallic vintage tank), or <code>HALL</code> (massive spacious concert hall).</div>
+          <div class="mag-pill"><strong>SIZE:</strong> Reverberant room size and decay tail duration.</div>
+          <div class="mag-pill"><strong>DAMP:</strong> High-frequency damping absorbing reflections over time.</div>
+          <div class="mag-pill"><strong>TONE:</strong> Master spectral tilt shaping the reverb tank from dark/warm (negative) to bright/hard (positive).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 6: PER-TRACK INSERT EFFECTS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/insert.png" alt="Track Insert FX Screen">
+        <div class="mag-caption">Per-Track Insert FX &amp; Transfer Curve</div>
+      </div>
+      <div class="mag-content">
+        <h4>⚡ Per-Track Dedicated Insert Effects (Insert Page)</h4>
+        <p>Each of the 5 tracks features its own dedicated insert effect processor before the global send buses, complete with live real-time distortion transfer curve visualizations:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SOFT (Soft Clip Drive):</strong> Smooth hyperbolic analog overdrive. <code>DRIVE</code> sets input saturation pre-gain (1x–13x); <code>TONE</code> rolls off harsh highs with dual low-pass filters; <code>LEVEL</code> trims output volume (0 dB at 112).</div>
+          <div class="mag-pill"><strong>HARD (Hard Clip Distortion):</strong> Aggressive brickwall wave clipping. <code>DRIVE</code> pushes the signal into flat hard clipping; <code>TONE</code> tames high-frequency buzz; <code>LEVEL</code> manages output gain.</div>
+          <div class="mag-pill"><strong>FOLD (Wavefolder):</strong> West-Coast triangular wavefolder that inverts waveform peaks back inward. <code>DRIVE</code> controls folding depth and harmonic multiplication; <code>TONE</code> shapes brightness; <code>LEVEL</code> balances output gain.</div>
+          <div class="mag-pill"><strong>FUZZ (Asymmetric Vintage Fuzz):</strong> Transistor fuzz with a hard-clipped positive peak and soft-saturated negative half. <code>DRIVE</code> sets fuzz intensity; <code>TONE</code> shapes harmonic balance; <code>LEVEL</code> controls volume.</div>
+          <div class="mag-pill"><strong>CRUSH (Bitcrush &amp; Decimator):</strong> Retro digital lo-fi degrader. <code>BITS</code> reduces bit depth (1–16 bits) for gritty quantizing noise; <code>RATE</code> decimates sample rate (689 Hz to 44.1 kHz) for retro sampler aliasing; <code>LPF</code> smooths harsh high-frequency aliasing hash.</div>
+          <div class="mag-pill"><strong>PHASR (4-Stage Phaser):</strong> Classic sweeping phase shifter. <code>RATE</code> sets LFO sweep speed (0.1–20 Hz); <code>DEPTH</code> controls frequency range (150 Hz to 4.8 kHz); <code>FDBK</code> sets all-pass resonance for vocal sweeps.</div>
+          <div class="mag-pill"><strong>FLANG (Comb Flanger):</strong> Modulated short delay comb-filtering. <code>RATE</code> controls sweep speed; <code>DEPTH</code> sets delay range (0.25 ms to 5.0 ms); <code>FDBK</code> sets resonant feedback (0% to 85%) for jet-plane swooshes.</div>
+          <div class="mag-pill"><strong>CHOR (Micro Chorus):</strong> Dedicated per-track stereo doubling chorus. <code>RATE</code> controls modulation speed; <code>DEPTH</code> controls detune depth; <code>FDBK</code> adds subtle recirculation resonance.</div>
+          <div class="mag-pill"><strong>WOBBL (Tape Wobble):</strong> Analog tape transport wow and flutter with saturation. <code>RATE</code> sets modulation speed; <code>DEPTH</code> sets flutter depth; <code>SAT</code> injects warm magnetic tape saturation.</div>
+          <div class="mag-pill"><strong>OCTAV (Octaver / Harmonizer):</strong> Granular dual-window pitch shifter. <code>MODE</code> selects harmony interval (<code>+1OCT</code>, <code>+2OCT</code>, <code>-1OCT</code>, <code>-2OCT</code>, <code>DUAL</code>, <code>MAJOR</code>, <code>DOM7</code>, <code>MAJ7</code>, <code>MIN7</code>, <code>DIM</code>); <code>UNIS</code> controls detune; <code>TONE</code> filters harmony voices.</div>
+          <div class="mag-pill"><strong>OVDRI (Loom Overdrive):</strong> Multi-stage custom overdrive with bass tightening. <code>DRIVE</code> pushes clipping gain; <code>TONE</code> controls filter cutoff; <code>GRIT</code> injects non-linear sine wavefolding grit into loud peaks.</div>
+          <div class="mag-pill"><strong>PANNR (AutoPanner / Tremolo):</strong> Modulated stereo panning and amplitude modulation. <code>RATE</code> sets pan speed; <code>DEPTH</code> sets stereo sweep width; <code>SHAPE</code> selects modulation shape (<code>SINE</code>, <code>TRI</code>, <code>SQR</code>).</div>
+          <div class="mag-pill"><strong>MIX (Insert Page 2):</strong> Linear dry/wet blend (0% to 100%) available for all insert effect types.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7: SPECIALIZED ENGINES & SAMPLING -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/scrub.png" alt="Tape Scrub Engine">
+        <div class="mag-caption">SCRUB Engine (Tape &amp; Turntable Platter)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎛️ Specialized Engines: Scrub, Slice, Wavetable &amp; Granular</h4>
+        <p>Loom FM-1 includes 14 sound engines. Custom audio enters slots <code>USR1..3</code> over USB SysEx via the Editor &amp; Samples tab or by clicking <strong>● Resample Audio</strong>:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SCRUB:</strong> Real-time turntable platter and reel-to-reel tape scratching. <code>POS</code> scrubs tape position; <code>MOTOR</code> sets continuous speed (<code>-3.0x</code> to <code>+3.0x</code>); <code>INERT</code> controls platter momentum/lag; <code>FRIC</code> controls braking friction.</div>
+          <div class="mag-pill"><strong>SLICE:</strong> Auto-transient sample slicer. <code>SLCS</code> sets slice count (1–16); changing it recalculates slice points to snap to transients across the sample; white keys trigger individual slices.</div>
+          <div class="mag-pill"><strong>WAVETABLE:</strong> 3D morphing wavetable synthesis. Scans 256-sample single-cycle tables with non-linear phase-warping (<code>WARP</code>), detune spread, and overdrive.</div>
+          <div class="mag-pill"><strong>GRAIN:</strong> Granular cloud synthesis. Clouds of tiny micro-sound grains with controllable position, duration, density, and pitch spray.</div>
+          <div class="mag-pill"><strong>SCL &amp; QNT:</strong> Scale quantization. Selecting any scale enables <code>SNAP</code> (rounds notes to scale); <code>WHITE</code> maps scale notes to white keys; <code>SEQ</code> quantizes recorded notes.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 8: SAVE MENU PAGES -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/seq.png" alt="Sequencer &amp; Project Screen">
+        <div class="mag-caption">64-Step Dual-View Sequencer</div>
+      </div>
+      <div class="mag-content">
+        <h4>💾 SAVE Menu Pages &amp; Project Workflow (Pages 1–6)</h4>
+        <p>Manage sounds, projects, phrases, and custom boot templates across 6 organized pages:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>1/6 PROJECT:</strong> Full song memory (slots <code>S01</code>–<code>S16</code>). Turn K2 to load, K3 to save, or K4 for a new project.</div>
+          <div class="mag-pill"><strong>2/6 TOOLS:</strong> Quick-reset tools. <code>TRACK</code> resets the active track; <code>SEQ</code> clears the pattern; <code>SOUND</code> resets synth patch; <code>LOCKS</code> removes automation.</div>
+          <div class="mag-pill"><strong>3/6 USER:</strong> 32 flash user patch slots (<code>U01</code>–<code>U32</code>). Save custom sounds on the active track or load them into any track.</div>
+          <div class="mag-pill"><strong>4/6 PRESETS:</strong> Full preset browser and favorites (<code>★</code>). Filter by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.).</div>
+          <div class="mag-pill"><strong>5/6 PHRASES:</strong> 16-step sequence bank (<code>P01</code>–<code>P16</code>). Save or load sequence riffs and motion locks independently of the song.</div>
+          <div class="mag-pill"><strong>6/6 INIT+:</strong> Custom default template. Saves your current project layout as the personal default that loads whenever you initialize a project.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOOM ECOSYSTEM LINKS -->
+    <div class="mag-links-card">
+      <h4 style="margin:0 0 6px; font-size:16px; color:#5fe08a;">🌐 Explore the Complete Loom Ecosystem</h4>
+      <p style="margin:0 0 12px; font-size:13px; color:#c7c7cc;">Looking for more tracks, larger tactile displays, or full multi-touch expressive control? Explore the other projects in the Loom family:</p>
+      <div class="mag-links-grid">
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-Pi" target="_blank" rel="noopener">
+          <h5>🎛️ Loom Pi (Raspberry Pi Hardware) →</h5>
+          <p>Dedicated standalone hardware groovebox powered by Raspberry Pi. Features a rich high-resolution color UI, multi-track audio recording, advanced physical rotary encoders, and expanded connectivity.</p>
+        </a>
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/loom-groovebox" target="_blank" rel="noopener">
+          <h5>📱 Loom Groovebox for Android →</h5>
+          <p>Expressive mobile touchscreen groovebox app for Android tablets and phones. Full multi-touch piano roll, tactile synth editing, real-time automation, and portable loop creation.</p>
+        </a>
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-FM-1" target="_blank" rel="noopener">
+          <h5>⚡ Loom FM-1 Source &amp; Releases →</h5>
+          <p>Ultra-compact 5-track groovebox firmware for the M-VAVE FM-1. 14 engines, 64-step sequencer, web workbench, and complete open-source GPL-3.0 codebase.</p>
+        </a>
+      </div>
     </div>
   </div>
 </section>
@@ -278,7 +429,10 @@ footer small { font-size: 11px; opacity: .8; }
 <footer>
   <small class="version">@VERSION@@PREVIEW@</small><br>
   Loom FM-1 Groovebox · Built on Felucca / SLOOP core · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
-  <small>M-VAVE and FM-1 are trademarks of their respective owners.</small>
+  <div style="margin-top:6px;">
+    Explore more: <a href="https://github.com/Co-oscillator/Loom-Pi" style="color:#5fe08a; text-decoration:none;">Loom Pi</a> · <a href="https://github.com/Co-oscillator/loom-groovebox" style="color:#5fe08a; text-decoration:none;">Loom for Android</a> · <a href="https://github.com/Co-oscillator/Loom-FM-1" style="color:#5fe08a; text-decoration:none;">Loom FM-1 GitHub</a>
+  </div>
+  <small style="color:#6e6e73; display:block; margin-top:4px;">M-VAVE and FM-1 are trademarks of their respective owners.</small>
 </footer>
 </main>
 
@@ -839,6 +993,9 @@ document.getElementById("manual-search").addEventListener("input", (e) => {
   const q = e.target.value.trim().toLowerCase();
   document.querySelectorAll("#tab-manual .wb-table tbody tr").forEach((tr) => {
     tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+  document.querySelectorAll("#tab-manual .mag-card").forEach((card) => {
+    card.style.display = !q || card.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 });
 

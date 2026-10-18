@@ -1666,6 +1666,70 @@ static void ui_input(void)
     if (lay)
         lkeys |= notes & ~fm1_in.notes;                 /* (tapped and let go already) */
     notes &= ~kb_layer;
+    if (((fm1_in.buttons >> panel.btn[B_HOME]) & 1u) && !lay && !ui.menu && !ui.confirm) {
+        uint32_t kn;
+        for (kn = 0; kn < 27u; kn++) {
+            if ((notes >> kn) & 1u) {
+                if (!key_black(kn)) {
+                    uint32_t p = key_place(kn);
+                    if (p < NTRK) {
+                        track_select(p);
+                        ui.home_t0 |= 2u;
+                        combo = 1;
+                        char msg[16];
+                        if (p < 4u) {
+                            str_cpy(msg, "TRACK 1", sizeof msg);
+                            msg[6] = (char)('1' + p);
+                        } else {
+                            str_cpy(msg, "TRACK DRUM", sizeof msg);
+                        }
+                        ui_message(msg);
+                    } else if (p >= 5u && p < 5u + NTRK) {
+                        uint32_t tp = p - 5u;
+                        trk[tp].p[P_MUTE] = (int16_t)!trk[tp].p[P_MUTE];
+                        ui.home_t0 |= 2u;
+                        combo = 1;
+                        char msg[16];
+                        if (tp < 4u) {
+                            str_cpy(msg, trk[tp].p[P_MUTE] ? "MUTE TRK 1" : "UNMUTE TRK 1", sizeof msg);
+                            msg[9] = (char)('1' + tp);
+                        } else {
+                            str_cpy(msg, trk[tp].p[P_MUTE] ? "MUTE DRUM" : "UNMUTE DRUM", sizeof msg);
+                        }
+                        ui_message(msg);
+                    }
+                }
+            }
+        }
+        for (k = 0; k < 4u; k++) {
+            int32_t sk = panel_enc(EN_K1 + k);
+            if (sk) {
+                int16_t *vp = &trk[k].p[P_LEVEL];
+                *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, sk, TP[P_LEVEL].max - TP[P_LEVEL].min), TP[P_LEVEL].min, TP[P_LEVEL].max);
+                motion_capture(&trk[k], P_LEVEL, *vp);
+                ml_knob(&trk[k], P_LEVEL);
+                ui.home_t0 |= 2u;
+                ui.hot_col = (uint8_t)k;
+                ui.hot_t = 40;
+                combo = 1;
+            }
+        }
+        {
+            int32_t sa = panel_enc(EN_ALGO);
+            if (sa) {
+                int16_t *vp = &trk[4].p[P_LEVEL];
+                *vp = (int16_t)clamp(*vp + accel(EN_ALGO, sa, TP[P_LEVEL].max - TP[P_LEVEL].min), TP[P_LEVEL].min, TP[P_LEVEL].max);
+                motion_capture(&trk[4], P_LEVEL, *vp);
+                ml_knob(&trk[4], P_LEVEL);
+                ui.home_t0 |= 2u;
+                ui.hot_col = 4;
+                ui.hot_t = 40;
+                combo = 1;
+            }
+        }
+        if (ui.home_t0 & 2u)
+            notes = 0;
+    }
     if (lay) {                                          /* a layer's button held: keys, knobs and buttons are combos */
         combo |= (pressed & ~ly_bit(ui.ly) &            /* (REC + PLAY: PLAY plays and REC let go soon is still */
                   ~(ui.ly == LAYER_REC ? 1u << panel.btn[B_PLAY] : 0u)) != 0u;   /* a tap, it arms: as before) */

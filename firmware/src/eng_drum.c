@@ -62,7 +62,7 @@ ENG_MEM_FITS("DRUM", sizeof(drum_lane_t) * DV_NLANE);
 static drum_lane_t drum_track_lanes[DV_NLANE];
 static uint8_t drum_mute[NTRK];
 
-static const char *const N_DRUM_KIT[] = {"ANALOG", "FM", "808", "909", "606", "505", "707"};
+static const char *const N_DRUM_KIT[] = {"ANLG", "FM", "808", "909", "606", "505", "707"};
 static const char *const N_DRUM_KICK[] = {"PUNCH", "ROUND"};
 
 /* General MIDI notes 35..81 -> the drum (DVT_*; DVT_PUNCH: the kick KICK picks) and semitones from its
@@ -345,7 +345,7 @@ static int32_t drum_keys(const track_t *t, uint32_t k)
 
 /* {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK, DRV}; every kit suggests the BEAT pattern (GM notes) */
 static const preset_t DRUM_PRESETS[] = {
-    {"ANALOG",  {0, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
+    {"ANLG",    {0, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
     {"FM DRUM", {1, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
     {"808 KIT", {2, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},
     {"909 KIT", {3, 64, 64, 64, 64, 100, 0, 0}, {0, 100, 127, 100}, 0, 0, FX(0, 0, 0, 20), PAT(12)},

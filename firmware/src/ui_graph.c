@@ -3054,19 +3054,30 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
 {
     const track_t *t = &trk[c];
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
-    if (user_of(t) < UP_SLOTS)
-        up_name(user_of(t), b);
-    else if (e->npresets)
-        str_cpy(b, e->presets[t->preset % e->npresets].name, 13);
-    else
+    if (e == &ENG_DRUM) {
+        int32_t kit = clamp(t->p[P_E0], 0, DK_COUNT - 1);
+        str_cpy(b, N_DRUM_KIT[kit], 13);
+    } else if (e == &ENG_WAVETABLE) {
+        str_cpy(b, "WAVE", 13);
+    } else if (e == &ENG_ANALOG) {
+        str_cpy(b, "SUB", 13);
+    } else if (e == &ENG_SAMPLE) {
+        str_cpy(b, "SMPL", 13);
+    } else if (e == &ENG_FORMANT) {
+        str_cpy(b, "VOICE", 13);
+    } else {
         str_cpy(b, e->name, 13);
+    }
+    if (b[0] == 'A' && b[1] == 'N' && (b[2] == 'A' || b[2] == 'L')) {
+        str_cpy(b, "ANLG", 13);
+    }
 }
 
 /* MENU > LARGE: the four tracks in the strip under the tall cards (57 x LG_H_GRAPH each): the cushion (the selected
  * one the accent), REC / ARM / MUTE as on the full mixer, the sound's name, LEVEL as a gauge (THEME: the cards'),
  * the output meter under it (MID); a muted track DIM */
 #define TRK_COL_W 45
-#define TRK_COL_X(c) (3 + 47 * (int32_t)(c))
+#define TRK_COL_X(c) ((c) < 4 ? (2 + 47 * (int32_t)(c)) : 193)
 #define TSS_GY 40                                    /* the LEVEL gauge, 3 px */
 #define TSS_MY 48                                    /* the meter, 3 px */
 static void track_strip(uint32_t c, uint32_t sel, uint32_t st, uint32_t mute, uint32_t arm, uint32_t hot, uint32_t lvl,
@@ -3107,6 +3118,8 @@ static void draw_tracks(void)
         for (c = 0; c < NTRK; c++)
             ts.meter[c] = 0;
     }
+    /* Visible vertical divider line between tracks 1-4 and drum track */
+    lcd_fill(190, graph_y() + 4, 1, graph_h() - 8, T_DIM);
     for (c = 0; c < NTRK; c++) {
         track_t *t = &trk[c];
         uint32_t sel = c == song.sel, lvl = trk_level(c), mute = t->p[P_MUTE] != 0;

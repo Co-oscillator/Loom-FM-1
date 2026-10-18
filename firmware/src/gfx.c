@@ -657,6 +657,13 @@ static int text_fit(char *d, uint32_t n, const char *s, const aafont_t *f, int32
         k++;
     }
     d[k] = 0;
+    if (d[0] == 'A' && d[1] == 'N' && d[2] == 'A' && d[3] == 'L' && d[4] == 'O' && d[5] == 'G') {
+        char rem[48];
+        str_cpy(rem, d + 6, sizeof rem);
+        str_cpy(d, "ANLG", n);
+        str_cpy(d + 4, rem, n - 4);
+        k = str_len(d);
+    }
     if (!s[k] && text_w(f, d) <= maxw)
         return 0;
     if (k + 2u > n)
@@ -664,6 +671,9 @@ static int text_fit(char *d, uint32_t n, const char *s, const aafont_t *f, int32
     for (;;) {                                       /* drop characters until "text..." fits */
         while (k && d[k - 1u] == ' ')
             k--;
+        if (k == 4u && d[0] == 'A' && d[1] == 'N' && d[2] == 'A' && d[3] == 'L') {
+            d[2] = 'L'; d[3] = 'G';
+        }
         d[k] = ELLIPSIS;
         d[k + 1u] = 0;
         if (!k || text_w(f, d) <= maxw)
