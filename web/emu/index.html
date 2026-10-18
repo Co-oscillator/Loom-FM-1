@@ -453,22 +453,46 @@ footer small { font-size: 11px; opacity: .8; }
       </div>
     </div>
 
-    <!-- ARTICLE 8: SAVE MENU PAGES -->
+    <!-- ARTICLE 8: 64-STEP DUAL-VIEW SEQUENCER -->
     <div class="mag-card">
       <div class="mag-aside">
-        <img src="img/seq.png" alt="Sequencer &amp; Project Screen">
-        <div class="mag-caption">64-Step Dual-View Sequencer</div>
+        <img src="img/seq.png" alt="64-Step Dual-View Sequencer">
+        <div class="mag-caption">64-Step Sequencer (8x8 &amp; 4x4 Views)</div>
       </div>
       <div class="mag-content">
-        <h4>💾 SAVE Menu Pages &amp; Project Workflow (Pages 1–6)</h4>
-        <p>Manage sounds, projects, phrases, and custom boot templates across 6 organized pages:</p>
+        <h4>🎹 64-Step Dual-View Sequencer: Step &amp; Pattern Workflows</h4>
+        <p>Loom features an expressive dual-view 64-step sequencer across four dedicated pages (<code>4x4 STEP 1/4</code>, <code>4x4 PAT 2/4</code>, <code>8x8 STEP 3/4</code>, <code>8x8 PAT 4/4</code>). Tap <strong>SEQ</strong> to cycle between views. Notes can be recorded live from the hardware keys, step-entered, or motion-automated with full per-step parameter locks:</p>
         <div class="mag-grid">
-          <div class="mag-pill"><strong>1/6 PROJECT:</strong> Full song memory (slots <code>S01</code>–<code>S16</code>). Turn K2 to load, K3 to save, or K4 for a new project.</div>
-          <div class="mag-pill"><strong>2/6 TOOLS:</strong> Quick-reset tools. <code>TRACK</code> resets the active track; <code>SEQ</code> clears the pattern; <code>SOUND</code> resets synth patch; <code>LOCKS</code> removes automation.</div>
-          <div class="mag-pill"><strong>3/6 USER:</strong> 32 flash user patch slots (<code>U01</code>–<code>U32</code>). Save custom sounds on the active track or load them into any track.</div>
-          <div class="mag-pill"><strong>4/6 PRESETS:</strong> Full preset browser and favorites (<code>★</code>). Filter by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.).</div>
-          <div class="mag-pill"><strong>5/6 PHRASES:</strong> 16-step sequence bank (<code>P01</code>–<code>P16</code>). Save or load sequence riffs and motion locks independently of the song.</div>
-          <div class="mag-pill"><strong>6/6 INIT+:</strong> Custom default template. Saves your current project layout as the personal default that loads whenever you initialize a project.</div>
+          <div class="mag-pill"><strong>STEP (Step Cursor):</strong> Active step selection (1–64). Turn K1 to scrub across the pattern with live pitch preview.</div>
+          <div class="mag-pill"><strong>BANK (16-Step Banks 1–4):</strong> Jumps between Bank 1 (steps 1–16), Bank 2 (17–32), Bank 3 (33–48), and Bank 4 (49–64).</div>
+          <div class="mag-pill"><strong>GATE (Gate Length):</strong> Step gate duration (1% to 100% of the step, or tied across multiple steps).</div>
+          <div class="mag-pill"><strong>OPT (Trigger Behavior):</strong> Selects trigger behavior: <code>OFF</code> (silent rest), <code>PLAY</code> (standard note strike), <code>TIE</code> (legato tie sustaining previous note without re-triggering envelopes), <code>PUNCH</code> (hard accented strike with maximum velocity), <code>RATCH 2</code> (2-hit sub-step burst), <code>RATCH 3</code> (3-hit triplet sub-step roll), <code>RATCH 4</code> (4-hit rapid burst), and <code>P+RATCH</code> (accented burst).</div>
+          <div class="mag-pill"><strong>VEL (Step Velocity):</strong> Dynamic strike velocity (1–127). Hold any step and adjust velocity.</div>
+          <div class="mag-pill"><strong>P-LOCKS (Parameter Locks):</strong> Hold any active sequencer step and turn any knob to lock specific cutoff, resonance, pitch, or effect values to that individual step.</div>
+          <div class="mag-pill"><strong>LEN (Pattern Length / P_SLEN):</strong> Sets total loop length from 1 to 64 steps, allowing polyrhythms and odd meters (e.g. 5, 7, 11, 15).</div>
+          <div class="mag-pill"><strong>DIV (Clock Divider / P_SDIV):</strong> Sequence clock speed (1/1 whole, 1/2 half, 1/4 quarter, 1/8 eighth, 1/16 sixteenth, 1/32 thirty-second, plus triplets).</div>
+          <div class="mag-pill"><strong>SWING (Groove Shuffle / P_SSWING):</strong> Bipolar groove swing timing (<code>-50%</code> to <code>+50%</code>, 0% straight).</div>
+          <div class="mag-pill"><strong>HUMAN (Humanize / P_SHUMAN):</strong> Micro-timing and velocity humanization (0% to 100%) adding natural live-feel variation.</div>
+          <div class="mag-pill"><strong>CLEAR (Quick Erase):</strong> One-twist step or pattern clearing to instantly erase notes or reset automation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 9: SAVE MENU PAGES -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/save.png" alt="SAVE Project Screen">
+        <div class="mag-caption">SAVE Menu (PROJECT 1/5)</div>
+      </div>
+      <div class="mag-content">
+        <h4>💾 SAVE Menu Pages &amp; Project Workflow (Pages 1–5)</h4>
+        <p>Manage sounds, projects, phrases, and personal boot templates across 5 organized pages. Tap <strong>SAVE</strong> to open; turn K1 to browse pages:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>1/5 PROJECT:</strong> Full song memory (slots <code>A</code>–<code>D</code>). Turn K1 to choose slot, K3 to Load, K4 to Save. Turn K2 (<code>INIT+</code>) to save your current layout as the custom boot template.</div>
+          <div class="mag-pill"><strong>2/5 TOOLS:</strong> Quick-reset tools. <code>TRACK</code> resets active track; <code>SEQ</code> clears step pattern; <code>SOUND</code> resets synth patch; <code>LOCKS</code> removes automation.</div>
+          <div class="mag-pill"><strong>3/5 USER:</strong> 32 flash user patch slots (<code>U01</code>–<code>U32</code>). Save custom sounds on the active track or load them into any track.</div>
+          <div class="mag-pill"><strong>4/5 PRESETS:</strong> Full preset browser and favorites (<code>★</code>). Filter by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.).</div>
+          <div class="mag-pill"><strong>5/5 PHRASES:</strong> 16-step sequence bank (<code>P01</code>–<code>P16</code>). Save or load sequence riffs and motion locks independently of the song.</div>
         </div>
       </div>
     </div>
