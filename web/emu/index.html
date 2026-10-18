@@ -457,19 +457,26 @@ footer small { font-size: 11px; opacity: .8; }
           <div class="mag-pill"><strong>MODE (Trigger Gate):</strong> Gate mode (<code>SHOT</code> plays slice to completion; <code>GATE</code> sounds only while held; <code>LOOP</code> continuously loops the slice).</div>
           <div class="mag-pill"><strong>DIR (Playback Direction):</strong> Playback direction across slice markers (<code>FWD</code> forward; <code>REV</code> reverse; <code>PING</code> bi-directional ping-pong slice bounce).</div>
           <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps total loop playback duration to song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> so the overall loop matches the selected bar/beat length at the current BPM, while individual slice points preserve natural transient placement (averaging 1 step per slice across a 1-bar 16-slice break).</div>
-          <div class="mag-pill" style="grid-column: 1 / -1; background: #1f2722; border-color: rgba(95, 224, 138, 0.4); margin-top: 4px;">
-            <strong style="color: #5fe08a;">🔬 Manual Slice Point Fine-Tuning, Splitting &amp; Merging (SLICES Page):</strong>
-            <p style="margin: 6px 0 8px; font-size: 12.5px; color: #ececee; line-height: 1.5;">
-              Tap the <strong>EDIT</strong> button on any SLICE track to access the dedicated <strong>SLICES</strong> waveform editor (Page 3 of the EDIT family). Here you can inspect the decoded waveform, nudge boundaries with adaptive zoom, and split or join slices by hand:
-            </p>
-            <ul style="margin: 0 0 4px 18px; padding: 0; line-height: 1.55; color: #d1d1d6; font-size: 12px;">
-              <li><strong>Selecting a Slice (Knob 1 or White Keys):</strong> Turn <code>K1 (SLICE)</code> to cycle through markers <code>1/N</code> to <code>N/N</code>, or select the <code>END</code> tail marker. Alternatively, strike any white key on the keyboard to instantly jump to that slice—the key LEDs light up to confirm which keys play the active slice.</li>
-              <li><strong>Fine Tuning Slice Points (Knob 2 POS):</strong> Turn <code>K2 (POS)</code> to nudge the selected boundary marker earlier or later in time (displayed with millisecond precision, e.g. <code>1.240 S</code>). The display features <em>adaptive dynamic zoom</em>: the viewport automatically spans only the region between the preceding and succeeding markers, providing smooth, column-by-column fine-step resolution. Moving marker 1 trims sample attack; moving the <code>END</code> marker trims the tail. For user slots (<code>USR1</code>–<code>USR3</code>), moving any marker automatically enters custom manual slicing (<code>DIV = MAN</code>).</li>
-              <li><strong>Splitting a Slice (Knob 3 SPLIT + OCT+):</strong> Select the slice you wish to divide, turn <code>K3 (SPLIT)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button to execute. The slice is cleanly cut in half at its midpoint into two separate slices (supporting up to 32 slices). <code>SPLIT</code> remains armed so you can tap <strong>OCT+</strong> repeatedly to rapidly subdivide breaks. Tap <strong>OCT-</strong> to disarm.</li>
-              <li><strong>Merging / Joining Slices (Knob 4 JOIN + OCT+):</strong> Select any slice from slice 2 onward, turn <code>K4 (JOIN)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button. The selected slice's start boundary is deleted, seamlessly joining it into the preceding slice. Tap <strong>OCT+</strong> again for sequential merges, or tap <strong>OCT-</strong> to disarm.</li>
-              <li><strong>Auto-Save to Flash:</strong> All manual slice adjustments, splits, and joins are kept live in audio playback and automatically committed to flash memory with the sample when navigating away from the page.</li>
-            </ul>
-          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7B-2: MANUAL SLICE POINT EDITOR -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/slice_edit.png" alt="Manual Slice Point Editor (SLICES Page)">
+        <div class="mag-caption">Manual Slice Waveform Editor (SLICES 3/5)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🔬 Manual Slice Point Fine-Tuning, Splitting &amp; Merging (SLICES Page)</h4>
+        <p>Tap the <strong>EDIT</strong> button on any SLICE track to access the dedicated <strong>SLICES</strong> waveform editor (Page 3 of the EDIT family). Here you can inspect the decoded waveform, nudge boundaries with adaptive zoom, and split or join slices by hand:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>Selecting a Slice (Knob 1 or White Keys):</strong> Turn <code>K1 (SLICE)</code> to cycle through markers <code>1/N</code> to <code>N/N</code>, or select the <code>END</code> tail marker. Alternatively, strike any white key on the keyboard to instantly jump to that slice—the key LEDs light up to confirm which keys play the active slice.</div>
+          <div class="mag-pill"><strong>Fine Tuning Slice Points (Knob 2 POS):</strong> Turn <code>K2 (POS)</code> to nudge the selected boundary marker earlier or later in time (displayed with millisecond precision, e.g. <code>1.240 S</code>). The display features <em>adaptive dynamic zoom</em>: the viewport automatically spans only the region between the preceding and succeeding markers, providing smooth, column-by-column fine-step resolution. Moving marker 1 trims sample attack; moving the <code>END</code> marker trims the tail. For user slots (<code>USR1</code>–<code>USR3</code>), moving any marker automatically enters custom manual slicing (<code>DIV = MAN</code>).</div>
+          <div class="mag-pill"><strong>Splitting a Slice (Knob 3 SPLIT + OCT+):</strong> Select the slice you wish to divide, turn <code>K3 (SPLIT)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button to execute. The slice is cleanly cut in half at its midpoint into two separate slices (supporting up to 32 slices). <code>SPLIT</code> remains armed so you can tap <strong>OCT+</strong> repeatedly to rapidly subdivide breaks. Tap <strong>OCT-</strong> to disarm.</div>
+          <div class="mag-pill"><strong>Merging / Joining Slices (Knob 4 JOIN + OCT+):</strong> Select any slice from slice 2 onward, turn <code>K4 (JOIN)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button. The selected slice's start boundary is deleted, seamlessly joining it into the preceding slice. Tap <strong>OCT+</strong> again for sequential merges, or tap <strong>OCT-</strong> to disarm.</div>
+          <div class="mag-pill"><strong>Adaptive Dynamic Zoom:</strong> The viewport automatically scales to show only the region between adjacent markers, giving fine column resolution to lock slice points right on zero-crossings and transient attacks.</div>
+          <div class="mag-pill"><strong>Auto-Save to Flash:</strong> All manual slice adjustments, splits, and joins are kept live in audio playback and automatically committed to flash memory with the sample when navigating away from the page.</div>
         </div>
       </div>
     </div>
