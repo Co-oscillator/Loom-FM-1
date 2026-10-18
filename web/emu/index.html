@@ -365,21 +365,90 @@ footer small { font-size: 11px; opacity: .8; }
       </div>
     </div>
 
-    <!-- ARTICLE 7: SPECIALIZED ENGINES & SAMPLING -->
+    <!-- ARTICLE 7A: SCRUB ENGINE (TAPE & TURNTABLE PLATTER) -->
     <div class="mag-card">
       <div class="mag-aside">
         <img src="img/scrub.png" alt="Tape Scrub Engine">
-        <div class="mag-caption">SCRUB Engine (Tape &amp; Turntable Platter)</div>
+        <div class="mag-caption">SCRUB Engine (Tape &amp; Turntable)</div>
       </div>
       <div class="mag-content">
-        <h4>🎛️ Specialized Engines: Scrub, Slice, Wavetable &amp; Granular</h4>
-        <p>Loom FM-1 includes 14 sound engines. Custom audio enters slots <code>USR1..3</code> over USB SysEx via the Editor &amp; Samples tab or by clicking <strong>● Resample Audio</strong>:</p>
+        <h4>🎛️ SCRUB Engine: Turntable Platter &amp; Reel-to-Reel Tape</h4>
+        <p>Real-time physical vinyl platter and magnetic tape scrubbing engine. Features physical inertia simulation, bi-directional motorized playback, surface drag friction, and vintage tape drift with live waveform and needle tracking:</p>
         <div class="mag-grid">
-          <div class="mag-pill"><strong>SCRUB:</strong> Real-time turntable platter and reel-to-reel tape scratching. <code>POS</code> scrubs tape position; <code>MOTOR</code> sets continuous speed (<code>-3.0x</code> to <code>+3.0x</code>); <code>INERT</code> controls platter momentum/lag; <code>FRIC</code> controls braking friction.</div>
-          <div class="mag-pill"><strong>SLICE:</strong> Auto-transient sample slicer. <code>SLCS</code> sets slice count (1–16); changing it recalculates slice points to snap to transients across the sample; white keys trigger individual slices.</div>
-          <div class="mag-pill"><strong>WAVETABLE:</strong> 3D morphing wavetable synthesis. Scans 256-sample single-cycle tables with non-linear phase-warping (<code>WARP</code>), detune spread, and overdrive.</div>
-          <div class="mag-pill"><strong>GRAIN:</strong> Granular cloud synthesis. Clouds of tiny micro-sound grains with controllable position, duration, density, and pitch spray.</div>
-          <div class="mag-pill"><strong>SCL &amp; QNT:</strong> Scale quantization. Selecting any scale enables <code>SNAP</code> (rounds notes to scale); <code>WHITE</code> maps scale notes to white keys; <code>SEQ</code> quantizes recorded notes.</div>
+          <div class="mag-pill"><strong>POS (Tape Position):</strong> Absolute playhead position (0%–100%) across the sample buffer. Turn directly to scratch forward or backward.</div>
+          <div class="mag-pill"><strong>MOTOR (Motor Speed):</strong> Continuous motorized drive speed from <code>-3.0x</code> reverse, through <code>0.0x</code> (stopped), to <code>+3.0x</code> forward.</div>
+          <div class="mag-pill"><strong>INERT (Platter Inertia):</strong> Rotational momentum of the virtual 12" platter. High values produce smooth spin-up and gradual coasting to a stop; low values provide instant punchy scratching.</div>
+          <div class="mag-pill"><strong>FRIC (Braking Friction):</strong> Surface drag and motor braking resistance. Controls how quickly the platter decelerates when released.</div>
+          <div class="mag-pill"><strong>SRC (Audio Source):</strong> Selects built-in break/piano material or custom user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>LOOP (Loop Mode):</strong> Sets tape transport looping bounds (<code>OFF</code> plays once; <code>ON</code> seamlessly wraps buffer playback).</div>
+          <div class="mag-pill"><strong>DRV (Tape Saturation):</strong> Preamp saturation drive adding warm magnetic tape harmonics and soft-clipping.</div>
+          <div class="mag-pill"><strong>WOW (Wow &amp; Flutter):</strong> Subtle mechanical pitch drift and transport flutter for authentic vintage tape warmth.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7B: SLICE ENGINE (TRANSIENT BEAT SLICER) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/slice.png" alt="Sample Slice Engine">
+        <div class="mag-caption">SLICE Engine (Transient Beat Slicer)</div>
+      </div>
+      <div class="mag-content">
+        <h4>✂️ SLICE Engine: Auto-Transient Beat Slicer &amp; 16-Pad Chops</h4>
+        <p>Intelligent transient beat slicer that chops loops and drum breaks into tempo-synchronized slices with individual trigger pads. The 16 hardware white keys trigger individual slices in real time:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SLCS (Slice Count):</strong> Number of active slices (1–16). Dynamically recalibrates slice markers to snap directly to the strongest transients.</div>
+          <div class="mag-pill"><strong>SRC (Source Sample):</strong> Selects source material from built-in breakbeats, acoustic piano, or user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>PTCH (Slice Pitch):</strong> Chromatic transposition (<code>-24</code> to <code>+24</code> semitones) without altering playback duration.</div>
+          <div class="mag-pill"><strong>SPEED (Playback Speed):</strong> Playback time-stretch speed (10% to 400%) for extreme slow-motion chops or tempo matching.</div>
+          <div class="mag-pill"><strong>STRCH (Time Stretch Length):</strong> Granular time-stretch length factor (25% to 400%) preserving transient punch.</div>
+          <div class="mag-pill"><strong>MODE (Trigger Gate):</strong> Gate mode (<code>SHOT</code> plays slice to completion; <code>GATE</code> sounds only while held; <code>LOOP</code> continuously loops the slice).</div>
+          <div class="mag-pill"><strong>REV (Slice Reverse):</strong> Playback direction (<code>OFF</code> forward; <code>REV</code> reversed slice playback).</div>
+          <div class="mag-pill"><strong>TONE (Filter Tone):</strong> 1-pole low-pass filter tone to tame harsh high frequencies or warm up lo-fi breakbeat chops.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7C: WAVETABLE ENGINE (3D MORPHING SYNTHESIS) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/wavetable.png" alt="Wavetable Synthesizer Engine">
+        <div class="mag-caption">WAVETABLE Engine (3D Stack)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🌊 WAVETABLE Engine: 3D Morphing Wavetable Synthesis</h4>
+        <p>Multi-frame wavetable synthesis engine featuring 8 single-cycle frames (512 samples each) with 3D isometric stack visualization, non-linear phase distortion warping, and analog drive:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SRC (Wavetable Bank):</strong> Selects wavetable source (<code>BASIC</code> synthetic morph, <code>PIANO</code>, <code>FLUTE</code>, <code>SAX</code>, <code>BREAK</code>, or <code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>POS (Table Position):</strong> Continuous position sweep across the 8 frames (0% to 100%) with band-limited crossfade interpolation.</div>
+          <div class="mag-pill"><strong>WARP (Phase Warp):</strong> Asymmetric non-linear phase distortion (<code>-64</code> to <code>+63</code>) compressing or bending the waveform for aggressive formant shifts.</div>
+          <div class="mag-pill"><strong>DETN (Unison Detune):</strong> Micro-pitch unison detuning spread across voices for wide stereo chorus thickness.</div>
+          <div class="mag-pill"><strong>BITS (Bit Reduction):</strong> Digital quantizer reduction (16 bits down to 2 bits) for crunchy retro PPG and vintage wavetable character.</div>
+          <div class="mag-pill"><strong>SRAT (Sample Decimation):</strong> Downsamples the playback rate (down to 689 Hz) for retro aliasing harmonics.</div>
+          <div class="mag-pill"><strong>DRV (Analog Drive):</strong> Progressive saturation gain (1.0x to 5.0x) with analog soft-clipping warmth.</div>
+          <div class="mag-pill"><strong>GLID (Portamento):</strong> Pitch glide rate between notes for smooth legato synth sweeps.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7D: GRANULAR SYNTHESIS ENGINE -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/grain.png" alt="Granular Cloud Engine">
+        <div class="mag-caption">GRAIN Engine (Granular Cloud)</div>
+      </div>
+      <div class="mag-content">
+        <h4>✨ GRAIN Engine: Asynchronous Granular Cloud Synthesis</h4>
+        <p>Real-time granular synthesis engine that deconstructs sample audio into streams of microscopic sound grains with multidimensional temporal and pitch scattering:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SRC (Sample Source):</strong> Source sample buffer (<code>PIANO</code>, <code>FLUTE</code>, <code>SAX</code>, <code>BREAK</code>, or custom user slots <code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>POS (Scan Position):</strong> Base playback position (0% to 100%) within the sample audio buffer where grains are extracted.</div>
+          <div class="mag-pill"><strong>SIZE (Grain Duration):</strong> Duration of each grain window (5 ms to 250 ms), shifting from smooth ambient washes to rhythmic stutter clicks.</div>
+          <div class="mag-pill"><strong>DENS (Cloud Density):</strong> Stream density and overlap (1 to 32 concurrent grain streams) producing thick harmonic clouds.</div>
+          <div class="mag-pill"><strong>PTCH (Grain Pitch):</strong> Transposes individual grains across a 4-octave range (<code>-24</code> to <code>+24</code> semitones).</div>
+          <div class="mag-pill"><strong>SPRY (Position Spray):</strong> Random time jitter scattering grain start points across the sample buffer for wide diffuse textures.</div>
+          <div class="mag-pill"><strong>REV (Reverse Probability):</strong> Probability (0% to 100%) that individual grains play in reverse for eerie swelling textures.</div>
+          <div class="mag-pill"><strong>TONE (Damping Filter):</strong> 1-pole low-pass filter smoothing grain transitions and taming harsh high frequencies.</div>
         </div>
       </div>
     </div>
@@ -411,11 +480,11 @@ footer small { font-size: 11px; opacity: .8; }
       <div class="mag-links-grid">
         <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-Pi" target="_blank" rel="noopener">
           <h5>🎛️ Loom Pi (Raspberry Pi Hardware) →</h5>
-          <p>Dedicated standalone hardware groovebox powered by Raspberry Pi. Features a rich high-resolution color UI, multi-track audio recording, advanced physical rotary encoders, and expanded connectivity.</p>
+          <p>Dedicated standalone hardware groovebox powered by Raspberry Pi. Features a rich high-resolution color UI, multi-track audio recording, advanced physical rotary encoders, and expanded connectivity. Integrates seamlessly with generic USB and DIN MIDI controllers.</p>
         </a>
         <a class="mag-link-btn" href="https://github.com/Co-oscillator/loom-groovebox" target="_blank" rel="noopener">
           <h5>📱 Loom Groovebox for Android →</h5>
-          <p>Expressive mobile touchscreen groovebox app for Android tablets and phones. Full multi-touch piano roll, tactile synth editing, real-time automation, and portable loop creation.</p>
+          <p>Expressive mobile touchscreen groovebox app for Android tablets and phones. Full multi-touch piano roll, tactile synth editing, real-time automation, and portable loop creation. Integrates smoothly with generic class-compliant USB and Bluetooth MIDI controllers.</p>
         </a>
         <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-FM-1" target="_blank" rel="noopener">
           <h5>⚡ Loom FM-1 Source &amp; Releases →</h5>
