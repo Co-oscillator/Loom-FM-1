@@ -1152,16 +1152,16 @@ static void graph_mod(const track_t *t, uint16_t c)
         cv_rrect(8, y, 56, 17, 3, T_THEME, T_SURF);
         cv_text_in(8, y + CAP_IN(M, 17), 56, &AF_M, kb, T_INK, T_THEME);
 
-        cv_text_on(70, y + CAP_IN(M, 17), &AF_M, "MACRO", T_MID, T_SURF);
+        cv_text_on(68, y + CAP_IN(M, 17), &AF_M, "MACRO", T_MID, T_SURF);
         char mb[4]; mb[0] = (char)('1' + m); mb[1] = 0;
-        cv_text_on(116, y + CAP_IN(M, 17), &AF_M, mb, c, T_SURF);
+        cv_text_on(126, y + CAP_IN(M, 17), &AF_M, mb, c, T_SURF);
 
         /* Value readout and meter */
-        cv_text_on(136, y + CAP_IN(M, 17), &AF_M, "VAL:", T_MID, T_SURF);
+        cv_text_on(138, y + CAP_IN(M, 17), &AF_M, "VAL:", T_MID, T_SURF);
         fmt_int(b, mc->val);
-        cv_text_on(166, y + CAP_IN(M, 17), &AF_M, b, c, T_SURF);
+        cv_text_on(170, y + CAP_IN(M, 17), &AF_M, b, c, T_SURF);
 
-        int32_t bx = 192, bw = 40;
+        int32_t bx = 196, bw = 36;
         cv_rrect(bx, y + 4, bw, 9, 2, T_MID, T_SURF);
         int32_t fill_w = (int32_t)mc->val * (bw - 2) / 127;
         if (fill_w > 0)
@@ -1189,21 +1189,21 @@ static void graph_mod(const track_t *t, uint16_t c)
         cv_text_on(12, y + CAP_IN(M, 24), &AF_M, b, sel ? T_INK : T_MID, bg);
 
         if (!on && dst->dest == 0) {
-            cv_text_on(38, y + CAP_IN(M, 24), &AF_M, macro_trk_name(dst->trk), sel ? T_INK : T_DIM, bg);
-            cv_text_on(76, y + CAP_IN(M, 24), &AF_M, "OFF", col, bg);
+            cv_text_on(34, y + CAP_IN(M, 24), &AF_M, macro_trk_name(dst->trk), sel ? T_INK : T_DIM, bg);
+            cv_text_on(80, y + CAP_IN(M, 24), &AF_M, "OFF", col, bg);
             cv_text_on(142, y + CAP_IN(M, 24), &AF_M, "0%", col, bg);
         } else {
             /* Track */
-            cv_text_on(38, y + CAP_IN(M, 24), &AF_M, macro_trk_name(dst->trk), sel ? T_INK : T_ACCENT, bg);
+            cv_text_on(34, y + CAP_IN(M, 24), &AF_M, macro_trk_name(dst->trk), sel ? T_INK : T_ACCENT, bg);
 
             /* Arrow */
-            cv_line(64, y + 12, 74, y + 12, sel ? T_INK : T_MID);
-            cv_line(70, y + 9, 74, y + 12, sel ? T_INK : T_MID);
-            cv_line(70, y + 15, 74, y + 12, sel ? T_INK : T_MID);
+            cv_line(70, y + 12, 78, y + 12, sel ? T_INK : T_MID);
+            cv_line(74, y + 9, 78, y + 12, sel ? T_INK : T_MID);
+            cv_line(74, y + 15, 78, y + 12, sel ? T_INK : T_MID);
 
             /* Destination Parameter Name */
             const char *dname = macro_dest_name(dst->trk, dst->dest);
-            cv_text_on(80, y + CAP_IN(M, 24), &AF_M, dname, col, bg);
+            cv_text_on(84, y + CAP_IN(M, 24), &AF_M, dname, col, bg);
 
             /* Amount with explicit sign */
             int32_t pct = (int32_t)dst->amt * 100 / 63;
