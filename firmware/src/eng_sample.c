@@ -166,6 +166,55 @@ static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
 }
 
 static const char *const N_SMP_MODE[] = {"ONE", "SUS", "LOOP"};
+static const char *const N_SMP_SYNC[] = {
+    "--", "1 STEP", "2 STEPS", "1 BEAT", "2 BEATS", "1 BAR", "2 BARS", "4 BARS"
+};
+static const uint8_t SMP_SYNC_STEPS[8] = {
+    0, 1, 2, 4, 8, 16, 32, 64
+};
+
+static void sample_tempo_sync(track_t *t, int sync_idx)
+{
+    if (sync_idx <= 0 || sync_idx > 7)
+        return;
+    uint32_t steps = SMP_SYNC_STEPS[sync_idx];
+    uint32_t bpm = song.g[G_BPM] ? (uint32_t)song.g[G_BPM] : 120u;
+
+    uint32_t si = (uint32_t)t->p[P_E0] % SMP_NALL;
+    uint32_t zi = 0xFFFFu;
+    if (si < SMP_NSETS) {
+        zi = SMP_SETS[si].z0;
+    } else {
+        uint32_t k = si - SMP_NSETS;
+        if (usr_nz[k] > 0)
+            zi = 0x8000u | (k << 5);
+    }
+    const smp_zone_t *z = smp_zone(zi);
+    if (!z || !z->n)
+        return;
+
+    uint32_t start_pct = (uint32_t)clamp(t->p[P_E5], 0, 100);
+    uint32_t end_pct = (uint32_t)clamp(t->p[P_E6], 0, 100);
+    if (end_pct <= start_pct) end_pct = 100u;
+    uint32_t start_pos = (uint32_t)((uint64_t)z->n * start_pct / 100u);
+    uint32_t end_pos = (uint32_t)((uint64_t)z->n * end_pct / 100u);
+    uint32_t n_samples = (end_pos > start_pos) ? (end_pos - start_pos) : z->n;
+    if (!n_samples)
+        return;
+
+    int32_t d16 = clamp((int32_t)t->p[P_E2] * 16, -1536, 576);
+    uint32_t r = pow2_q16(d16);
+    uint32_t speed_pct = (uint32_t)clamp(t->p[P_E3] ? t->p[P_E3] : 100, 10, 400);
+    uint32_t stepq = (uint32_t)((((uint64_t)(r >> 8) * (z->rate >> 8)) * speed_pct) / 100u);
+    if (!stepq) stepq = 65536u;
+
+    uint32_t s_target = (steps * 661500u) / bpm;
+    uint64_t num = (uint64_t)s_target * (uint64_t)stepq * 100ULL;
+    uint64_t den = (uint64_t)n_samples * 65536ULL;
+    uint32_t strch = (uint32_t)(num / (den ? den : 1ULL));
+
+    t->p[P_E4] = (int16_t)clamp((int32_t)strch, 25, 400);
+}
 
 static void sample_note_on(track_t *t, voice_t *v)
 {
@@ -217,7 +266,7 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     uint32_t strch_pct = (uint32_t)clamp(p[P_E4] ? p[P_E4] : 100, 25, 400);
     uint32_t stepq_adv = (stepq * 100u) / strch_pct;
 
-    int32_t lp = 4000 + ((clamp((p[P_E7] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
+    int32_t lp = 4000 + ((clamp((127 << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
     uint32_t mode = (uint32_t)p[P_E1] % 3u; /* 0=ONE, 1=SUS, 2=LOOP */
     uint32_t start_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E5], 0, 100) / 100u);
     uint32_t end_pos = (uint32_t)((uint64_t)z->n * (uint32_t)clamp(p[P_E6], 0, 100) / 100u);
@@ -277,10 +326,10 @@ static int32_t sample_amp(track_t *t, voice_t *v, int32_t adsr)
 }
 
 static const preset_t SAMPLE_PRESETS[] = {
-    {"PIANO", {0, 1, 0, 100, 100, 0, 100, 127}, {0, 127, 127, 70}, 0, 0},
-    {"EP",    {1, 1, 0, 100, 100, 0, 100, 127}, {0, 127, 127, 70}, 0, 0},
-    {"FLUTE", {2, 2, 0, 100, 100, 0, 100, 127}, {12, 80, 120, 60}, 0, 0},
-    {"SAX",   {3, 2, 0, 100, 100, 0, 100, 127}, {12, 80, 120, 60}, 0, 0},
+    {"PIANO", {0, 1, 0, 100, 100, 0, 100, 0}, {0, 127, 127, 70}, 0, 0},
+    {"EP",    {1, 1, 0, 100, 100, 0, 100, 0}, {0, 127, 127, 70}, 0, 0},
+    {"FLUTE", {2, 2, 0, 100, 100, 0, 100, 0}, {12, 80, 120, 60}, 0, 0},
+    {"SAX",   {3, 2, 0, 100, 100, 0, 100, 0}, {12, 80, 120, 60}, 0, 0},
 };
 
 static const engine_t ENG_SAMPLE = {
@@ -294,7 +343,7 @@ static const engine_t ENG_SAMPLE = {
         {"STRCH", F_PCT, 25, 400, 100, 0, 0},
         {"START", F_PCT, 0, 100, 0, 0, 0},
         {"END", F_PCT, 0, 100, 100, 0, 0},
-        {"CUT", F_INT, 0, 127, 127, 0, 0},
+        {"SYNC", F_ENUM, 0, 7, 0, N_SMP_SYNC, 0},
     },
     .presets = SAMPLE_PRESETS,
     .npresets = NELEM(SAMPLE_PRESETS),

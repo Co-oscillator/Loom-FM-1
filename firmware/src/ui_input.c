@@ -1248,6 +1248,14 @@ static void edit_param(uint32_t slot, int32_t steps)
     if (!page_over && pg->graph == GR_SCALE && slot == 1u && v > 0 && TSEL->p[P_QUANT] == QN_OFF) {
         TSEL->p[P_QUANT] = QN_SNAP;
     }
+    if (ENGINES[TSEL->eng_req % NENGINES] == &ENG_SAMPLE) {
+        if (vp == &TSEL->p[P_E7]) {
+            sample_tempo_sync(TSEL, v);
+            ui.force = 1;
+        } else if (vp == &TSEL->p[P_E4]) {
+            TSEL->p[P_E7] = 0; /* Reset SYNC to '--' when STRCH is adjusted manually */
+        }
+    }
     if (pg->scope != SC_GLOBAL) {
         motion_capture(TSEL, (uint32_t)(vp - TSEL->p), *vp);
         ml_knob(TSEL, (uint32_t)(vp - TSEL->p));        /* (MIDI LEARN: picked) */
@@ -1974,6 +1982,10 @@ static void ui_input(void)
         if (glo || !(ui_prefs & PREF_BPM_LOCK)) {
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), GP[G_BPM].min, GP[G_BPM].max);
             ui.bpm_t = 40;                              /* the header's BPM lights up; no message over the header */
+            for (uint32_t ti = 0; ti < NTRK; ti++) {
+                if (ENGINES[trk[ti].eng_req % NENGINES] == &ENG_SAMPLE && trk[ti].p[P_E7] > 0)
+                    sample_tempo_sync(&trk[ti], trk[ti].p[P_E7]);
+            }
         } else {                                        /* MENU > BPM LOCK ON (#58): only with GLO held (and on HOME >
                                                          * CLOCK, GLO's F4 TAP); a turn burst says so once */
             if (!lock_ms || fm1_ms - lock_ms > 1000u)

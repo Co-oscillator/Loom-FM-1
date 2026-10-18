@@ -578,7 +578,15 @@ static void test_engine_edit_pages(void)
     assert(strcmp(ENG_SAMPLE.edit[4].label, "STRCH") == 0);
     assert(strcmp(ENG_SAMPLE.edit[5].label, "START") == 0);
     assert(strcmp(ENG_SAMPLE.edit[6].label, "END") == 0);
-    assert(strcmp(ENG_SAMPLE.edit[7].label, "CUT") == 0);
+    assert(strcmp(ENG_SAMPLE.edit[7].label, "SYNC") == 0);
+    assert(strcmp(N_SMP_SYNC[0], "--") == 0);
+    assert(strcmp(N_SMP_SYNC[1], "1 STEP") == 0);
+    assert(strcmp(N_SMP_SYNC[2], "2 STEPS") == 0);
+    assert(strcmp(N_SMP_SYNC[3], "1 BEAT") == 0);
+    assert(strcmp(N_SMP_SYNC[4], "2 BEATS") == 0);
+    assert(strcmp(N_SMP_SYNC[5], "1 BAR") == 0);
+    assert(strcmp(N_SMP_SYNC[6], "2 BARS") == 0);
+    assert(strcmp(N_SMP_SYNC[7], "4 BARS") == 0);
     assert(strcmp(N_SMP_MODE[0], "ONE") == 0);
     assert(strcmp(N_SMP_MODE[1], "SUS") == 0);
     assert(strcmp(N_SMP_MODE[2], "LOOP") == 0);
@@ -586,9 +594,19 @@ static void test_engine_edit_pages(void)
            ENG_SAMPLE.knob[2] == P_E5 && ENG_SAMPLE.knob[3] == P_E6);
     TSEL->eng_req = ENGI_SAMPLE;
     TSEL->engine = ENGI_SAMPLE;
+    TSEL->p[P_E0] = 0;   /* PIANO */
+    TSEL->p[P_E2] = 0;   /* Pitch 0 */
+    TSEL->p[P_E3] = 100; /* Speed 100% */
+    TSEL->p[P_E5] = 0;   /* Start 0% */
+    TSEL->p[P_E6] = 100; /* End 100% */
+    song.g[G_BPM] = 120;
+    sample_tempo_sync(TSEL, 1); /* 1 STEP */
+    assert(TSEL->p[P_E4] >= 25 && TSEL->p[P_E4] <= 400);
+    sample_tempo_sync(TSEL, 5); /* 1 BAR */
+    assert(TSEL->p[P_E4] >= 25 && TSEL->p[P_E4] <= 400);
     cv_begin(240, 122, T_BG);
     graph_sample(T_THEME);
-    printf("  SAMPLE engine parameters (PLAY, TRIM, ONE/SUS/LOOP, PTCH/SPEED/STRCH) and graph_sample verified (OK)\n");
+    printf("  SAMPLE engine parameters (PLAY, TRIM, ONE/SUS/LOOP, PTCH/SPEED/STRCH, SYNC) and graph_sample verified (OK)\n");
 
     /* Test SLICE parameters, home knobs, and graph_slices */
 #if FELUCCA_SLICE
