@@ -791,23 +791,23 @@ const SLIDES = [
     params: ["12 INSERT FX", "WOBBLE & CRUSH", "WAVEFOLD & FUZZ", "SUB OCTAVER", "AUTO-PANNER"],
     vectorType: "insert_grid"
   },
-  // 21: Master Send FX: Tape Echo
+  // 21: Master Send FX: Tape Echo (Trampoline Bouncing Balls)
   {
     id: "fx_delay",
     chapter: "STUDIO FX SUITE",
     title: "MASTER TAPE ECHO",
     subtitle: "Capstan Tape Delay & Physics Trampoline Visualizer",
     duration: 7.0,
-    themeColor: "#BD00FF",
-    accentColor: "#00E5FF",
-    image: "delay",
+    themeColor: "#FFAF32",
+    accentColor: "#39FF14",
     bullets: [
       "Capstan-style tape delay with analog pitch sweeps on tempo changes and motor drift",
       "Integrated wow, flutter, and warm magnetic tape head saturation harmonics",
-      "Physics-based trampoline bouncing dot display illustrating delay taps and feedback decay",
-      "Tempo-synced delay divisions with ping-pong stereo cross-feed"
+      "Physics-based trampoline bouncing ball display illustrating delay taps and feedback decay",
+      "Dynamic cross-delay splitting into sloped lines with tape wobble and ping-pong diffusion"
     ],
-    params: ["TAPE TIME", "FEEDBACK", "WOW & FLUTTER", "TRAMPOLINE BOUNCE", "PING-PONG"]
+    params: ["TAPE TIME", "FEEDBACK TAPS", "WOW & FLUTTER", "CROSS-DELAY (±45°)", "PING-PONG"],
+    vectorType: "delay_trampoline"
   },
   // 22: Master Send FX: Reverb Tank (Space Cavern)
   {
@@ -2328,6 +2328,182 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     });
 
     drawMiniBadge(x + 30, y + h - 35, "PER-TRACK SELECTABLE INSERT CHAIN", theme);
+  }
+  else if (type === "delay_trampoline") {
+    // Dynamic Physics Trampoline Delay (graph_delay from firmware/src/ui_graph.c)
+    // Progression over slide: starts with few balls -> increases feedback -> adds cross-delay sloped lines & tape wobble!
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("TAPE DELAY · PHYSICS TRAMPOLINE VISUALIZER (GRAPH_DELAY)", x + 30, y + 40);
+
+    const boxW = w - 60, boxH = h - 140;
+    const boxX = x + 30, boxY = y + 70;
+    ctx.fillStyle = "rgba(12, 10, 18, 0.92)";
+    roundRect(ctx, boxX, boxY, boxW, boxH, 14, true, false);
+
+    // Evolving parameters based on elapsed time within slide (0 .. 7s)
+    // 0.0 - 2.0s: Low feedback (3-5 balls), straight line, clean tape
+    // 2.0 - 4.2s: Rising feedback (6-12 balls), starts tilting cross-delay
+    // 4.2 - 7.0s: High feedback (14-16 balls), full cross-delay (±30° sloped X), heavy tape wobble!
+    let fdbkNorm, crossNorm, tapeNorm;
+    if (time < 2.0) {
+      const p = time / 2.0;
+      fdbkNorm = 0.15 + p * 0.2; // 3 to 6 balls
+      crossNorm = 0.0;
+      tapeNorm = 0.05 * p;
+    } else if (time < 4.2) {
+      const p = (time - 2.0) / 2.2;
+      fdbkNorm = 0.35 + p * 0.45; // 6 to 13 balls
+      crossNorm = p * 0.45;
+      tapeNorm = 0.05 + p * 0.45;
+    } else {
+      const p = Math.min(1.0, (time - 4.2) / 2.8);
+      fdbkNorm = 0.8 + Math.sin(time * 2.0) * 0.1; // 14 to 16 balls
+      crossNorm = 0.45 + p * 0.55; // Full ±30° split
+      tapeNorm = 0.5 + p * 0.5; // Full wobble & thickness
+    }
+
+    const n_dots = Math.round(3 + fdbkNorm * 13); // 3 .. 16 balls
+    const max_bounce_h = 75 + fdbkNorm * 45; // 75 .. 120 px
+    const half_len = (boxW * 0.44) * (1.0 - crossNorm * 0.12);
+    const thickness = 2.5 + tapeNorm * 4.0; // 2.5 .. 6.5 px
+    const wobble_amp = tapeNorm * 22; // 0 .. 22 px
+    const n_lines = crossNorm > 0.08 ? 2 : 1;
+    const maxAngle = 0.52; // ~30 degrees in radians
+    const targetAngle = crossNorm * maxAngle;
+
+    const midX = boxX + boxW / 2;
+    const midY = boxY + boxH / 2;
+
+    const col_trampoline = "#FFAF32"; // Warm tape amber
+    const col_dot = "#39FF14";        // Glowing neon green
+    const col_core = "#FFFFFF";
+
+    // Draw trampoline lines and bouncing balls
+    for (let l = 0; l < n_lines; l++) {
+      // Line angle: line 0 tilts +angle, line 1 tilts -angle (forming the X cross-delay)
+      const ang = (l === 0) ? targetAngle : -targetAngle;
+      const sin_ang = Math.sin(ang);
+      const cos_ang = Math.cos(ang);
+
+      // Line normal unit vector (perpendicular pointing upward)
+      const norm_x = sin_ang;
+      const norm_y = -cos_ang;
+
+      // 1. Trampoline Line with Tape Wobble
+      ctx.save();
+      ctx.strokeStyle = col_trampoline;
+      ctx.lineWidth = thickness;
+      ctx.shadowColor = col_trampoline;
+      ctx.shadowBlur = 10 + tapeNorm * 12;
+
+      ctx.beginPath();
+      const numSegments = 100;
+      for (let s = 0; s <= numSegments; s++) {
+        const u = -half_len + (s / numSegments) * (half_len * 2);
+        // Wobble oscillation along line
+        const wob = wobble_amp > 0 ? Math.sin(u * 0.035 + time * 7.0 + l * 2.0) * wobble_amp : 0;
+        // Position along sloped line + wobble normal
+        const lx = midX + u * cos_ang + wob * norm_x;
+        const ly = midY + u * sin_ang + wob * norm_y;
+        if (s === 0) ctx.moveTo(lx, ly);
+        else ctx.lineTo(lx, ly);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Anchor posts at the ends
+      [-half_len, half_len].forEach(u => {
+        const ax = midX + u * cos_ang;
+        const ay = midY + u * sin_ang;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.strokeStyle = col_trampoline;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(ax, ay, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 2. Bouncing Balls (1..16 dots per line)
+      const dotsOnThisLine = n_lines === 1 ? n_dots : Math.ceil(n_dots * 0.85);
+      const bounceFreq = 1.35;
+
+      for (let d = 0; d < dotsOnThisLine; d++) {
+        const u_norm = dotsOnThisLine === 1 ? 0 : (-0.8 + (d / (dotsOnThisLine - 1)) * 1.6);
+        const u_dot = u_norm * half_len;
+
+        // Bounce phase: staggered across dots with decay curve
+        const dotPhase = (time * bounceFreq * Math.PI * 2) + (d / dotsOnThisLine) * Math.PI * 2 + (l * Math.PI * 0.5);
+        const sineH = Math.abs(Math.sin(dotPhase));
+        const decayFactor = Math.pow(0.96, d);
+        const currentBounceH = sineH * max_bounce_h * decayFactor;
+
+        // Wobble on trampoline at this dot's location
+        const dotWob = wobble_amp > 0 ? Math.sin(u_dot * 0.035 + time * 7.0 + l * 2.0) * wobble_amp : 0;
+
+        // Ball position (normal displacement from the line)
+        const bx = midX + u_dot * cos_ang + (dotWob - currentBounceH) * norm_x;
+        const by = midY + u_dot * sin_ang + (dotWob - currentBounceH) * norm_y;
+
+        // Trampoline contact point
+        const contactX = midX + u_dot * cos_ang + dotWob * norm_x;
+        const contactY = midY + u_dot * sin_ang + dotWob * norm_y;
+
+        // Impact flash when hitting the trampoline (near bottom of bounce)
+        if (sineH < 0.18) {
+          const hitAlpha = (1.0 - sineH / 0.18);
+          ctx.strokeStyle = hexToRgba("#FFFFFF", hitAlpha * 0.9);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(contactX, contactY, 6 + hitAlpha * 10, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Ball size & glow
+        const ballSize = (8 + (1.0 - d / dotsOnThisLine) * 6);
+        ctx.save();
+        ctx.shadowColor = col_dot;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = col_dot;
+        ctx.beginPath();
+        ctx.arc(bx, by, ballSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // White core
+        ctx.fillStyle = col_core;
+        ctx.beginPath();
+        ctx.arc(bx, by, ballSize * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Faint bounce trajectory dashed line
+        if (sineH > 0.25) {
+          ctx.strokeStyle = hexToRgba(col_dot, 0.2);
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2, 4]);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(contactX, contactY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // Dynamic Live Parameter Readouts
+    const pY = boxY + boxH - 50;
+    const fdbkPct = Math.round(fdbkNorm * 100);
+    const crossPct = Math.round(crossNorm * 100);
+    const tapePct = Math.round(tapeNorm * 100);
+
+    drawMiniBadge(boxX + 16, pY, `FEEDBACK: ${fdbkPct}% (${n_dots} TAPS)`, col_dot);
+    drawMiniBadge(boxX + 230, pY, `CROSS-DELAY: ${crossPct}% (${n_lines === 2 ? '±30° X-SLOPE' : 'CENTER'})`, crossNorm > 0.1 ? "#00E5FF" : "#888899");
+    drawMiniBadge(boxX + 490, pY, `TAPE WOBBLE: ${tapePct}%`, tapeNorm > 0.1 ? col_trampoline : "#888899");
+
+    drawMiniBadge(x + 30, y + h - 45, "PHYSICS TRAMPOLINE · PING-PONG CROSS-FEED", theme);
+    drawMiniBadge(x + 500, y + h - 45, "ANALOG TAPE DRIFT & CAPSTAN MOTOR SLEW", accent);
   }
   else if (type === "reverb_cave") {
     // Large Cave Mouth in Purple Sparkling with Green & White Crystals (graph_reverb SPACE mode)
