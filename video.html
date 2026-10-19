@@ -381,6 +381,7 @@ const IMAGES = {
   slice_edit: "img/slice_edit.png",
   wavetable: "img/wavetable.png",
   seq_8x8: "img/seq_8x8.png",
+  seq_64_8x8: "img/seq_64_8x8.png",
   prog: "img/prog.png",
   mixer: "img/mixer.png",
   patch: "img/patch.png",
@@ -529,14 +530,14 @@ const SLIDES = [
     duration: 4.5,
     themeColor: "#FF007F",
     accentColor: "#00E5FF",
-    image: "sample",
     bullets: [
       "Polyphonic PCM sample playback with sinc-interpolated pitch shifting",
-      "Flexible looping modes: forward, backward, alternating ping-pong",
-      "Variable sample start, loop start, and loop end points with zero-crossing",
+      "Real-time waveform preview with non-destructive start & end trim markers",
+      "5 playback modes: One-Shot, Sustain, Forward Loop, Reverse, and Ping-Pong Loop",
       "Integrated filter envelope, dynamic velocity response, and stereo panning"
     ],
-    params: ["PITCH", "SAMPLE START", "LOOP LENGTH", "VELOCITY DEPTH", "PAN"]
+    params: ["PITCH", "START TRIM", "END TRIM", "5 LOOP MODES", "VELOCITY DEPTH"],
+    vectorType: "sample"
   },
   // 7: Engine 5 - VOICE
   {
@@ -565,14 +566,14 @@ const SLIDES = [
     duration: 4.5,
     themeColor: "#FF007F",
     accentColor: "#00E5FF",
-    image: "scrub",
     bullets: [
       "Physical vinyl platter and tape reel modeling with realistic mechanical momentum",
       "Bi-directional scrub knob: scratch forward, backwards, spinback, and brake stop",
-      "Tape flutter, capstan motor wobble, and magnetic saturation harmonics",
+      "Rotating tape reels with tape flutter, capstan motor wobble, and saturation",
       "Micro-loop scrubbing: freeze audio on any millisecond slice for glitch textures"
     ],
-    params: ["SCRUB POSITION", "INERTIA MASS", "MOTOR SPEED", "FLUTTER", "BRAKE TIME"]
+    params: ["SCRUB POSITION", "INERTIA MASS", "MOTOR SPEED", "FLUTTER", "BRAKE TIME"],
+    vectorType: "scrub"
   },
   // 9: Engine 7 - WHEEL
   {
@@ -601,14 +602,14 @@ const SLIDES = [
     duration: 4.5,
     themeColor: "#BD00FF",
     accentColor: "#00E5FF",
-    image: "grain",
     bullets: [
       "Deconstructs samples into microscopic grains with Hann and Gaussian envelopes",
       "Up to 16 simultaneous grains with random position spray and stereo dispersion",
-      "Variable grain duration (10ms - 500ms) with pitch randomization and reverse odds",
+      "Live grain playheads popping in and out with window envelopes and reverse odds",
       "Generates lush cinematic soundscapes, shimmering ambient drones, and time-stretching"
     ],
-    params: ["GRAIN SIZE", "POSITION SPRAY", "DENSITY", "PITCH JITTER", "STEREO SPREAD"]
+    params: ["GRAIN SIZE", "POSITION SPRAY", "DENSITY", "PITCH JITTER", "STEREO SPREAD"],
+    vectorType: "grain"
   },
   // 11: Engine 9 - PHYS
   {
@@ -677,10 +678,10 @@ const SLIDES = [
     bullets: [
       "Automatic transient detection cuts breaks and maps slices directly to the 16 keys",
       "Manually fine-tune slice start and end points with micro-precision for the perfect hit",
-      "Per-slice chromatic pitch tuning, reverse playback, level adjustment, and choke groups",
+      "Per-slice chromatic pitch tuning, reverse playback, level adjustment, and transient sensitivity",
       "Re-sequence, rearrange, and stutter classic jungle, breakbeat, and hip-hop loops"
     ],
-    params: ["16 PAD MAP", "FINE-TUNE CUTS", "REVERSE PLAY", "SLICE PITCH", "CHOKE GROUP"]
+    params: ["16 PAD MAP", "FINE-TUNE CUTS", "REVERSE PLAY", "SLICE PITCH", "TRANSIENT SENS"]
   },
   // 15: Engine 13 - WAVETABLE
   {
@@ -727,7 +728,7 @@ const SLIDES = [
     duration: 7.5,
     themeColor: "#39FF14",
     accentColor: "#00E5FF",
-    image: "seq_8x8",
+    image: "seq_64_8x8",
     bullets: [
       "64 steps total divided into 4 pages of 16 steps with per-track pattern lengths",
       "Bird's-eye 8x8 polyphonic grid view plus detailed 4x4 step-sequencer view",
@@ -808,24 +809,23 @@ const SLIDES = [
     ],
     params: ["TAPE TIME", "FEEDBACK", "WOW & FLUTTER", "TRAMPOLINE BOUNCE", "PING-PONG"]
   },
-  // 22: Master Send FX: Reverb Tank (Twinkling Crystals)
+  // 22: Master Send FX: Reverb Tank (Space Cavern)
   {
     id: "fx_reverb",
     chapter: "STUDIO FX SUITE",
     title: "MASTER REVERB TANK",
-    subtitle: "Room, Spring Chirp & Dense Hall with Twinkling Diffusion Crystals",
+    subtitle: "Room, Spring Chirp, Dense Hall & Space Reverb Modes",
     duration: 7.0,
-    themeColor: "#00E5FF",
-    accentColor: "#FF007F",
-    image: "reverb",
+    themeColor: "#BD00FF",
+    accentColor: "#00FF88",
     bullets: [
-      "3 distinct reverb models: ROOM (metallic reflection), SPRING (boing chirp), and HALL (lush tail)",
-      "Spring tank reproduces physical group-delay dispersion and boing chirp drips",
-      "Stereo hall model utilizes 8 mutually-prime circulating delay lines with pitch drift",
-      "Adjustable pre-delay, decay time, high-frequency damping, and low-pass tone filter"
+      "4 distinct reverb models: ROOM (limestone), SPRING (chirp drips), HALL (cathedral), and SPACE (cosmic infinity)",
+      "Spring tank reproduces physical group-delay dispersion and resonant boing chirps",
+      "Stereo hall & space models utilize mutually-prime circulating delay networks with pitch drift",
+      "Adjustable pre-delay, decay time (up to infinite freeze), damping stalactites, and tone filter"
     ],
-    params: ["ROOM / SPRING / HALL", "DECAY TIME", "DAMPING", "TONE FILTER", "CRYSTAL SHIMMER"],
-    vectorType: "reverb_crystals"
+    params: ["ROOM / SPRING / HALL / SPACE", "DECAY TIME", "DAMPING", "TONE FILTER", "STEREO DIFFUSION"],
+    vectorType: "reverb_cave"
   },
   // 23: Master Send FX: Dimension Chorus
   {
@@ -881,22 +881,22 @@ const SLIDES = [
     ],
     params: ["4 MACROS", "3 DESTS PER MACRO", "CROSS-TRACK CONTROL", "KNOBS & MIDI CC", "BIPOLAR DEPTH"]
   },
-  // 26: Dual LFO Modulation Architecture
+  // 26: Track LFO & 4 Preset Destinations
   {
     id: "lfos",
     chapter: "MODULATION MATRIX",
-    title: "DUAL MULTI-DESTINATION LFOS",
-    subtitle: "Per-Track & Global LFOs with Multiple Assignable Destinations",
+    title: "TRACK LFO & 4 PRESET DESTINATIONS",
+    subtitle: "Simultaneous Pitch, Filter, Timbre & Amplitude Modulation per Track",
     duration: 7.5,
     themeColor: "#00E5FF",
     accentColor: "#BD00FF",
     bullets: [
-      "Dual independent LFOs routing to multiple synth, filter, and FX destinations simultaneously",
-      "Waveforms: Sine, Triangle, Sawtooth, Pulse/Square, and Sample & Hold (Random)",
-      "Tempo-synced clock divisions (from 16 bars to 1/32T) or free-running Hz frequencies",
-      "One LFO can modulate filter cutoff, pan position, and delay send at individual bipolar depths"
+      "Each track features a dedicated LFO routing to 4 preset destinations simultaneously",
+      "4 independent depth targets: PITCH (vibrato), FILTER CUTOFF (wah/sweep), SHAPE (timbre morph), and AMP (tremolo)",
+      "5 distinct waveforms: Sine, Triangle, Sawtooth, Pulse/Square, and Sample & Hold (Random)",
+      "Tempo-sync divisions or free-running Hz, key retrigger, unipolar/bipolar polarity, phase offset, and fade-in"
     ],
-    params: ["DUAL LFOS", "MULTI-DESTINATION", "TEMPO SYNC", "5 WAVEFORMS", "SAMPLE & HOLD"],
+    params: ["4 PRESET DESTINATIONS", "PITCH · FILTER · SHAPE · AMP", "BIPOLAR DEPTHS", "5 WAVEFORMS", "KEY TRIG / FADE"],
     vectorType: "lfo_matrix"
   },
   // 27: Outro & Attribution (Converging Screenshots & Loom Logo)
@@ -1670,22 +1670,29 @@ function renderStandardSlide(slide, elapsedInSlide, index) {
     renderProceduralVectorDisplay(innerX, innerY, innerW, innerH, slide.vectorType, theme, accent, elapsedInSlide);
   } else if (slide.image && loadedImages[slide.image]) {
     const img = loadedImages[slide.image];
-    const zoom = 1.0 + Math.sin(elapsedInSlide * 0.3) * 0.03;
-    const drawW = innerW * zoom;
-    const drawH = innerH * zoom;
-    const drawX = innerX - (drawW - innerW) / 2;
-    const drawY = innerY - (drawH - innerH) / 2;
+    const zoom = 1.0 + Math.sin(elapsedInSlide * 0.3) * 0.02;
+    const imgW = img.naturalWidth || img.width || 800;
+    const imgH = img.naturalHeight || img.height || 600;
+    const imgAspect = imgW / imgH;
+    const frameAspect = innerW / innerH;
+    let baseW, baseH;
+    if (imgAspect > frameAspect) {
+      baseW = innerW;
+      baseH = innerW / imgAspect;
+    } else {
+      baseH = innerH;
+      baseW = innerH * imgAspect;
+    }
+    const drawW = baseW * zoom;
+    const drawH = baseH * zoom;
+    const drawX = innerX + (innerW - drawW) / 2;
+    const drawY = innerY + (innerH - drawH) / 2;
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-    // If Reverb: overlay animated twinkling crystals on top of screenshot!
-    if (slide.id === "fx_reverb") {
-      renderTwinklingCrystals(innerX, innerY, innerW, innerH, elapsedInSlide);
-    }
-
     const gloss = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH);
-    gloss.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+    gloss.addColorStop(0, "rgba(255, 255, 255, 0.08)");
     gloss.addColorStop(0.3, "rgba(255, 255, 255, 0.0)");
-    gloss.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+    gloss.addColorStop(1, "rgba(0, 0, 0, 0.45)");
     ctx.fillStyle = gloss;
     ctx.fillRect(innerX, innerY, innerW, innerH);
   }
@@ -1814,6 +1821,288 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     ctx.stroke();
     ctx.shadowBlur = 0;
     drawMiniBadge(x + 30, y + 30, "VOWEL FORMANT CAVITIES (F1 / F2)", theme);
+  }
+  else if (type === "sample") {
+    // PCM Sample Engine Waveform Preview with Start/End Trim & Loop
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("SAMPLE ENGINE · STEREO WAVEFORM & TRIM DISPLAY", x + 30, y + 40);
+
+    const waveX = x + 30, waveY = y + 70, waveW = w - 60, waveH = h - 140;
+    ctx.fillStyle = "rgba(10, 10, 18, 0.9)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, waveX, waveY, waveW, waveH, 12, true, true);
+
+    // Center horizontal baseline
+    const midY = waveY + waveH / 2;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(waveX, midY); ctx.lineTo(waveX + waveW, midY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Start & End Trim Markers (16% and 82%)
+    const trimStart = waveX + waveW * 0.16;
+    const trimEnd = waveX + waveW * 0.82;
+
+    // Loop Fill
+    ctx.fillStyle = hexToRgba(theme, 0.12);
+    ctx.fillRect(trimStart, waveY + 2, trimEnd - trimStart, waveH - 4);
+
+    // Audio Waveform Peaks
+    const steps = 180;
+    const stepW = waveW / steps;
+    for (let s = 0; s < steps; s++) {
+      const px = waveX + s * stepW;
+      const inLoop = px >= trimStart && px <= trimEnd;
+      const env = Math.exp(-((s - 25) * (s - 25)) / 1400) * 0.9 +
+                  Math.sin(s * 0.18) * 0.25 * Math.exp(-s / 90) +
+                  Math.sin(s * 0.6) * 0.15 +
+                  (Math.sin(s * 1.8 + time * 0.5) * 0.08);
+      const amp = Math.max(4, Math.abs(env) * (waveH * 0.42));
+
+      ctx.fillStyle = inLoop ? (s % 2 === 0 ? theme : accent) : "rgba(255, 255, 255, 0.2)";
+      ctx.fillRect(px, midY - amp, Math.max(1.5, stepW - 1.5), amp * 2);
+    }
+
+    // Green Start Trim Marker
+    ctx.strokeStyle = "#39FF14";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(trimStart, waveY); ctx.lineTo(trimStart, waveY + waveH);
+    ctx.stroke();
+    ctx.fillStyle = "#39FF14";
+    ctx.beginPath();
+    ctx.moveTo(trimStart, waveY); ctx.lineTo(trimStart + 16, waveY + 10); ctx.lineTo(trimStart, waveY + 20); ctx.closePath();
+    ctx.fill();
+    ctx.font = "bold 11px DotGothic16, monospace";
+    ctx.fillText("START TRIM", trimStart + 6, waveY + 36);
+
+    // Red End Trim Marker
+    ctx.strokeStyle = "#FF0055";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(trimEnd, waveY); ctx.lineTo(trimEnd, waveY + waveH);
+    ctx.stroke();
+    ctx.fillStyle = "#FF0055";
+    ctx.beginPath();
+    ctx.moveTo(trimEnd, waveY); ctx.lineTo(trimEnd - 16, waveY + 10); ctx.lineTo(trimEnd, waveY + 20); ctx.closePath();
+    ctx.fill();
+    ctx.fillText("END TRIM", trimEnd - 72, waveY + 36);
+
+    // Active Voice Playhead
+    const loopLen = trimEnd - trimStart;
+    const playheadPos = trimStart + ((time * 1.2) % 1.0) * loopLen;
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "#FFFFFF";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(playheadPos, waveY + 4); ctx.lineTo(playheadPos, waveY + waveH - 4);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    drawMiniBadge(x + 30, y + h - 45, "5 LOOP MODES: ONE-SHOT · SUSTAIN · FWD · REV · PING-PONG", theme);
+    drawMiniBadge(x + 480, y + h - 45, "SINC-INTERPOLATED ZERO-CROSSING", accent);
+  }
+  else if (type === "scrub") {
+    // Physical Tape Reels & Magnetic Scrub Head (UI Animation from graph_scrub)
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("PHYSICAL TAPE REELS & MOTOR INERTIA (GRAPH_SCRUB)", x + 30, y + 40);
+
+    const scrubSpeed = Math.sin(time * 0.9) * 2.5 + Math.cos(time * 2.1) * 1.2;
+    const angle = time * scrubSpeed * 3;
+
+    const rCenterY = cy - 20;
+    const reelR = 120;
+    const leftReelX = cx - 180;
+    const rightReelX = cx + 180;
+
+    // Tape ribbon passing between reels and over center playhead
+    const ribbonY = rCenterY + reelR - 10;
+    ctx.strokeStyle = "#6B493B";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(leftReelX, ribbonY);
+    ctx.lineTo(rightReelX, ribbonY);
+    ctx.stroke();
+
+    function drawTapeReel(rx, ry, rotAngle, spoolFillRatio) {
+      ctx.strokeStyle = theme;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = theme;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(rx, ry, reelR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      const tapeR = 40 + spoolFillRatio * (reelR - 46);
+      ctx.fillStyle = "rgba(80, 50, 40, 0.75)";
+      ctx.beginPath();
+      ctx.arc(rx, ry, tapeR, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#1E1E28";
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      for (let s = 0; s < 3; s++) {
+        const spokeA = rotAngle + (s * Math.PI * 2) / 3;
+        ctx.strokeStyle = theme;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(rx + Math.cos(spokeA) * 36, ry + Math.sin(spokeA) * 36);
+        ctx.lineTo(rx + Math.cos(spokeA) * (reelR - 4), ry + Math.sin(spokeA) * (reelR - 4));
+        ctx.stroke();
+      }
+
+      for (let s = 0; s < 3; s++) {
+        const spokeA = rotAngle + (s * Math.PI * 2) / 3 + Math.PI / 3;
+        const wx = rx + Math.cos(spokeA) * 65;
+        const wy = ry + Math.sin(spokeA) * 65;
+        ctx.fillStyle = "rgba(10, 10, 16, 0.9)";
+        ctx.strokeStyle = hexToRgba(theme, 0.6);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(wx, wy, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    const fillLeft = 0.5 + Math.sin(time * 0.4) * 0.25;
+    drawTapeReel(leftReelX, rCenterY, angle, fillLeft);
+    drawTapeReel(rightReelX, rCenterY, -angle * 0.9, 1.0 - fillLeft);
+
+    const headX = cx, headY = ribbonY - 4;
+    ctx.fillStyle = "#222234";
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 10;
+    roundRect(ctx, headX - 28, headY - 32, 56, 32, 6, true, true);
+    ctx.shadowBlur = 0;
+
+    ctx.font = "bold 11px DotGothic16, monospace";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "center";
+    ctx.fillText("HEAD", headX, headY - 12);
+    ctx.textAlign = "left";
+
+    if (Math.abs(scrubSpeed) > 0.3) {
+      ctx.strokeStyle = "#39FF14";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(headX, headY);
+      ctx.lineTo(headX, headY + 12);
+      ctx.stroke();
+    }
+
+    const meterY = y + h - 80;
+    ctx.font = "bold 12px DotGothic16, monospace";
+    ctx.fillStyle = "#888899";
+    ctx.fillText("FLYWHEEL INERTIA & SCRUB VELOCITY:", x + 30, meterY);
+
+    const mBarW = w - 60;
+    ctx.fillStyle = "rgba(20, 20, 30, 0.8)";
+    roundRect(ctx, x + 30, meterY + 12, mBarW, 14, 4, true, false);
+
+    const meterMid = x + 30 + mBarW / 2;
+    const vOffset = (scrubSpeed / 4.0) * (mBarW / 2 - 10);
+    ctx.fillStyle = scrubSpeed >= 0 ? theme : accent;
+    ctx.fillRect(Math.min(meterMid, meterMid + vOffset), meterY + 14, Math.abs(vOffset), 10);
+
+    drawMiniBadge(x + 30, y + h - 35, "BI-DIRECTIONAL SCRUB · SPINBACK & BRAKE", theme);
+    drawMiniBadge(x + 440, y + h - 35, "MICRO-LOOP AUDIO FREEZE TEXTURES", accent);
+  }
+  else if (type === "grain") {
+    // Granular Engine Playheads & Spray Window (UI Animation from graph_grain)
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("GRANULAR CLOUD · 16 HANN-WINDOWED GRAIN HEADS", x + 30, y + 40);
+
+    const gBoxX = x + 30, gBoxY = y + 70, gBoxW = w - 60, gBoxH = h - 140;
+    ctx.fillStyle = "rgba(10, 10, 18, 0.9)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, gBoxX, gBoxY, gBoxW, gBoxH, 12, true, true);
+
+    const gMidY = gBoxY + gBoxH / 2;
+
+    ctx.strokeStyle = "rgba(0, 229, 255, 0.22)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let px = 0; px < gBoxW; px += 4) {
+      const ph = px * 0.05;
+      const wAmp = Math.sin(ph) * Math.cos(ph * 0.3) * (gBoxH * 0.35);
+      if (px === 0) ctx.moveTo(gBoxX + px, gMidY + wAmp);
+      else ctx.lineTo(gBoxX + px, gMidY + wAmp);
+    }
+    ctx.stroke();
+
+    const posNorm = 0.45 + Math.sin(time * 0.4) * 0.15;
+    const posX = gBoxX + gBoxW * posNorm;
+    const sprayHalf = gBoxW * 0.22;
+    const sprayMin = posX - sprayHalf;
+    const sprayMax = posX + sprayHalf;
+
+    ctx.fillStyle = hexToRgba(theme, 0.08);
+    ctx.fillRect(Math.max(gBoxX, sprayMin), gBoxY + 2, Math.min(gBoxW, sprayMax - sprayMin), gBoxH - 4);
+
+    ctx.strokeStyle = hexToRgba(theme, 0.6);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sprayMin + 12, gBoxY + 8); ctx.lineTo(sprayMin, gBoxY + 8); ctx.lineTo(sprayMin, gBoxY + gBoxH - 8); ctx.lineTo(sprayMin + 12, gBoxY + gBoxH - 8);
+    ctx.moveTo(sprayMax - 12, gBoxY + 8); ctx.lineTo(sprayMax, gBoxY + 8); ctx.lineTo(sprayMax, gBoxY + gBoxH - 8); ctx.lineTo(sprayMax - 12, gBoxY + gBoxH - 8);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(posX, gBoxY + 4); ctx.lineTo(posX, gBoxY + gBoxH - 4);
+    ctx.stroke();
+
+    const numGrains = 16;
+    for (let g = 0; g < numGrains; g++) {
+      const gSpeed = 0.8 + ((g * 7) % 11) * 0.15;
+      const gPhase = (time * gSpeed + g * 0.38) % 1.0;
+      const env = Math.pow(Math.sin(Math.PI * gPhase), 2);
+
+      const gOffset = (((g * 53) % 97) / 97 - 0.5) * 2 * sprayHalf;
+      const gx = posX + gOffset + (gPhase - 0.5) * 35;
+      const gy = gMidY + (((g * 31) % 67) / 67 - 0.5) * (gBoxH * 0.6);
+
+      if (gx >= gBoxX + 10 && gx <= gBoxX + gBoxW - 10) {
+        const grainCol = g % 3 === 0 ? "#FF007F" : (g % 3 === 1 ? "#00E5FF" : "#BD00FF");
+        const grainSize = 4 + env * 14;
+
+        ctx.fillStyle = hexToRgba(grainCol, env * 0.9);
+        ctx.shadowColor = grainCol;
+        ctx.shadowBlur = env * 16;
+        ctx.beginPath();
+        ctx.arc(gx, gy, Math.max(2, grainSize / 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = hexToRgba(grainCol, env * 0.7);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy - env * 24);
+        ctx.lineTo(gx, gy + env * 24);
+        ctx.stroke();
+      }
+    }
+
+    drawMiniBadge(x + 30, y + h - 45, "16 LIVE GRAIN PLAYHEADS · HANN & GAUSSIAN", theme);
+    drawMiniBadge(x + 460, y + h - 45, "RANDOM POSITION SPRAY & PITCH JITTER", accent);
   }
   else if (type === "wheel") {
     const drawbars = [8, 8, 6, 0, 0, 4, 3, 5, 8];
@@ -2040,69 +2329,233 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
 
     drawMiniBadge(x + 30, y + h - 35, "PER-TRACK SELECTABLE INSERT CHAIN", theme);
   }
-  else if (type === "lfo_matrix") {
-    // Dual LFOs with Multi-Destination Routing
-    ctx.font = "bold 14px DotGothic16, monospace";
+  else if (type === "reverb_cave") {
+    // Large Cave Mouth in Purple Sparkling with Green & White Crystals (graph_reverb SPACE mode)
+    ctx.font = "bold 13px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
-    ctx.fillText("DUAL MULTI-DESTINATION LFO ARCHITECTURE:", x + 30, y + 40);
+    ctx.fillText("SPACE REVERB CAVERN · COSMIC INFINITE DECAY & CRYSTALS", x + 30, y + 40);
 
-    // LFO 1: Sine
-    ctx.font = "bold 14px DotGothic16, monospace";
+    const caveW = w - 60, caveH = h - 140;
+    const caveX = x + 30, caveY = y + 70;
+
+    // Cavern bounding frame
+    ctx.fillStyle = "#0A0514";
+    roundRect(ctx, caveX, caveY, caveW, caveH, 14, true, false);
+
+    const r_cave = caveW * 0.46;
+    const h_cave = caveH * 0.82;
+    const xc = caveX + caveW / 2;
+    const y_floor = caveY + caveH - 16;
+
+    // Cavern Interior Glow & Dark Fill
+    const caveGrad = ctx.createRadialGradient(xc, y_floor - h_cave * 0.4, 20, xc, y_floor - h_cave * 0.3, r_cave * 1.1);
+    caveGrad.addColorStop(0, "#4A156E");
+    caveGrad.addColorStop(0.4, "#2A0A45");
+    caveGrad.addColorStop(0.8, "#140523");
+    caveGrad.addColorStop(1, "#07020E");
+
+    // Cavern Roof Arch Contour
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(xc - r_cave, y_floor);
+    for (let px = -r_cave; px <= r_cave; px += 8) {
+      const normX = px / r_cave;
+      const num = 1 - normX * normX;
+      const archH = Math.sqrt(Math.max(0, num)) * h_cave;
+      const rough = Math.sin(px * 0.12) * 8 + Math.cos(px * 0.28) * 5;
+      const ry = y_floor - archH + rough;
+      ctx.lineTo(xc + px, ry);
+    }
+    ctx.lineTo(xc + r_cave, y_floor);
+    ctx.closePath();
+    ctx.fillStyle = caveGrad;
+    ctx.fill();
+
+    // Cavern Purple Neon Arch Lip
+    ctx.strokeStyle = "#BD00FF";
+    ctx.lineWidth = 4;
+    ctx.shadowColor = "#BD00FF";
+    ctx.shadowBlur = 20;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Cavern Floor
+    ctx.strokeStyle = "rgba(189, 0, 255, 0.55)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(caveX, y_floor);
+    ctx.lineTo(caveX + caveW, y_floor);
+    ctx.stroke();
+
+    // Rocky Floor Stalagmites
+    for (let rx = xc - r_cave + 20; rx <= xc + r_cave - 20; rx += 36) {
+      const smH = 10 + Math.abs(Math.sin(rx * 0.4)) * 18;
+      ctx.fillStyle = "rgba(189, 0, 255, 0.4)";
+      ctx.beginPath();
+      ctx.moveTo(rx - 8, y_floor);
+      ctx.lineTo(rx, y_floor - smH);
+      ctx.lineTo(rx + 8, y_floor);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Stalactites hanging from roof arch
+    const nstals = 12;
+    for (let s = 0; s < nstals; s++) {
+      const sx = xc - r_cave * 0.75 + (s + 0.5) * (r_cave * 1.5 / nstals);
+      const normX = (sx - xc) / r_cave;
+      const archH = Math.sqrt(Math.max(0, 1 - normX * normX)) * h_cave;
+      const sy = y_floor - archH;
+      const slen = 22 + ((s * 17) % 35);
+
+      const stalGrad = ctx.createLinearGradient(sx, sy, sx, sy + slen);
+      stalGrad.addColorStop(0, "#BD00FF");
+      stalGrad.addColorStop(1, "rgba(189, 0, 255, 0.1)");
+      ctx.fillStyle = stalGrad;
+      ctx.beginPath();
+      ctx.moveTo(sx - 7, sy);
+      ctx.lineTo(sx + 7, sy);
+      ctx.lineTo(sx, sy + slen);
+      ctx.closePath();
+      ctx.fill();
+
+      // Glowing tip
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(sx, sy + slen, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 32 Sparkling Green & White Crystals!
+    const numCrystals = 32;
+    for (let k = 0; k < numCrystals; k++) {
+      const seed = k * 73.19;
+      const kAngle = (k / numCrystals) * Math.PI;
+      const kDist = 0.2 + (Math.sin(seed) * 0.5 + 0.5) * 0.72;
+      const kx = xc + Math.cos(kAngle) * (r_cave * kDist);
+      const ky = y_floor - Math.sin(kAngle) * (h_cave * kDist);
+
+      const twPh = time * 4.0 + seed;
+      const tw = Math.sin(twPh) * 0.5 + 0.5;
+      const isGreen = k % 2 === 0;
+      const crysCol = isGreen ? (tw > 0.6 ? "#00FF88" : "#39FF14") : "#FFFFFF";
+
+      const sz = 5 + tw * 12;
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.fillStyle = crysCol;
+      ctx.shadowColor = crysCol;
+      ctx.shadowBlur = 10 + tw * 18;
+
+      // 4-point Diamond Star Crystal
+      ctx.beginPath();
+      ctx.moveTo(0, -sz);
+      ctx.lineTo(sz * 0.45, 0);
+      ctx.lineTo(0, sz);
+      ctx.lineTo(-sz * 0.45, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Starburst cross flare on bright twinkle
+      if (tw > 0.4) {
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 1.5;
+        const flareLen = sz * 1.6;
+        ctx.beginPath();
+        ctx.moveTo(0, -flareLen); ctx.lineTo(0, flareLen);
+        ctx.moveTo(-flareLen, 0); ctx.lineTo(flareLen, 0);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    drawMiniBadge(x + 30, y + h - 45, "SPACE MODE · 4 REVERB TYPES (ROOM · SPRING · HALL · SPACE)", theme);
+    drawMiniBadge(x + 560, y + h - 45, "INFINITE FREEZE & MODULATED DIFFUSION", "#00FF88");
+  }
+  else if (type === "lfo_matrix") {
+    // Track LFO Engine with 4 Preset Destinations
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("TRACK LFO ENGINE · 4 SIMULTANEOUS PRESET DESTINATIONS", x + 30, y + 40);
+
+    // LFO Waveform Preview Bar
+    const lfoBoxY = y + 65;
+    ctx.font = "bold 13px DotGothic16, monospace";
     ctx.fillStyle = theme;
-    ctx.fillText("LFO 1: SINE / TRIANGLE (TEMPO SYNC 1/4)", x + 30, y + 90);
+    ctx.fillText("LFO WAVE: SINE / TRI / SAW / PULSE / RANDOM (TEMPO SYNC 1/4)", x + 30, lfoBoxY);
 
     ctx.lineWidth = 3;
     ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     for (let px = 0; px < w - 60; px += 4) {
-      const py = y + 140 + Math.sin(px * 0.04 + time * 3) * 35;
+      const py = lfoBoxY + 50 + Math.sin(px * 0.035 + time * 3.5) * 28;
       if (px === 0) ctx.moveTo(x + 30 + px, py);
       else ctx.lineTo(x + 30 + px, py);
     }
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    // Destinations for LFO 1
-    const d1 = ["DEST 1: TRACK 1 CUTOFF (+75%)", "DEST 2: TRACK 2 PAN (-50%)", "DEST 3: DELAY SEND (+30%)"];
-    d1.forEach((txt, i) => {
-      ctx.fillStyle = "rgba(16, 24, 32, 0.85)";
-      ctx.strokeStyle = hexToRgba(theme, 0.5);
-      roundRect(ctx, x + 30 + i * 250, y + 190, 235, 30, 6, true, true);
+    // 4 Preset Destinations
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#C0C0D0";
+    ctx.fillText("4 DEDICATED PRESET DESTINATIONS PER TRACK:", x + 30, lfoBoxY + 115);
+
+    const dests = [
+      { code: "PIT", name: "PITCH DESTINATION", role: "Vibrato, octave sweeps & pitch risers", depth: "+64 (±12 ST)", col: "#00E5FF" },
+      { code: "FLT", name: "FILTER CUTOFF DEST", role: "Dynamic low-pass filter sweeps & wah effects", depth: "-48 (-75%)", col: "#39FF14" },
+      { code: "SHP", name: "SHAPE / TIMBRE DEST", role: "Morphs synth engine waveform & wavetable position", depth: "+52 (+81%)", col: "#BD00FF" },
+      { code: "AMP", name: "AMPLITUDE DEST", role: "Rhythmic volume tremolo & gate chopping", depth: "+80 (Unipolar)", col: "#FF007F" }
+    ];
+
+    const cardW = (w - 75) / 2;
+    const cardH = 88;
+    dests.forEach((d, idx) => {
+      const colIdx = idx % 2;
+      const rowIdx = Math.floor(idx / 2);
+      const cx = x + 30 + colIdx * (cardW + 15);
+      const cy = lfoBoxY + 135 + rowIdx * (cardH + 14);
+
+      ctx.fillStyle = "rgba(18, 18, 30, 0.88)";
+      ctx.strokeStyle = hexToRgba(d.col, 0.6);
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, cx, cy, cardW, cardH, 10, true, true);
+
+      // Badge
+      ctx.fillStyle = hexToRgba(d.col, 0.2);
+      ctx.strokeStyle = d.col;
+      roundRect(ctx, cx + 12, cy + 12, 54, 24, 6, true, true);
+      ctx.font = "bold 12px DotGothic16, monospace";
+      ctx.fillStyle = d.col;
+      ctx.textAlign = "center";
+      ctx.fillText(d.code, cx + 39, cy + 28);
+      ctx.textAlign = "left";
+
+      ctx.font = "bold 13px DotGothic16, monospace";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillText(d.name, cx + 78, cy + 28);
+
+      ctx.font = "12px -apple-system, sans-serif";
+      ctx.fillStyle = "#A5A5BA";
+      ctx.fillText(d.role, cx + 14, cy + 54);
+
+      // Depth indicator bar
       ctx.font = "bold 11px DotGothic16, monospace";
-      ctx.fillStyle = theme;
-      ctx.fillText(txt, x + 40 + i * 250, y + 210);
+      ctx.fillStyle = d.col;
+      ctx.fillText(`DEPTH: ${d.depth}`, cx + 14, cy + 76);
+
+      const dBarX = cx + 170, dBarW = cardW - 185;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      roundRect(ctx, dBarX, cy + 67, dBarW, 10, 3, true, false);
+      ctx.fillStyle = d.col;
+      roundRect(ctx, dBarX, cy + 67, dBarW * 0.75, 10, 3, true, false);
     });
 
-    // LFO 2: Sample & Hold
-    ctx.font = "bold 14px DotGothic16, monospace";
-    ctx.fillStyle = accent;
-    ctx.fillText("LFO 2: SAMPLE & HOLD RANDOM (TEMPO SYNC 1/8)", x + 30, y + 280);
-
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = accent;
-    ctx.beginPath();
-    const shStep = 32;
-    for (let px = 0; px < w - 60; px += shStep) {
-      const py = y + 340 + Math.sin(Math.floor((px * 0.04 + time * 2)) * 9.9) * 35;
-      if (px === 0) ctx.moveTo(x + 30 + px, py);
-      else {
-        ctx.lineTo(x + 30 + px, py);
-        ctx.lineTo(x + 30 + px + shStep, py);
-      }
-    }
-    ctx.stroke();
-
-    // Destinations for LFO 2
-    const d2 = ["DEST 1: TRACK 3 MORPH (+80%)", "DEST 2: TRACK 4 DRIVE (+40%)", "DEST 3: REVERB DECAY (+60%)"];
-    d2.forEach((txt, i) => {
-      ctx.fillStyle = "rgba(24, 16, 32, 0.85)";
-      ctx.strokeStyle = hexToRgba(accent, 0.5);
-      roundRect(ctx, x + 30 + i * 250, y + 390, 235, 30, 6, true, true);
-      ctx.font = "bold 11px DotGothic16, monospace";
-      ctx.fillStyle = accent;
-      ctx.fillText(txt, x + 40 + i * 250, y + 410);
-    });
-
-    drawMiniBadge(x + 30, y + h - 40, "5 WAVEFORMS · INDEPENDENT BIPOLAR DEPTHS", theme);
+    drawMiniBadge(x + 30, y + h - 35, "INDEPENDENT BIPOLAR DEPTHS (-64 .. +63)", theme);
+    drawMiniBadge(x + 440, y + h - 35, "TEMPO SYNC · KEY TRIG · POLARITY · FADE", accent);
   }
 }
 
@@ -2145,7 +2598,7 @@ function renderOutroConvergence(x, y, w, h, elapsed) {
     const p = elapsed / 4.0; // 0..1
     const ease = Math.pow(p, 1.8);
 
-    const featured = ["grain", "scrub", "slice", "wavetable", "seq_8x8", "prog", "wb_inspector", "delay"];
+    const featured = ["wb_inspector", "doc_controls", "slice", "wavetable", "seq_64_8x8", "prog", "delay", "mixer"];
     const origins = [
       [-200, -200], [w + 200, -200], [-200, h + 200], [w + 200, h + 200],
       [cx, -250], [cx, h + 250], [-250, cy], [w + 250, cy]
