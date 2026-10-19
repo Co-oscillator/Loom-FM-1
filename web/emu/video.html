@@ -827,23 +827,23 @@ const SLIDES = [
     params: ["ROOM / SPRING / HALL / SPACE", "DECAY TIME", "DAMPING", "TONE FILTER", "STEREO DIFFUSION"],
     vectorType: "reverb_cave"
   },
-  // 23: Master Send FX: Dimension Chorus
+  // 23: Master Send FX: Dimension Chorus (Singing Face & Ensemble Voices)
   {
     id: "fx_chorus",
     chapter: "STUDIO FX SUITE",
     title: "MASTER STEREO CHORUS",
     subtitle: "Multi-Voice Dimension Chorus & Stereo Widening",
     duration: 7.0,
-    themeColor: "#39FF14",
-    accentColor: "#00E5FF",
-    image: "chorus",
+    themeColor: "#00E5FF",
+    accentColor: "#FF204E",
     bullets: [
       "Multi-voice stereo chorus for lush spatial widening and analog ensemble thickening",
       "Dual modulating delay lines with quadrature LFO phase separation",
-      "Integrated low-pass tone filter to tame top-end brightness or create dark swirls",
+      "Integrated low-pass tone filter shifting from cool electric blue to warm analog red",
       "Independent stereo send levels from all 5 tracks for surgical stereo placement"
     ],
-    params: ["CHORUS RATE", "DEPTH", "STEREO SPREAD", "TONE FILTER", "BUS SENDS"]
+    params: ["1-4 VOICES", "RATE & DEPTH SURGE", "TONE (BLUE -> RED)", "STEREO WIDENING", "QUADRATURE LFO"],
+    vectorType: "chorus_faces"
   },
   // 24: Master Bus Sidechain Ducking
   {
@@ -2443,9 +2443,13 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
         // Wobble on trampoline at this dot's location
         const dotWob = wobble_amp > 0 ? Math.sin(u_dot * 0.035 + time * 7.0 + l * 2.0) * wobble_amp : 0;
 
-        // Ball position (normal displacement from the line)
-        const bx = midX + u_dot * cos_ang + (dotWob - currentBounceH) * norm_x;
-        const by = midY + u_dot * sin_ang + (dotWob - currentBounceH) * norm_y;
+        const ballSize = (8 + (1.0 - d / dotsOnThisLine) * 6);
+        const ballRadius = ballSize / 2;
+        const contactOffset = ballRadius + thickness / 2 + 1;
+
+        // Ball position sits above the line and bounces upward along upward normal
+        const bx = midX + u_dot * cos_ang + (dotWob * norm_x) + (currentBounceH + contactOffset) * norm_x;
+        const by = midY + u_dot * sin_ang + (dotWob * norm_y) + (currentBounceH + contactOffset) * norm_y;
 
         // Trampoline contact point
         const contactX = midX + u_dot * cos_ang + dotWob * norm_x;
@@ -2462,13 +2466,12 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
         }
 
         // Ball size & glow
-        const ballSize = (8 + (1.0 - d / dotsOnThisLine) * 6);
         ctx.save();
         ctx.shadowColor = col_dot;
         ctx.shadowBlur = 12;
         ctx.fillStyle = col_dot;
         ctx.beginPath();
-        ctx.arc(bx, by, ballSize / 2, 0, Math.PI * 2);
+        ctx.arc(bx, by, ballRadius, 0, Math.PI * 2);
         ctx.fill();
 
         // White core
@@ -2649,6 +2652,209 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
 
     drawMiniBadge(x + 30, y + h - 45, "SPACE MODE · 4 REVERB TYPES (ROOM · SPRING · HALL · SPACE)", theme);
     drawMiniBadge(x + 560, y + h - 45, "INFINITE FREEZE & MODULATED DIFFUSION", "#00FF88");
+  }
+  else if (type === "chorus_faces") {
+    // Dynamic Dimension Chorus: Singing face with stacked voice silhouettes & expanding sound wave
+    // Progression over slide (0 .. 7s):
+    // 0.0 - 2.2s: Blue singing face with steady gentle sound wave
+    // 2.2 - 3.8s: Sound wave surges higher in amplitude and frequency
+    // 3.8 - 5.2s: Color shifts from Cool Electric Blue -> Magenta -> Warm Analog Red
+    // 5.2 - 7.0s: Voices expand (1 -> 2 -> 3 -> 4) with stacked voice silhouettes fanning out behind!
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#A0A0B2";
+    ctx.fillText("STEREO CHORUS · MULTI-VOICE ENSEMBLE & TONE SPECTRUM (GRAPH_CHORUS)", x + 30, y + 40);
+
+    const boxW = w - 60, boxH = h - 140;
+    const boxX = x + 30, boxY = y + 70;
+    ctx.fillStyle = "rgba(10, 12, 22, 0.94)";
+    roundRect(ctx, boxX, boxY, boxW, boxH, 14, true, false);
+
+    // Timeline parameter calculations
+    let waveAmp, waveFreq, colorProgress, numVoices;
+    if (time < 2.2) {
+      waveAmp = 30;
+      waveFreq = 2.4;
+      colorProgress = 0.0; // Cool Blue
+      numVoices = 1;
+    } else if (time < 3.8) {
+      const p = (time - 2.2) / 1.6;
+      waveAmp = 30 + Math.sin(p * Math.PI) * 58; // Surges up to 88px!
+      waveFreq = 2.4 + p * 4.2; // Increases frequency up to 6.6 cycles
+      colorProgress = p * 0.15; // Slight hue shift begin
+      numVoices = 1;
+    } else if (time < 5.2) {
+      const p = (time - 3.8) / 1.4;
+      waveAmp = 42 + Math.sin(time * 3.0) * 12;
+      waveFreq = 4.5 + Math.cos(time * 2.0) * 0.8;
+      colorProgress = 0.15 + p * 0.85; // Smooth sweep to Warm Red
+      numVoices = 1 + (p > 0.6 ? 1 : 0); // starts 2nd voice
+    } else {
+      const p = (time - 5.2) / 1.8;
+      waveAmp = 48 + Math.sin(time * 4.0) * 15;
+      waveFreq = 5.2;
+      colorProgress = 1.0; // Rich Red
+      if (p < 0.35) numVoices = 2;
+      else if (p < 0.7) numVoices = 3;
+      else numVoices = 4;
+    }
+
+    // Dynamic Tone Color Interpolation: Blue (#00E5FF) -> Magenta (#BD00FF) -> Red (#FF204E)
+    let curColor, dimColor;
+    if (colorProgress < 0.5) {
+      const cp = colorProgress / 0.5;
+      const r = Math.round(0 + cp * 189);
+      const g = Math.round(229 * (1 - cp * 0.6));
+      const b = 255;
+      curColor = `rgb(${r}, ${g}, ${b})`;
+      dimColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
+    } else {
+      const cp = (colorProgress - 0.5) / 0.5;
+      const r = Math.round(189 + cp * 66);
+      const g = Math.round(91 * (1 - cp) + cp * 32);
+      const b = Math.round(255 * (1 - cp * 0.7) + cp * 78);
+      curColor = `rgb(${r}, ${g}, ${b})`;
+      dimColor = `rgba(${r}, ${g}, ${b}, 0.25)`;
+    }
+
+    const faceX0 = boxX + 180;
+    const faceY0 = boxY + boxH * 0.5;
+    const R = 68;
+
+    // 1. Stacked Voice Silhouettes behind and to the left (firmware ui_graph.c:1141)
+    for (let v = numVoices - 1; v >= 1; v--) {
+      const vx = faceX0 - v * 32;
+      const vy = faceY0 - v * 20;
+      const vAlpha = 0.55 - v * 0.12;
+
+      ctx.save();
+      ctx.strokeStyle = hexToRgba(curColor, vAlpha);
+      ctx.lineWidth = 3;
+      ctx.shadowColor = curColor;
+      ctx.shadowBlur = 8 * vAlpha;
+
+      // Stacked circle outline
+      ctx.beginPath();
+      ctx.arc(vx, vy, R, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Stacked arched eyes (^ ^)
+      const vex1 = vx - 26, vex2 = vx + 26, vey = vy - 18;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(vex1 - 10, vey + 6); ctx.lineTo(vex1, vey - 6); ctx.lineTo(vex1 + 10, vey + 6);
+      ctx.moveTo(vex2 - 10, vey + 6); ctx.lineTo(vex2, vey - 6); ctx.lineTo(vex2 + 10, vey + 6);
+      ctx.stroke();
+
+      // Stacked open mouth
+      const vMouthPulse = Math.sin(time * 5.0 + v * 0.7) * 4;
+      ctx.beginPath();
+      ctx.ellipse(vx, vy + 20, 16, 22 + vMouthPulse, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 2. Main Singing Face (Solid fill to occlude background stacked circles)
+    ctx.save();
+    ctx.fillStyle = "rgba(10, 12, 22, 0.98)";
+    ctx.beginPath();
+    ctx.arc(faceX0, faceY0, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main Face Glowing Outline
+    ctx.strokeStyle = curColor;
+    ctx.lineWidth = 4;
+    ctx.shadowColor = curColor;
+    ctx.shadowBlur = 18;
+    ctx.stroke();
+
+    // Arched Singing Eyes (^ ^)
+    const ex1 = faceX0 - 26, ex2 = faceX0 + 26, ey = faceY0 - 18;
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = curColor;
+    ctx.beginPath();
+    ctx.moveTo(ex1 - 12, ey + 7); ctx.lineTo(ex1, ey - 7); ctx.lineTo(ex1 + 12, ey + 7);
+    ctx.moveTo(ex2 - 12, ey + 7); ctx.lineTo(ex2, ey - 7); ctx.lineTo(ex2 + 12, ey + 7);
+    ctx.stroke();
+
+    // Singing Open Mouth (vertical oval singing out)
+    const mouthPulse = (time >= 2.2 && time <= 3.8)
+      ? Math.sin(time * 8.0) * 8 + 4
+      : Math.sin(time * 5.0) * 4;
+    const mrx = 18 + (mouthPulse > 0 ? mouthPulse * 0.3 : 0);
+    const mry = 26 + mouthPulse;
+
+    ctx.fillStyle = "#05060A";
+    ctx.beginPath();
+    ctx.ellipse(faceX0, faceY0 + 20, mrx, mry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = curColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Tongue / depth line inside mouth
+    ctx.strokeStyle = dimColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(faceX0, faceY0 + 26, 10, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Sound Wave Traveling to the Right (from mouth across box)
+    const waveStartX = faceX0 + R - 4;
+    const waveEndX = boxX + boxW - 24;
+    const waveLen = waveEndX - waveStartX;
+
+    // Sub-voice chorus waveforms with quadrature phase shift
+    if (numVoices > 1) {
+      for (let v = 1; v < numVoices; v++) {
+        const vPhaseOffset = (v * Math.PI * 0.5); // quadrature phase 90 deg
+        const vAlpha = 0.45 / v;
+        ctx.save();
+        ctx.strokeStyle = hexToRgba(curColor, vAlpha);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let px = 0; px <= waveLen; px += 3) {
+          const norm = px / waveLen;
+          const leadIn = Math.min(1.0, norm * 4);
+          const ph = (px * 0.04 * waveFreq) + (time * 6.5) + vPhaseOffset;
+          const wy = faceY0 + 20 + Math.sin(ph) * (waveAmp * 0.8) * leadIn;
+          if (px === 0) ctx.moveTo(waveStartX + px, wy);
+          else ctx.lineTo(waveStartX + px, wy);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // Main Primary Chorus Sound Wave
+    ctx.save();
+    ctx.strokeStyle = curColor;
+    ctx.lineWidth = 3.5;
+    ctx.shadowColor = curColor;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    for (let px = 0; px <= waveLen; px += 3) {
+      const norm = px / waveLen;
+      const leadIn = Math.min(1.0, norm * 4);
+      const ph = (px * 0.04 * waveFreq) + (time * 6.5);
+      const wy = faceY0 + 20 + Math.sin(ph) * waveAmp * leadIn;
+      if (px === 0) ctx.moveTo(waveStartX + px, wy);
+      else ctx.lineTo(waveStartX + px, wy);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Dynamic Live Badges
+    const pY = boxY + boxH - 50;
+    const voiceStr = `${numVoices} ${numVoices === 1 ? 'VOICE' : 'VOICES'}`;
+    const toneStr = colorProgress < 0.3 ? "COOL BLUE (+63)" : (colorProgress < 0.7 ? "MAGENTA SWIRL (0)" : "WARM ANALOG RED (-64)");
+
+    drawMiniBadge(boxX + 16, pY, `VOICES: ${voiceStr}`, curColor);
+    drawMiniBadge(boxX + 175, pY, `TONE: ${toneStr}`, curColor);
+    drawMiniBadge(boxX + 430, pY, `CHORUS RATE: ${waveFreq.toFixed(1)} Hz · DEPTH: ${Math.round(waveAmp)}%`, "#00E5FF");
+
+    drawMiniBadge(x + 30, y + h - 45, "MULTI-VOICE DIMENSION ENSEMBLE", curColor);
+    drawMiniBadge(x + 480, y + h - 45, "QUADRATURE LFO STEREO PHASE SPREAD", "#00E5FF");
   }
   else if (type === "lfo_matrix") {
     // Track LFO Engine with 4 Preset Destinations
