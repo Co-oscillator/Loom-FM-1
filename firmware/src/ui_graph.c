@@ -1859,8 +1859,8 @@ static void sample_wave_tick(const track_t *t)
 {
     int is_grain = (ENGINES[t->eng_req % NENGINES] == &ENG_GRAIN);
     uint32_t zi = sample_wave_zone(t);
-    /* For GRAIN, the waveform depends solely on sample selection (SRC), never on played notes */
-    uint32_t key = is_grain ? (65536u | zi) : (zi + ((uint32_t)last_note << 16));
+    /* Waveform depends on sample selection (SRC) and zone, not on every individual note */
+    uint32_t key = (is_grain ? 65536u : 0u) | zi;
     uint32_t i;
     if (key != sample_wave.key || sample_wave.gen != smp_user_gen || !sample_wave.zone) {
         sample_wave.key = key; sample_wave.gen = smp_user_gen;
@@ -1871,7 +1871,7 @@ static void sample_wave_tick(const track_t *t)
     }
     const smp_zone_t *z = sample_wave.zone;
     if (!z || !z->n || sample_wave.ready) return;
-    for (i = 0; i < 4096u && sample_wave.pos < z->n; i++) {
+    for (i = 0; i < 16384u && sample_wave.pos < z->n; i++) {
         uint32_t pos = sample_wave.pos, b = SMP_DATA[z->off + (pos >> 1)];
         uint32_t code = (pos & 1u) ? b >> 4 : b & 15u;
         int32_t step = IMA_STEP[sample_wave.index], d = step >> 3;
@@ -2846,8 +2846,10 @@ static uint32_t graph_signature(void)
                     h ^= P->g[gi].pos + (P->g[gi].wph >> 16) * 31u;
             for (i = 0; i < 4; i++)
                 h = (h ^ (uint32_t)t->p[ENG_GRAIN.knob[i]]) * 16777619u;
+        } else if (ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE) {
+            h ^= sample_wave.pos * 13u + sample_wave.key;
         }
-        return h ^ (ui.frame / 2u);                  /* scope / grain: redraw every other frame */
+        return h ^ (ui.frame / 2u);                  /* scope / grain / sample: redraw every other frame */
     }
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
     if (strip_kind() == SK_TITLE)                    /* MENU > LARGE: the page's title (its engine, its number) */
