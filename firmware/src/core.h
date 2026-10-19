@@ -6,6 +6,7 @@
  * engine (General MIDI map) on any part; the SAMPLE engine's PERC set is retired (drum_from_perc).
  * Sections: sizes, parameters, voices and engines, tracks and the song, system. */
 #include <stdint.h>
+#include "panel.h"
 
 /* ------------------------------------------------------------ sizes --- */
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */

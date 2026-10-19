@@ -87,6 +87,7 @@ static volatile uint8_t perf_map[PF_KEYS] = {PF_R8, PF_R16, PF_R32, PF_REV, PF_L
 static volatile uint8_t perf_remap;   /* main: perf_map changed (seq.c: a key held takes its new effect) */
 
 static volatile uint32_t perf_mask;   /* main: the FX button's bit while its layer may own keys, 0 = none */
+static volatile uint32_t scl_mask;    /* main: the SCL button's bit while its layer may own keys, 0 = none */
 static volatile uint32_t kb_mask;     /* main: the button bits whose hold makes keys a layer's (ui_layer.c), 0 = none */
 static volatile uint8_t kb_lock;      /* main: a layer locked open (#83, no button held): 1 keys are the layer's, 2 FX's */
 static volatile uint8_t perf_solo;    /* main: tracks soloed in the GLO layer (the others muted as by a black key) */

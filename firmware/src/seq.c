@@ -862,6 +862,160 @@ static __attribute__((noinline)) void kb_lat(uint32_t k)
 }
 #endif
 
+/* Loom Chord Progression Performance: White keys 1-8 play chords 1-8 directly; keys 9-16 play chords in a 1/2-step strum */
+typedef struct {
+    uint8_t active;
+    uint8_t trk;
+    uint8_t count;
+    uint8_t next_idx;
+    uint8_t notes[LOOM_CHORD_MAX_NOTES];
+    uint8_t played[LOOM_CHORD_MAX_NOTES];
+    uint32_t interval_samples;
+    uint32_t timer_samples;
+} loom_strum_t;
+
+static loom_strum_t kb_strum[27];
+static uint8_t kb_scl_chord[27];      /* 0: none, 1: direct, 2: strummed */
+static uint8_t kb_scl_notes[27][LOOM_CHORD_MAX_NOTES];
+static uint8_t kb_scl_cnt[27];
+static uint8_t kb_scl_trk[27];
+
+static void key_scl_chord_on(uint32_t k, track_t *t)
+{
+    uint32_t p = key_place(k);
+    if (p >= 16u) return;
+
+    ensure_track_prog(t);
+    uint32_t k_trk = trk_index(t);
+    loom_chord_prog_t *prg = &trk_prog[k_trk];
+    uint32_t step = p % LOOM_CHORD_STEPS;
+    const loom_chord_t *ch = &prg->chords[step];
+    uint32_t cnt = ch->count;
+    if (cnt == 0u) return;
+    if (cnt > LOOM_CHORD_MAX_NOTES) cnt = LOOM_CHORD_MAX_NOTES;
+
+    prg->active_step = (uint8_t)step;
+    chord_last[k_trk].step = (uint8_t)step;
+    chord_last[k_trk].root = ch->notes[0];
+    chord_last[k_trk].n = (uint8_t)(cnt > CHORD_MAX ? CHORD_MAX : cnt);
+    chord_last[k_trk].gen++;
+
+    uint32_t mc = trk_midi_ch(k_trk);
+    kb_scl_trk[k] = (uint8_t)k_trk;
+
+    if (p < 8u) {
+        /* Direct Chord (White Keys 1-8) */
+        kb_scl_chord[k] = 1;
+        kb_scl_cnt[k] = (uint8_t)cnt;
+        for (uint32_t i = 0; i < cnt; i++) {
+            int32_t nt = clamp((int32_t)ch->notes[i] + 12 * (int32_t)song.octave, 0, 127);
+            kb_scl_notes[k][i] = (uint8_t)nt;
+            trk_note_on(t, (uint32_t)nt, 100);
+            midi_out_event(0x09u | (0x90u | mc) << 8 | (uint32_t)nt << 16 | 100u << 24);
+            if (rec_on(t))
+                rec_note(t, (uint32_t)nt, 100);
+        }
+    } else {
+        /* Strummed Chord over 1/2 step (White Keys 9-16) */
+        kb_scl_chord[k] = 2;
+        kb_strum[k].active = 0;
+        uint32_t half_step = div_samples(2) / 2u;
+        if (half_step < 64u) half_step = 64u;
+
+        if (cnt <= 1u) {
+            kb_scl_cnt[k] = 1;
+            int32_t nt = clamp((int32_t)ch->notes[0] + 12 * (int32_t)song.octave, 0, 127);
+            kb_scl_notes[k][0] = (uint8_t)nt;
+            trk_note_on(t, (uint32_t)nt, 100);
+            midi_out_event(0x09u | (0x90u | mc) << 8 | (uint32_t)nt << 16 | 100u << 24);
+            if (rec_on(t))
+                rec_note(t, (uint32_t)nt, 100);
+        } else {
+            uint32_t interval = half_step / (cnt - 1u);
+            if (interval < 32u) interval = 32u;
+
+            kb_strum[k].trk = (uint8_t)k_trk;
+            kb_strum[k].count = (uint8_t)cnt;
+            kb_strum[k].next_idx = 1;
+            kb_strum[k].interval_samples = interval;
+            kb_strum[k].timer_samples = interval;
+            memset(kb_strum[k].played, 0, sizeof(kb_strum[k].played));
+
+            for (uint32_t i = 0; i < cnt; i++) {
+                kb_strum[k].notes[i] = (uint8_t)clamp((int32_t)ch->notes[i] + 12 * (int32_t)song.octave, 0, 127);
+            }
+
+            /* Play note 0 immediately */
+            uint32_t nt0 = kb_strum[k].notes[0];
+            trk_note_on(t, nt0, 100);
+            midi_out_event(0x09u | (0x90u | mc) << 8 | nt0 << 16 | 100u << 24);
+            if (rec_on(t))
+                rec_note(t, nt0, 100);
+            kb_strum[k].played[0] = 1;
+            kb_strum[k].active = 1;
+        }
+    }
+}
+
+static void key_scl_chord_off(uint32_t k)
+{
+    if (!kb_scl_chord[k]) return;
+    track_t *t = &trk[kb_scl_trk[k]];
+    uint32_t mc = trk_midi_ch(kb_scl_trk[k]);
+
+    if (kb_scl_chord[k] == 1) {
+        for (uint32_t i = 0; i < kb_scl_cnt[k]; i++) {
+            uint32_t nt = kb_scl_notes[k][i];
+            trk_note_off(t, nt);
+            midi_out_event(0x08u | (0x80u | mc) << 8 | nt << 16);
+            if (rec_on(t))
+                rec_release(t, nt);
+        }
+    } else if (kb_scl_chord[k] == 2) {
+        kb_strum[k].active = 0;
+        for (uint32_t i = 0; i < kb_strum[k].count; i++) {
+            if (kb_strum[k].played[i]) {
+                uint32_t nt = kb_strum[k].notes[i];
+                trk_note_off(t, nt);
+                midi_out_event(0x08u | (0x80u | mc) << 8 | nt << 16);
+                if (rec_on(t))
+                    rec_release(t, nt);
+            }
+        }
+    }
+    kb_scl_chord[k] = 0;
+}
+
+static void loom_strum_tick(uint32_t n)
+{
+    for (uint32_t sk = 0; sk < 27u; sk++) {
+        if (!kb_strum[sk].active)
+            continue;
+        uint32_t budget = n;
+        while (kb_strum[sk].active && budget >= kb_strum[sk].timer_samples) {
+            budget -= kb_strum[sk].timer_samples;
+            uint32_t idx = kb_strum[sk].next_idx;
+            track_t *st_trk = &trk[kb_strum[sk].trk];
+            uint32_t st_mc = trk_midi_ch(kb_strum[sk].trk);
+            uint32_t st_nt = kb_strum[sk].notes[idx];
+            trk_note_on(st_trk, st_nt, 100);
+            midi_out_event(0x09u | (0x90u | st_mc) << 8 | st_nt << 16 | 100u << 24);
+            if (rec_on(st_trk))
+                rec_note(st_trk, st_nt, 100);
+            kb_strum[sk].played[idx] = 1;
+            kb_strum[sk].next_idx++;
+            if (kb_strum[sk].next_idx >= kb_strum[sk].count) {
+                kb_strum[sk].active = 0;
+                break;
+            }
+            kb_strum[sk].timer_samples = kb_strum[sk].interval_samples;
+        }
+        if (kb_strum[sk].active) {
+            kb_strum[sk].timer_samples -= budget;
+        }
+    }
+}
+
 static void keyboard_block(void)
 {
     uint32_t cur = fm1_in.notes, ch, k;
@@ -880,6 +1034,7 @@ static void keyboard_block(void)
     }
     lay = (fm1_in.buttons & kb_mask) || kb_lock;  /* (#83: kb_lock, a layer locked open with no button held) */
     fx = (fm1_in.buttons & perf_mask) || (kb_lock & 2u);
+    uint32_t scl = (fm1_in.buttons >> panel.btn[B_SCL]) & 1u;
     mute = song.grid == 2u ? ~0u : song.grid == 3u ? SONG_KEYS : 0u;   /* the keys that never sound here */
     for (k = 0; k < 27u; k++) {
         if (!((ch >> k) & 1u))
@@ -888,6 +1043,12 @@ static void keyboard_block(void)
             kb_trk[k] = song.sel;
             if (kb_asleep) {                      /* (SCREEN OFF: the wake press is swallowed) */
                 kb_note[k] = KB_SILENT;
+                continue;
+            }
+            if (scl && !key_black(k)) {
+                key_scl_chord_on(k, &trk[kb_trk[k]]);
+                kb_note[k] = KB_SILENT;
+                kb_layer |= 1u << k;
                 continue;
             }
             if (lay) {                            /* a layer's button held (or locked): the key is the layer's */
@@ -910,6 +1071,11 @@ static void keyboard_block(void)
             kb_lat(k);
 #endif
         } else {
+            if (kb_scl_chord[k]) {
+                key_scl_chord_off(k);
+                kb_layer &= ~(1u << k);
+                continue;
+            }
             if ((kb_layer >> k) & 1u) {
                 kb_layer &= ~(1u << k);
                 perf_key_press(k, 0);
@@ -1386,6 +1552,12 @@ static void events_block(uint32_t n)
             t->nheld = 0;
             t->arp_phys = 0;
             arp_forget(t);
+            for (uint32_t pk = 0; pk < 27u; pk++) {
+                if (kb_scl_trk[pk] == i) {
+                    kb_strum[pk].active = 0;
+                    kb_scl_chord[pk] = 0;
+                }
+            }
         }
         engine_block(t);                              /* engine switch: fade, then switch (voice.c) */
         /* ARP turned off, or HOLD released with no key down: drop the latched chord */
@@ -1400,6 +1572,7 @@ static void events_block(uint32_t n)
         t->aholdp = t->p[P_AHOLD];
     }
     keyboard_block();
+    loom_strum_tick(n);
     while (mi_r != mi_w) {                            /* USB-MIDI (and TRS) in */
         uint32_t at = mi_r % MQ, pkt = midi_in_q[at], status = (pkt >> 8) & 0xFFu;
         uint32_t st = status & 0xF0u, ch = status & 0x0Fu;

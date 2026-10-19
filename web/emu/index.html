@@ -131,7 +131,34 @@ footer small { font-size: 11px; opacity: .8; }
 @media (max-width: 700px) {
   .mag-card { flex-direction: column; }
   .mag-aside { max-width: 100%; width: 100%; }
-}
+/* Loom Parameter Quick-Inspect Bar (Second Header Row) */
+.wb-subnav { background: #161618; border: 1px solid #2e2e32; border-radius: 14px; padding: 10px 14px; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.22); display: flex; flex-direction: column; gap: 8px; }
+.wb-subnav-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wb-subnav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #8e8e93; min-width: 105px; flex-shrink: 0; }
+.wb-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.wb-pill { background: #242428; color: #d6d6d8; border: 1px solid #38383e; border-radius: 99px; padding: 4px 11px; font: 600 11.5px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; transition: all 0.12s ease; white-space: nowrap; }
+.wb-pill:hover { background: #34343a; color: #fff; border-color: #585860; transform: translateY(-1px); }
+.wb-pill.active { background: #5fe08a; color: #0d2414; border-color: #5fe08a; font-weight: 700; box-shadow: 0 0 10px rgba(95, 224, 138, 0.4); }
+.wb-pill.active[data-color] { background: var(--p-col, #5fe08a); color: #111; border-color: var(--p-col, #5fe08a); box-shadow: 0 0 12px var(--p-col, rgba(95,224,138,0.4)); }
+
+/* Bottom Parameter Inspector Panel */
+.param-inspector-panel { background: #1a1a1d; border: 1px solid #343438; border-radius: 16px; padding: 22px 24px; margin: 26px 0 20px; box-shadow: 0 8px 28px rgba(0,0,0,0.32); }
+.param-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #2c2c30; margin-bottom: 16px; }
+.param-title-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.param-title-wrap h3 { margin: 0; font-size: 19px; color: #fff; font-weight: 700; letter-spacing: 0.3px; }
+.param-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.6px; text-transform: uppercase; }
+.param-desc-main { margin: 0 0 16px; font-size: 13.5px; color: #c7c7cc; line-height: 1.5; }
+.param-pages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.param-page-box { background: #232327; border: 1px solid #323236; border-radius: 12px; padding: 14px; }
+.param-page-title { font-size: 12px; font-weight: 700; color: #5fe08a; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2a2e; padding-bottom: 6px; }
+.param-row { display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid #2a2a2e; }
+.param-row:last-child { border-bottom: none; }
+.param-name-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.param-knob-label { font-size: 12px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+.param-knob-badge { font-size: 9.5px; font-weight: 700; background: #323236; color: #ff9f0a; padding: 1px 5px; border-radius: 4px; }
+.param-val-range { font-size: 11px; color: #5fe08a; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+.param-desc { font-size: 11.5px; color: #a1a1a6; margin-top: 3px; line-height: 1.4; }
+.param-tip { margin-top: 14px; padding: 10px 14px; background: #161618; border-left: 3px solid #5fe08a; border-radius: 0 8px 8px 0; font-size: 12px; color: #c7c7cc; }
 </style>
 </head>
 <body>
@@ -149,6 +176,49 @@ footer small { font-size: 11px; opacity: .8; }
   </div>
   <div class="wb-actions">
     <button id="resample-btn" class="wb-btn" type="button" disabled title="Record emulator audio output to a 16-bit WAV file that you can load into USR1..3 in Editor & Samples">● Resample Audio</button>
+  </div>
+</nav>
+
+<nav class="wb-subnav" aria-label="Loom Parameter Quick-Inspect Bar">
+  <div class="wb-subnav-row">
+    <span class="wb-subnav-label">Engines</span>
+    <div class="wb-pills">
+      <button class="wb-pill" data-inspect="subtract" data-color="#ff7300">SUBTRACT</button>
+      <button class="wb-pill" data-inspect="phase" data-color="#00e5ff">PHASE</button>
+      <button class="wb-pill" data-inspect="lofi" data-color="#ffd600">LOFI</button>
+      <button class="wb-pill" data-inspect="sample" data-color="#ff007f">SAMPLE</button>
+      <button class="wb-pill" data-inspect="voice" data-color="#d500f9">VOICE</button>
+      <button class="wb-pill" data-inspect="scrub" data-color="#ff2d78">SCRUB</button>
+      <button class="wb-pill" data-inspect="wheel" data-color="#76ff03">WHEEL</button>
+      <button class="wb-pill" data-inspect="grain" data-color="#ff6d00">GRAIN</button>
+      <button class="wb-pill" data-inspect="phys" data-color="#00e676">PHYS</button>
+      <button class="wb-pill" data-inspect="noise" data-color="#b0bec5">NOISE</button>
+      <button class="wb-pill" data-inspect="fm6" data-color="#ff1744">FM6</button>
+      <button class="wb-pill" data-inspect="slice" data-color="#00c853">SLICE</button>
+      <button class="wb-pill" data-inspect="wavetable" data-color="#00b0ff">WAVETABLE</button>
+      <button class="wb-pill" data-inspect="drum" data-color="#ff5252">DRUM</button>
+    </div>
+  </div>
+  <div class="wb-subnav-row">
+    <span class="wb-subnav-label">Seq &amp; Scale</span>
+    <div class="wb-pills">
+      <button class="wb-pill" data-inspect="seq" data-color="#5fe08a">SEQUENCER</button>
+      <button class="wb-pill" data-inspect="arp" data-color="#ffd600">ARPEGGIATOR</button>
+      <button class="wb-pill" data-inspect="scale" data-color="#00e5ff">SCALES &amp; CHORDS</button>
+    </div>
+  </div>
+  <div class="wb-subnav-row">
+    <span class="wb-subnav-label">Insert &amp; Send FX</span>
+    <div class="wb-pills">
+      <button class="wb-pill" data-inspect="wobble" data-color="#ff007f">WOBBLE</button>
+      <button class="wb-pill" data-inspect="octaver" data-color="#76ff03">OCTAVER</button>
+      <button class="wb-pill" data-inspect="overdrive" data-color="#ff3d00">OVERDRIVE</button>
+      <button class="wb-pill" data-inspect="panner" data-color="#d500f9">PANNER</button>
+      <button class="wb-pill" data-inspect="delay" data-color="#ffab00">TAPE ECHO</button>
+      <button class="wb-pill" data-inspect="reverb" data-color="#ff1744">REVERB</button>
+      <button class="wb-pill" data-inspect="chorus" data-color="#2979ff">CHORUS</button>
+      <button class="wb-pill" data-inspect="sidechain" data-color="#00e676">SIDECHAIN</button>
+    </div>
   </div>
 </nav>
 
@@ -615,6 +685,20 @@ footer small { font-size: 11px; opacity: .8; }
         </a>
       </div>
     </div>
+  </div>
+<!-- PARAMETER INSPECTOR PANEL (EXPOSED AT BOTTOM OF PAGE) -->
+<section id="param-inspector" class="param-inspector-panel" aria-label="Parameter Inspector">
+  <div class="param-header">
+    <div class="param-title-wrap">
+      <span class="param-badge" id="param-badge" style="background:#ff7300; color:#111;">ENGINE</span>
+      <h3 id="param-title">SUBTRACT (4-Osc Subtractive Synth)</h3>
+    </div>
+    <div style="font-size:12px; color:#8e8e93;" id="param-hint">Click any pill in the header bar above to view complete parameters</div>
+  </div>
+  <p class="param-desc-main" id="param-desc-main">Four rich morphing oscillators with hard sync, wavefolder, resonant 24dB/12dB LP/BP/HP filters, sub-oscillator, and dedicated envelopes.</p>
+  <div class="param-pages-grid" id="param-pages-container"></div>
+  <div class="param-tip" id="param-tip">
+    <strong>💡 Sound Design Tip:</strong> Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).
   </div>
 </section>
 
@@ -1190,6 +1274,740 @@ document.getElementById("manual-search").addEventListener("input", (e) => {
     card.style.display = !q || card.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 });
+
+// ------------------------------------------------------------------ Parameter Quick-Inspect Bar & Panel
+const PARAM_DATA = {
+  subtract: {
+    category: "ENGINE",
+    title: "SUBTRACT — 4-Osc Subtractive Synth",
+    color: "#ff7300",
+    desc: "Four morphing analog oscillators with recursive wave folding, per-oscillator drive, independent glide, and multi-mode resonant filter (LP, BP, HP).",
+    tip: "Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).",
+    pages: [
+      {
+        name: "Page 1: Oscillators (OSC)",
+        sub: "EDIT P1/3",
+        params: [
+          { knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects active oscillator for waveform shaping and mixing." },
+          { knob: "K2", name: "WAVE", range: "0–127", desc: "Smooth continuous morph: Sine (0) → Triangle (42) → Saw (85) → Square (127)." },
+          { knob: "K3", name: "FOLD", range: "0–127", desc: "Recursive analog wave folder adding complex high-frequency harmonics." },
+          { knob: "K4", name: "MIX", range: "0–127", desc: "Oscillator output level. Set to 0 (OFF) to completely bypass and save CPU." }
+        ]
+      },
+      {
+        name: "Page 2: Pitch & Drive (TUNE)",
+        sub: "EDIT P2/3",
+        params: [
+          { knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects oscillator (mirrors Page 1 selection)." },
+          { knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Coarse semitone pitch offset. SUB defaults to -12 ST (-1 octave)." },
+          { knob: "K3", name: "DRV", range: "0–127", desc: "Per-oscillator asymmetric saturation and warm drive." },
+          { knob: "K4", name: "GLID", range: "0–127", desc: "Independent per-oscillator portamento glide speed." }
+        ]
+      },
+      {
+        name: "Page 3: Filter (FILTER)",
+        sub: "EDIT P3/3",
+        params: [
+          { knob: "K1", name: "TYPE", range: "LP, BP, HP", desc: "State-variable resonant filter response mode." },
+          { knob: "K2", name: "CUT", range: "20Hz–20kHz", desc: "Master filter cutoff frequency with smooth exponential response." },
+          { knob: "K3", name: "RES", range: "0–127", desc: "Filter resonance peak; self-oscillates at high values." },
+          { knob: "K4", name: "KTR", range: "0–100%", desc: "Keyboard pitch tracking amount for uniform brightness across octaves." }
+        ]
+      }
+    ]
+  },
+  phase: {
+    category: "ENGINE",
+    title: "PHASE — Phase Distortion Synthesizer",
+    color: "#00e5ff",
+    desc: "Dual-line phase distortion engine inspired by classic Casio CZ synths. Uses bent phase angles, alternating wave cycles, and ring modulation.",
+    tip: "Blend in WAVE2 for evolving stereo textures, or toggle LINE from MIX to RING for cutting metallic bell timbres.",
+    pages: [
+      {
+        name: "Page 1: Phase Angle (PHS)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "WAVE", range: "SAW..RTRP", desc: "Primary phase waveform: SAW, SQR, PLS, DSIN, SPLS, RSAW, RTRI, RTRP." },
+          { knob: "K2", name: "WAVE2", range: "-, SAW..RTRP", desc: "Secondary waveform alternating every other cycle (or '-' for single wave)." },
+          { knob: "K3", name: "DCW", range: "0–127", desc: "Distorted phase bend depth (equivalent to filter cutoff in subtractive)." },
+          { knob: "K4", name: "ENV", range: "0–127", desc: "Dedicated ADSR envelope modulation depth routed to DCW." }
+        ]
+      },
+      {
+        name: "Page 2: Secondary Line (LINE)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "DTN", range: "0–127 ct", desc: "Detune between primary and secondary phase lines in cents." },
+          { knob: "K2", name: "LINE", range: "MIX, RING", desc: "Routing mode: additive MIX or aggressive RING modulation." },
+          { knob: "K3", name: "SUB", range: "0–127", desc: "Clean sine sub-oscillator level anchored 1 octave down." },
+          { knob: "K4", name: "—", range: "—", desc: "Reserved slot." }
+        ]
+      }
+    ]
+  },
+  lofi: {
+    category: "ENGINE",
+    title: "LOFI — Chiptune & Algorithmic 8-Bit Engine",
+    color: "#ffd600",
+    desc: "Authentic retro gaming sounds inspired by Game Boy, NES, SID 6581, custom 4-bit Wave RAM, and 15-step staircase envelope DAC emulation.",
+    tip: "Select CHIP = WRAM to scrub through classic wavetable waveforms, or enable ARP for rapid vintage chiptune chord arpeggios.",
+    pages: [
+      {
+        name: "Page 1: Sound Chip (CHIP)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "CHIP", range: "GB, NES, SID, WRAM, STEP", desc: "Emulated sound chip hardware architecture." },
+          { knob: "K2", name: "WAVE", range: "Pulse, Tri, Noise, Tables", desc: "Available waveforms or Wave RAM table slots." },
+          { knob: "K3", name: "DUTY", range: "12.5%–87.5% / 0–15", desc: "Pulse duty cycle width, or Wave RAM table selector." },
+          { knob: "K4", name: "CRSH", range: "0–127", desc: "Hardware bit-crush and staircase envelope decay step speed." }
+        ]
+      },
+      {
+        name: "Page 2: Motion & Tone (MOTN)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "SWP", range: "0–127", desc: "Fast pitch sweep speed for arcade laser zaps and kick transients." },
+          { knob: "K2", name: "VIB", range: "0–127", desc: "Vintage pitch vibrato depth and speed." },
+          { knob: "K3", name: "ARP", range: "OFF, FAST, MED, SLOW", desc: "Automated hardware chiptune arpeggio speed." },
+          { knob: "K4", name: "TONE", range: "0–127", desc: "High-frequency tone filtering and DAC reconstruction smoothing." }
+        ]
+      }
+    ]
+  },
+  sample: {
+    category: "ENGINE",
+    title: "SAMPLE — Chromatic Polyphonic Sampler",
+    color: "#ff007f",
+    desc: "Multi-voice chromatic sampler featuring sample playback with forward, reverse, and ping-pong looping, root pitch shifting, and tempo sync.",
+    tip: "Set LOOP to PING for ambient pad beds, or turn K1 (BANK) to audition user samples loaded via the Web Editor.",
+    pages: [
+      {
+        name: "Page 1: Sample & Pitch (SAMP)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "BANK", range: "PIANO..U01-16", desc: "Selects onboard multisamples or custom user sample banks." },
+          { knob: "K2", name: "ROOT", range: "C-1..G9", desc: "Original sample root key note mapping." },
+          { knob: "K3", name: "TUNE", range: "-50..+50 ct", desc: "Fine pitch tuning in cents." },
+          { knob: "K4", name: "LOOP", range: "OFF, FWD, REV, PING", desc: "Sample playback loop direction mode." }
+        ]
+      },
+      {
+        name: "Page 2: Time & Boundary (TIME)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "START", range: "0–100%", desc: "Sample playback start point offset." },
+          { knob: "K2", name: "LEN", range: "0–100%", desc: "Sample playback length window." },
+          { knob: "K3", name: "SYNC", range: "OFF, 1/1..1/32", desc: "Tempo-sync sample duration to current project BPM." },
+          { knob: "K4", name: "GLID", range: "0–127", desc: "Polyphonic portamento glide time between notes." }
+        ]
+      }
+    ]
+  },
+  voice: {
+    category: "ENGINE",
+    title: "VOICE — Formant & Speech Synthesis",
+    color: "#d500f9",
+    desc: "Acoustic vocal tract model synthesizing vowels, synthetic choral pads, speech timbres, glottal pulse shaping, and vocal fry jitter.",
+    tip: "Modulate Knob 1 (FORM) with LFO 1 to generate realistic talking lead lines and morphing vocal vowel chants.",
+    pages: [
+      {
+        name: "Page 1: Formant Model (VOWEL)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "FORM", range: "A, E, I, O, U, NASAL", desc: "Continuous formant vowel throat model morphing." },
+          { knob: "K2", name: "GLOT", range: "0–127", desc: "Glottal pulse wave shape (clean vocal cord to buzzy reed)." },
+          { knob: "K3", name: "JITT", range: "0–127", desc: "Vocal pitch jitter and vocal fry instability." },
+          { knob: "K4", name: "TILT", range: "0–127", desc: "Spectral tilt brightness and high-frequency harmonic emphasis." }
+        ]
+      },
+      {
+        name: "Page 2: Articulation (VOX)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "VIB", range: "0–127", desc: "Operatic vocal vibrato speed and depth." },
+          { knob: "K2", name: "RESO", range: "0–127", desc: "Vocal tract formant resonance bandwidth sharpness." },
+          { knob: "K3", name: "NOIS", range: "0–127", desc: "Whisper breath noise injection into the vocal tract." },
+          { knob: "K4", name: "GEND", range: "-64..+63", desc: "Gender pitch shift (deep bass throat to soprano child)." }
+        ]
+      }
+    ]
+  },
+  scrub: {
+    category: "ENGINE",
+    title: "SCRUB — Turntable Platter & Tape Scrub",
+    color: "#ff2d78",
+    desc: "Physical reel-to-reel tape and vinyl turntable scrub engine. Playback speed, continuous scrubbing, motor brake friction, and wow & flutter.",
+    tip: "Turn Knob 1 (POS) while holding a note for live vinyl scratch performance, or use Knob 3 (BRAKE) for turntable motor power-down drops.",
+    pages: [
+      {
+        name: "Page 1: Transport & Motor (PLAY)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "POS", range: "0–100%", desc: "Scrub head position across the loaded tape audio buffer." },
+          { knob: "K2", name: "SPEED", range: "-200%..+200%", desc: "Tape transport speed (bipolar: negative plays in reverse)." },
+          { knob: "K3", name: "BRAKE", range: "0–127", desc: "Turntable motor stop friction curve and inertia deceleration." },
+          { knob: "K4", name: "TAPE", range: "0–127", desc: "Tape capstan wow, flutter, and warm analog magnetic saturation." }
+        ]
+      },
+      {
+        name: "Page 2: Loop & Sensitivity (LOOP)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "LOOP", range: "OFF, LOOP, PING", desc: "Scrub buffer looping behavior." },
+          { knob: "K2", name: "START", range: "0–100%", desc: "Scrub loop start boundary mark." },
+          { knob: "K3", name: "END", range: "0–100%", desc: "Scrub loop end boundary mark." },
+          { knob: "K4", name: "SENS", range: "1x..8x", desc: "Encoder scrub jog wheel rotational sensitivity." }
+        ]
+      }
+    ]
+  },
+  wheel: {
+    category: "ENGINE",
+    title: "WHEEL — Dual Tonewheel Drawbar Organ",
+    color: "#76ff03",
+    desc: "Classic electromagnetic tonewheel organ emulation with 4 primary drawbar footages, rotary Leslie speaker cabinet, tube drive, and key click.",
+    tip: "Toggle K1 (ROTOR) from SLOW to FAST on musical chord changes for dramatic Leslie rotary speaker acceleration.",
+    pages: [
+      {
+        name: "Page 1: Drawbars (WHEEL)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "16'", range: "0–8", desc: "Sub-bass 16-foot fundamental drawbar footage level." },
+          { knob: "K2", name: "8'", range: "0–8", desc: "Primary 8-foot unison drawbar footage level." },
+          { knob: "K3", name: "4'", range: "0–8", desc: "Octave 4-foot harmonic drawbar footage level." },
+          { knob: "K4", name: "2'", range: "0–8", desc: "Super-octave 2-foot harmonic drawbar footage level." }
+        ]
+      },
+      {
+        name: "Page 2: Rotor & Preamp (ROTOR)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "ROTOR", range: "STOP, SLOW, FAST", desc: "Leslie rotary horn and drum speaker speed." },
+          { knob: "K2", name: "DRIVE", range: "0–127", desc: "Vintage 12AX7 tube preamp saturation and grit." },
+          { knob: "K3", name: "CLICK", range: "0–127", desc: "Mechanical key contact percussion transient click." },
+          { knob: "K4", name: "LEAK", range: "0–127", desc: "Magnetic crosstalk leakage hum between tonewheel pickups." }
+        ]
+      }
+    ]
+  },
+  grain: {
+    category: "ENGINE",
+    title: "GRAIN — Granular Cloud Synthesizer",
+    color: "#ff6d00",
+    desc: "Asynchronous granular synthesizer extracting overlapping micro-sound grains with variable window size, density, positional spray, and pitch randomization.",
+    tip: "Increase SPRAY and PAN.R to expand mono samples into a lush, sprawling three-dimensional stereo cloud.",
+    pages: [
+      {
+        name: "Page 1: Granular Cloud (CLOUD)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "POS", range: "0–100%", desc: "Audio buffer grain scan center position." },
+          { knob: "K2", name: "SIZE", range: "10ms–500ms", desc: "Individual grain window duration." },
+          { knob: "K3", name: "DENS", range: "1..32 grains/s", desc: "Grain spawn rate and polyphonic cloud density." },
+          { knob: "K4", name: "SPRAY", range: "0–100%", desc: "Random positional jitter around the scan center." }
+        ]
+      },
+      {
+        name: "Page 2: Pitch & Space (PITCH)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "PITCH", range: "-24..+24 ST", desc: "Transposition of grain playback in semitones." },
+          { knob: "K2", name: "P.RND", range: "0–100%", desc: "Random pitch deviation spread per grain." },
+          { knob: "K3", name: "PAN.R", range: "0–100%", desc: "Stereo spatial cloud diffusion and panning spread." },
+          { knob: "K4", name: "REVR", range: "0–100%", desc: "Probability of individual grains playing in reverse." }
+        ]
+      }
+    ]
+  },
+  phys: {
+    category: "ENGINE",
+    title: "PHYS — Physical Modeling Synthesizer",
+    color: "#00e676",
+    desc: "DaisySP physical modeling engine simulating acoustic instruments: plucked strings (Karplus-Strong), struck modal bars, vibrating tubes, and bells.",
+    tip: "Automate STRUCT and DAMP to smoothly transition between metallic chime hits and warm acoustic upright bass plucks.",
+    pages: [
+      {
+        name: "Page 1: Physical Model (PHYS)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "MODEL", range: "STRG, BAR, TUBE, BELL", desc: "Acoustic physical resonator model selection." },
+          { knob: "K2", name: "STRUCT", range: "0–127", desc: "Material stiffness and harmonic non-linearity." },
+          { knob: "K3", name: "BRIGHT", range: "0–127", desc: "High-frequency surface friction damping." },
+          { knob: "K4", name: "DAMP", range: "0–127", desc: "Decay damping dissipation rate." }
+        ]
+      },
+      {
+        name: "Page 2: Resonator Body (BODY)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "POS", range: "0–100%", desc: "Excitation strike or pluck position along the physical body." },
+          { knob: "K2", name: "LOSS", range: "0–127", desc: "Acoustic body loss and energy radiation." },
+          { knob: "K3", name: "RESO", range: "0–127", desc: "Internal body cavity acoustic resonance." },
+          { knob: "K4", name: "LVL", range: "0–127", desc: "Physical model master output gain." }
+        ]
+      }
+    ]
+  },
+  noise: {
+    category: "ENGINE",
+    title: "NOISE — Colored Noise & Percussion Engine",
+    color: "#b0bec5",
+    desc: "Multi-spectrum noise generator with White, Pink, Brown, Red, Blue, and Metallic cymbal ring colors, particle bursts, and resonant band-pass filtering.",
+    tip: "Use the Metallic color with high RESO and short DECAY for realistic vintage 808/909 hats and metallic ride cymbals.",
+    pages: [
+      {
+        name: "Page 1: Noise Generator (NOISE)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "COLOR", range: "WHT, PNK, BRN, MET", desc: "Spectral noise distribution color curve." },
+          { knob: "K2", name: "DECAY", range: "1ms–5000ms", desc: "Noise burst envelope release decay time." },
+          { knob: "K3", name: "DENS", range: "0–127", desc: "Particle strike rate and granular noise grain density." },
+          { knob: "K4", name: "FILT", range: "20Hz–20kHz", desc: "Resonant bandpass tracking filter frequency." }
+        ]
+      },
+      {
+        name: "Page 2: Metallic Resonator (METAL)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "RESO", range: "0–127", desc: "Metallic modal resonance peak sharpness." },
+          { knob: "K2", name: "SPREAD", range: "0–100%", desc: "Stereo decorrelation width across the frequency spectrum." },
+          { knob: "K3", name: "CRUSH", range: "0–127", desc: "Sample rate decimation for raw crunchy texture." },
+          { knob: "K4", name: "MIX", range: "0–127", desc: "Direct dry vs filtered noise balance." }
+        ]
+      }
+    ]
+  },
+  fm6: {
+    category: "ENGINE",
+    title: "FM6 — 6-Operator DX7 FM Synth",
+    color: "#ff1744",
+    desc: "Authentic 6-operator FM synthesis engine with all 32 classic algorithms, fractional frequency ratios, operator feedback, and full .syx voice import.",
+    tip: "Turn Knob 1 (ALGO) to explore different carrier/modulator arrangements, or adjust OP 6 FEEDBACK for rich brass and saw waveforms.",
+    pages: [
+      {
+        name: "Page 1: Algorithm & Operators (FM)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "ALGO", range: "1..32", desc: "Selects 6-operator FM routing algorithm." },
+          { knob: "K2", name: "OP", range: "OP 1..6", desc: "Selects active operator for parameter editing." },
+          { knob: "K3", name: "LEVEL", range: "0–127", desc: "Selected operator output volume / modulation index." },
+          { knob: "K4", name: "COARSE", range: "0.5x..31x", desc: "Operator frequency coarse ratio multiplier." }
+        ]
+      },
+      {
+        name: "Page 2: Tuning & Feedback (FINE)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "FINE", range: "0–99", desc: "Fine operator frequency ratio fractional tuning." },
+          { knob: "K2", name: "DTN", range: "-7..+7", desc: "Micro-detune offset in cents." },
+          { knob: "K3", name: "FDBK", range: "0–7", desc: "Operator feedback loop intensity." },
+          { knob: "K4", name: "KTR", range: "0–7", desc: "Keyboard level rate scaling curve." }
+        ]
+      }
+    ]
+  },
+  slice: {
+    category: "ENGINE",
+    title: "SLICE — 16-Pad Transient Beat Slicer",
+    color: "#00c853",
+    desc: "Audio chopper and transient beat slicer. Automatically detects beats and chops loops across 16 pads with per-slice reverse, pitch, pan, and choke groups.",
+    tip: "Use the SLICES page to fine-tune slice start/end points, or assign multiple slices to the same CUT GROUP for realistic open/closed hat chokes.",
+    pages: [
+      {
+        name: "Page 1: Slice Parameters (SLICE)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "SLICE", range: "SLC 1..16", desc: "Selects active slice pad for editing or preview." },
+          { knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Per-slice independent pitch transposition." },
+          { knob: "K3", name: "ATK", range: "0–127", desc: "Attack smoothing to eliminate audio clicks at transient start." },
+          { knob: "K4", name: "DEC", range: "0–127", desc: "Slice choke release decay duration." }
+        ]
+      },
+      {
+        name: "Page 2: Playback & Choke (LOOP)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "PLAY", range: "ONE, LOOP, REV", desc: "Playback mode: one-shot, forward loop, or reverse." },
+          { knob: "K2", name: "LVL", range: "0–127", desc: "Per-slice independent gain level." },
+          { knob: "K3", name: "PAN", range: "-64..+63", desc: "Per-slice independent stereo panning." },
+          { knob: "K4", name: "CHOKE", range: "OFF, G1..G4", desc: "Exclusive choke group (cuts off previous slice in same group)." }
+        ]
+      }
+    ]
+  },
+  wavetable: {
+    category: "ENGINE",
+    title: "WAVETABLE — 3D Morphing Wavetable Synth",
+    color: "#00b0ff",
+    desc: "Multi-frame wavetable engine with bandlimited morphing, wavetable position sweep, recursive wavefolding, analog drive, and sub-oscillator.",
+    tip: "Assign an LFO or envelope to Knob 2 (POS) to create dynamic sweeps through complex harmonic wavetables.",
+    pages: [
+      {
+        name: "Page 1: Wavetable Morph (WAVE)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "BANK", range: "BASIC..USER", desc: "Selects active wavetable sound bank." },
+          { knob: "K2", name: "POS", range: "0–127", desc: "Current wavetable frame interpolation position." },
+          { knob: "K3", name: "MORPH", range: "0–127", desc: "Spectral wave morphing / formant smoothing curve." },
+          { knob: "K4", name: "FOLD", range: "0–127", desc: "Wavefolder adding rich upper-register overtone harmonics." }
+        ]
+      },
+      {
+        name: "Page 2: Modulation & Drive (MOD)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "WT.ENV", range: "-64..+63", desc: "Bipolar envelope modulation depth routed to wavetable POS." },
+          { knob: "K2", name: "WT.LFO", range: "-64..+63", desc: "Bipolar LFO modulation depth routed to wavetable POS." },
+          { knob: "K3", name: "DRIVE", range: "0–127", desc: "Pushed analog drive preamp saturation." },
+          { knob: "K4", name: "SUB", range: "0–127", desc: "Dedicated clean sub-oscillator volume (-1 octave)." }
+        ]
+      }
+    ]
+  },
+  drum: {
+    category: "ENGINE",
+    title: "DRUM — 8-Lane Dedicated Percussion Kit",
+    color: "#ff5252",
+    desc: "8-lane synthesis drum kit powering Track 5 (DRUM). Features independent lanes for Kick, Snare, Clap, Closed Hat, Open Hat, Tom, Rim, and Bell.",
+    tip: "Track 5 (DRUM) is the master sidechain trigger! The kick and snare automatically duck the synth tracks when ducking is active.",
+    pages: [
+      {
+        name: "Page 1: Lanes 1–4 (LEVELS 1-4)",
+        sub: "EDIT P1/2",
+        params: [
+          { knob: "K1", name: "KICK", range: "0–100%", desc: "Bass drum punch, body level, and sidechain trigger gain." },
+          { knob: "K2", name: "SNARE", range: "0–100%", desc: "Snare drum body level, crack, and noise snare snap." },
+          { knob: "K3", name: "CLAP", range: "0–100%", desc: "Handclap level and multi-burst stereo spread." },
+          { knob: "K4", name: "HATCL", range: "0–100%", desc: "Closed hi-hat metallic transient level." }
+        ]
+      },
+      {
+        name: "Page 2: Lanes 5–8 (LEVELS 5-8)",
+        sub: "EDIT P2/2",
+        params: [
+          { knob: "K1", name: "HATOP", range: "0–100%", desc: "Open hi-hat sizzle level and decay time." },
+          { knob: "K2", name: "TOM", range: "0–100%", desc: "Low/mid acoustic tom pitch and resonant level." },
+          { knob: "K3", name: "RIM", range: "0–100%", desc: "Rimshot woodblock transient strike level." },
+          { knob: "K4", name: "BELL", range: "0–100%", desc: "Ride cymbal metallic bell ping level." }
+        ]
+      }
+    ]
+  },
+  seq: {
+    category: "SEQUENCER",
+    title: "SEQUENCER — 64-Step Dual-View Sequencer",
+    color: "#5fe08a",
+    desc: "Dual-view 64-step sequencer featuring 4x4 (16-step) and 8x8 (64-step) views, trigger modifiers, ratchets, parameter locks, swing, and humanization.",
+    tip: "Hold any active step button and turn any knob to lock custom cutoff, pitch, or effect values to that individual step.",
+    pages: [
+      {
+        name: "Step Trigger & Target",
+        sub: "SEQ P1 & P3",
+        params: [
+          { knob: "K1", name: "STEP", range: "1..64", desc: "Step cursor position. Scrubbing previews pitch and sound." },
+          { knob: "K2", name: "TARGET", range: "C-1..G9 / SLC / VOIC", desc: "Step note pitch, drum voice, or slice index (1..16)." },
+          { knob: "K3", name: "OPT", range: "PLAY, TIE, PUNCH, RATCH", desc: "Trigger option: PLAY, TIE (legato), PUNCH (accent), RATCH 2/3/4." },
+          { knob: "K4", name: "VEL", range: "1..127", desc: "Dynamic strike velocity. Recorded live or entered manually." }
+        ]
+      },
+      {
+        name: "Timing & Groove",
+        sub: "SEQ P2 & P4",
+        params: [
+          { knob: "K1", name: "LEN", range: "1..64 steps", desc: "Pattern loop length. Allows polyrhythms (e.g. 5, 7, 11 steps)." },
+          { knob: "K2", name: "DIV", range: "1/1..1/32 + T", desc: "Clock divider (whole notes down to 32nd notes and triplets)." },
+          { knob: "K3", name: "SWING", range: "-50%..+50%", desc: "Bipolar groove shuffle swing timing (0% = straight)." },
+          { knob: "K4", name: "HUMAN", range: "0..100%", desc: "Micro-timing and velocity humanization for a live feel." }
+        ]
+      }
+    ]
+  },
+  arp: {
+    category: "ARPEGGIATOR",
+    title: "ARPEGGIATOR — Expressive Real-Time Arpeggiator",
+    color: "#ffd600",
+    desc: "12-mode arpeggiator with classic and generative algorithmic patterns, clock sync, octave spread, gate duration, swing, and probability chance.",
+    tip: "Try algorithmic modes like BACH, BROWNian walk, or DIVG with PROB < 100% for evolving generative arpeggios that never repeat.",
+    pages: [
+      {
+        name: "Page 1: Pattern & Timing",
+        sub: "ARP P1/2",
+        params: [
+          { knob: "K1", name: "MODE", range: "UP, DOWN, BACH, BROWN..", desc: "12 pattern modes including algorithmic and Brownian walks." },
+          { knob: "K2", name: "RATE", range: "1/1..1/32 + T", desc: "Tempo-synced clock speed division." },
+          { knob: "K3", name: "OCT", range: "-3..+3 oct", desc: "Arpeggio octave range spread." },
+          { knob: "K4", name: "GATE", range: "1%–127%", desc: "Note gate length (staccato plucks to overlapping legato ties)." }
+        ]
+      },
+      {
+        name: "Page 2: Feel & Probability",
+        sub: "ARP P2/2",
+        params: [
+          { knob: "K1", name: "SWG", range: "0–100%", desc: "Arpeggiator groove swing shuffle percentage." },
+          { knob: "K2", name: "PROB", range: "0–100%", desc: "Step trigger probability chance for generative variations." },
+          { knob: "K3", name: "HOLD", range: "OFF, ON", desc: "Latch hold: keeps arpeggio playing when keys are released." },
+          { knob: "K4", name: "ORD", range: "NOTE, PLAY", desc: "Note order: chromatic note pitch order vs order keys were played." }
+        ]
+      }
+    ]
+  },
+  scale: {
+    category: "THEORY",
+    title: "SCALES & CHORDS — Scale Quantizer & Progression Engine",
+    color: "#00e5ff",
+    desc: "Musical scale quantization across 16 scales, root transposition, and 8-chord progression generator with direct and strummed performance keys.",
+    tip: "Hold the Scale button (SCL) and press White Keys 1–8 to trigger full 8-chord progressions as chords; press White Keys 9–16 for a 1/2-step strum!",
+    pages: [
+      {
+        name: "Scale & Key Quantization",
+        sub: "SCL P1/2",
+        params: [
+          { knob: "K1", name: "ROOT", range: "C..B", desc: "Musical root key center note." },
+          { knob: "K2", name: "SCL", range: "CHR, MAJ, MIN, DOR..", desc: "16 selectable scales (Major, Minor, Dorian, Pentatonic, Blues..)." },
+          { knob: "K3", name: "QNT", range: "OFF, SNAP, WHITE, SEQ", desc: "Quantize mode: snap notes to scale or remap white keys." },
+          { knob: "K4", name: "TRN", range: "-24..+24 ST", desc: "Chromatic master transpose in semitones." }
+        ]
+      },
+      {
+        name: "8-Chord Progression Generator",
+        sub: "SCL P2/2",
+        params: [
+          { knob: "K1", name: "MOOD", range: "CALM, HAPPY, SAD..", desc: "Progression mood: CALM, HAPPY, SAD, SPOOK, ANGRY, EXCITE, GRAND, TENSE." },
+          { knob: "K2", name: "CMPX", range: "SMPL, CMPX, COLTRN", desc: "Harmonic complexity: Simple triads, 7th/9th extensions, or Coltrane changes." },
+          { knob: "K3", name: "RATE", range: "8, 16, 32, 1BAR, 2BAR", desc: "Harmonic rhythm rate per chord change." },
+          { knob: "K4", name: "HOLD", range: "AUTO, KEY1-8, HOLD", desc: "Chord playback latch behavior." }
+        ]
+      },
+      {
+        name: "Live Performance Chord Keys",
+        sub: "SCL QUICK-KEYS",
+        params: [
+          { knob: "K1-8", name: "DIRECT CHORDS", range: "White Keys 1–8", desc: "Hold SCL + tap White Keys 1–8 to play chords 1–8 polyphonically with full ADSR envelopes." },
+          { knob: "K9-16", name: "STRUM CHORDS", range: "White Keys 9–16", desc: "Hold SCL + tap White Keys 9–16 to strum chords 1–8 across a 1/2-step (32nd note) interval." },
+          { knob: "HOLD", name: "SUSTAIN", range: "Touch / Release", desc: "Holding the key sustains the chord envelope; releasing releases voices naturally." },
+          { knob: "POLY", name: "VOICING", range: "Voice Allocation", desc: "Each chord note plays as an independent voice through the active engine." }
+        ]
+      }
+    ]
+  },
+  wobble: {
+    category: "INSERT FX",
+    title: "WOBBLE — Vintage Tape Transport Modulation",
+    color: "#ff007f",
+    desc: "Simulates mechanical capstan motor drift, physical tape wear, and analog tape saturation. Adds organic movement and pitch drift.",
+    tip: "Use on electric pianos or pads for a warm, nostalgic lo-fi tape flutter.",
+    pages: [
+      {
+        name: "Tape Wobble Parameters",
+        sub: "INS: WOBBL",
+        params: [
+          { knob: "K1", name: "RATE", range: "0.1Hz–15Hz", desc: "LFO motor wow and flutter cycle frequency." },
+          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation deviation width." },
+          { knob: "K3", name: "SAT", range: "0–100%", desc: "Tape saturation drive adding warm even harmonics." },
+          { knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry effect balance on the active track." }
+        ]
+      }
+    ]
+  },
+  octaver: {
+    category: "INSERT FX",
+    title: "OCTAVER — Polyphonic Sub & Harmony Generator",
+    color: "#76ff03",
+    desc: "Generates octave-shifted and musical harmony voices beneath or above your notes with unison detune and dedicated tone damping.",
+    tip: "Set MODE to -1OCT with DUAL unison for massive stadium-filling synth leads and basslines.",
+    pages: [
+      {
+        name: "Octaver Parameters",
+        sub: "INS: OCTAV",
+        params: [
+          { knob: "K1", name: "MODE", range: "+1OCT, -1OCT, DUAL..", desc: "+1OCT, +2OCT, -1OCT, -2OCT, DUAL, MAJOR, DOM7, MAJ7, MIN7, DIM." },
+          { knob: "K2", name: "UNIS", range: "0–100%", desc: "Unison detune thickness between generated voices." },
+          { knob: "K3", name: "TONE", range: "20Hz–20kHz", desc: "High-cut filter damping on harmony voices." },
+          { knob: "K4", name: "MIX", range: "0–100%", desc: "Direct wet/dry blend of harmony voices." }
+        ]
+      }
+    ]
+  },
+  overdrive: {
+    category: "INSERT FX",
+    title: "OVERDRIVE — Tube Drive & Asymmetric Clipping",
+    color: "#ff3d00",
+    desc: "Warm vacuum tube saturation that transitions into aggressive asymmetric clipping, featuring an interactive tilt EQ tone control.",
+    tip: "Increase GRIT for cutting bite on FM synths or 303-style acid basslines.",
+    pages: [
+      {
+        name: "Overdrive Parameters",
+        sub: "INS: OVDRI",
+        params: [
+          { knob: "K1", name: "DRIVE", range: "0–100%", desc: "Preamp input gain and harmonic saturation." },
+          { knob: "K2", name: "TONE", range: "-64..+63", desc: "Tilt tone EQ: boosts bass/damps highs or vice versa." },
+          { knob: "K3", name: "GRIT", range: "0–100%", desc: "Asymmetric diode clipping edge and bias distortion." },
+          { knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry parallel saturation mix." }
+        ]
+      }
+    ]
+  },
+  panner: {
+    category: "INSERT FX",
+    title: "PANNER — Tempo-Synced Auto-Panner",
+    color: "#d500f9",
+    desc: "Stereo auto-panner modulating track spatial position with selectable LFO wave shapes and tempo-synced or free-running speeds.",
+    tip: "Use SQR shape on hi-hats or arpeggios for instant stereo ping-pong bouncing.",
+    pages: [
+      {
+        name: "Auto-Panner Parameters",
+        sub: "INS: PANNR",
+        params: [
+          { knob: "K1", name: "RATE", range: "0.1Hz–20Hz / Sync", desc: "Panning modulation speed." },
+          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Stereo panning width from narrow center to extreme wide left/right." },
+          { knob: "K3", name: "SHAPE", range: "SINE, TRI, SQR", desc: "Panning LFO waveform shape: smooth Sine, linear Tri, or hard Square." },
+          { knob: "K4", name: "MIX", range: "0–100%", desc: "Effect balance." }
+        ]
+      }
+    ]
+  },
+  delay: {
+    category: "SEND FX",
+    title: "TAPE ECHO — Continuous Analog Tape Delay",
+    color: "#ffab00",
+    desc: "Master Send Delay with pitch-shifting capstan motor modeling, continuous delay time, runaway analog feedback, and wow & flutter.",
+    tip: "Twist Knob 1 (TIME) while delay repeats are playing for authentic tape-speed pitch warping. Crank FDBK for infinite dub self-oscillation.",
+    pages: [
+      {
+        name: "Tape Echo Parameters",
+        sub: "FX SEND: DELAY",
+        params: [
+          { knob: "K1", name: "TIME", range: "1/32..4BAR + Dotted", desc: "Delay time with smooth capstan motor pitch-drift modeling." },
+          { knob: "K2", name: "FDBK", range: "0–120%", desc: "Echo feedback repeats (values > 100% create runaway dub oscillation)." },
+          { knob: "K3", name: "TAPE", range: "0–100%", desc: "Tape wow & flutter motor drift and warm tape head saturation." },
+          { knob: "K4", name: "CROSS", range: "0–100%", desc: "Stereo cross-feedback ping-pong mix between left and right channels." }
+        ]
+      }
+    ]
+  },
+  reverb: {
+    category: "SEND FX",
+    title: "REVERB — Stereo Reverb Tank",
+    color: "#ff1744",
+    desc: "Master Send Reverb offering Room, Spring, Hall, and Space algorithms with acoustic chamber sizing, absorption damping, and tone shaping.",
+    tip: "HALL reverb features a distinct red color visualizer and expansive decay, perfect for cinematic pads and strings.",
+    pages: [
+      {
+        name: "Reverb Parameters",
+        sub: "FX SEND: REVERB",
+        params: [
+          { knob: "K1", name: "SIZE", range: "0–100%", desc: "Acoustic chamber dimensions and decay tail length." },
+          { knob: "K2", name: "DAMP", range: "0–100%", desc: "High-frequency surface absorption damping." },
+          { knob: "K3", name: "TONE", range: "-64..+63", desc: "Tone tilt: warm dark chamber (-64) to shimmering bright hall (+63)." },
+          { knob: "K4", name: "TYPE", range: "ROOM, SPRING, HALL, SPACE", desc: "Selects physical reverb tank architecture (Hall shown in distinct red)." }
+        ]
+      }
+    ]
+  },
+  chorus: {
+    category: "SEND FX",
+    title: "CHORUS — Multi-Voice Ensemble Chorus",
+    color: "#2979ff",
+    desc: "Master Send Chorus featuring 1 to 4 delay voices, BBD warm tone shaping, and animated multi-wave stereo diffusion.",
+    tip: "Set VOIC to 4 and TONE toward BBD warm for lush 80s Roland Juno-style dimensional chorus.",
+    pages: [
+      {
+        name: "Chorus Parameters",
+        sub: "FX SEND: CHORUS",
+        params: [
+          { knob: "K1", name: "RATE", range: "0.1Hz–10Hz", desc: "LFO modulation speed (visualized by denser animated waves)." },
+          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation width and chorus detune spread." },
+          { knob: "K3", name: "TONE", range: "-64..+63", desc: "Color spectrum: warm analog BBD (red) to crystal shimmer (blue)." },
+          { knob: "K4", name: "VOIC", range: "1, 2, 3, 4", desc: "Number of independent stereo chorus delay lines." }
+        ]
+      }
+    ]
+  },
+  sidechain: {
+    category: "SEND FX",
+    title: "SIDECHAIN — Master Bus Sidechain Ducking",
+    color: "#00e676",
+    desc: "Mix bus ducking compressor keyed to Track 5 (DRUM). Ducks synth tracks and send FX returns under kick and snare hits for pumping EDM rhythm.",
+    tip: "Turn on DUCK on Track 1–3 and Send FX so the synths and delay/reverb tails automatically breathe around the kick drum.",
+    pages: [
+      {
+        name: "Sidechain Ducking Parameters",
+        sub: "FX SEND: DUCK",
+        params: [
+          { knob: "K1", name: "DEPTH", range: "0–100%", desc: "Ducking gain reduction depth (up to complete silence)." },
+          { knob: "K2", name: "TRIG", range: "KICK, K+SN, K+TM, ALL", desc: "Drum trigger source: Kick only, Kick+Snare, Kick+Tom, or All drums." },
+          { knob: "K3", name: "ATTACK", range: "0.5ms–25ms", desc: "Fast attack compression response time (0 = instantaneous)." },
+          { knob: "K4", name: "RELEASE", range: "20ms–600ms", desc: "Ducker recovery release time (sets musical pumping groove)." }
+        ]
+      }
+    ]
+  }
+};
+
+function showParamInspector(key) {
+  const data = PARAM_DATA[key];
+  if (!data) return;
+
+  document.querySelectorAll(".wb-pill").forEach(p => {
+    const isTarget = p.dataset.inspect === key;
+    p.classList.toggle("active", isTarget);
+    if (isTarget && p.dataset.color) {
+      p.style.setProperty("--p-col", p.dataset.color);
+    }
+  });
+
+  const badge = document.getElementById("param-badge");
+  const title = document.getElementById("param-title");
+  const desc = document.getElementById("param-desc-main");
+  const tip = document.getElementById("param-tip");
+  const container = document.getElementById("param-pages-container");
+
+  if (badge) {
+    badge.textContent = data.category;
+    badge.style.background = data.color;
+    badge.style.color = (data.color === "#b0bec5" || data.color === "#ffd600" || data.color === "#76ff03" || data.color === "#00e5ff" || data.color === "#5fe08a" || data.color === "#00e676") ? "#111" : "#fff";
+  }
+  if (title) title.textContent = data.title;
+  if (desc) desc.textContent = data.desc;
+  if (tip) tip.innerHTML = `<strong>💡 Pro Tip:</strong> ${data.tip}`;
+
+  if (container) {
+    container.innerHTML = data.pages.map(page => `
+      <div class="param-page-box">
+        <div class="param-page-title">
+          <span>${page.name}</span>
+          <span style="font-size:10px; opacity:0.75; font-family:ui-monospace,Menlo,monospace;">${page.sub}</span>
+        </div>
+        ${page.params.map(p => `
+          <div class="param-row">
+            <div class="param-name-line">
+              <div class="param-knob-label">
+                <span class="param-knob-badge">${p.knob}</span> ${p.name}
+              </div>
+              <span class="param-val-range">${p.range}</span>
+            </div>
+            <div class="param-desc">${p.desc}</div>
+          </div>
+        `).join("")}
+      </div>
+    `).join("");
+  }
+}
+
+document.querySelectorAll(".wb-pill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.inspect;
+    if (key) {
+      showParamInspector(key);
+      const inspector = document.getElementById("param-inspector");
+      if (inspector) {
+        inspector.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  });
+});
+
+showParamInspector("subtract");
 
 // ------------------------------------------------------------------ Integrated OTA Firmware Updater
 async function initFirmwareUpdater() {

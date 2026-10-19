@@ -6,21 +6,13 @@
  * (hold OCT- and OCT+ while powering on): FELUCCA asks for each label in turn.
  * The learned table lives in .noinit and, with FELUCCA_FLASH, in flash with
  * the settings (project.c); read it back with `fm1t memr` to bake it in. */
-enum { B_FX, B_SCL, B_ENV, B_LFO, B_EDIT, B_GLO, B_HOME, B_SAVE, B_ARP, B_SEQ, B_PLAY, B_REC,
-       B_OCTDN, B_OCTUP, NB };
-enum { EN_SELECT, EN_ALGO, EN_PRESET, EN_K1, EN_K2, EN_K3, EN_K4, NE };
+#include "panel.h"
 static const char *const B_NAME[NB] = {"FX", "SCL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE",
                                         "ARP", "SEQ", "PLAY", "REC", "OCT-", "OCT+"};
 static const char *const E_NAME[NE] = {"SELECT", "ALGORITHM", "PRESETS", "KNOB 1", "KNOB 2",
                                         "KNOB 3", "KNOB 4"};
 #define PANEL_MAGIC 0x50414E35u          /* "PAN5": bump when PANEL_DEFAULT changes */
 
-typedef struct {
-    uint32_t magic;
-    uint8_t btn[NB];             /* matrix button id (0..13) per label */
-    uint8_t enc[NE];             /* matrix encoder (0..6) per role */
-    int8_t dir[NE];              /* +1 / -1 so that clockwise is + */
-} panel_t;
 panel_t panel __attribute__((section(".noinit")));
 
 static const panel_t PANEL_DEFAULT = {

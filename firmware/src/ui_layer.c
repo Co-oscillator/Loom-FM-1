@@ -59,7 +59,7 @@ static const layer_t LAYERS[LAYER_N] = {
     {0, 0, 0, "", {{0, 0}, {0, 0}, {0, 0}}},
     {B_FX, LK_HOLD, FAM_HOME, "[FX] HOLD", {{KC_KEYS, "EFFECTS"}, {KC_K14, "MACROS"}, {0, 0}}},   /* (LET GO: the header's HOLD) */
     {B_GLO, LK_SET, FAM_HOME, "[GLO] SET", {{KC_PLAY, "RESTART"}, {KC_OCTDN, "UNDO"}, {KC_GLO, "DONE"}}},
-    {B_SCL, LK_SET, FAM_SCL, "[SCL] SET", {{KC_KEYS, "ROOT"}, {KC_OCTDN, "UNDO"}, {KC_SCL, "DONE"}}},
+    {B_SCL, LK_SET, FAM_SCL, "[SCL] SET", {{KC_KEYS, "CHORD"}, {KC_OCTDN, "UNDO"}, {KC_SCL, "DONE"}}},
     {B_EDIT, LK_SET, FAM_HOME, "[EDIT] SET", {{KC_KEYS, "ENGINE"}, {KC_OCTDN, "UNDO"}, {KC_EDIT, "DONE"}}},
     {B_SEQ, LK_SET, FAM_SEQ, "[SEQ] TOOLS", {{KC_KEYS, "TOOLS"}, {KC_OCTDN, "UNDO"}, {KC_SEQ, "DONE"}}},
     {B_REC, LK_SET, FAM_HOME, "[REC] SET", {{KC_KEYS, "RECORDING"}, {KC_OCTDN, "UNDO"}, {KC_REC, "DONE"}}},
@@ -136,6 +136,7 @@ static void layer_masks(void)
                : ui.ly ? ly_bit(ui.ly) : layer_bits() & ~fm1_in.buttons;
     kb_mask = m;
     perf_mask = m & ly_bit(LAYER_FX);
+    scl_mask = m & ly_bit(LAYER_SCL);
     kb_lock = (uint8_t)(m && ui.lock ? 1u | (ui.lock == LAYER_FX ? 2u : 0u) : 0u);   /* (no button held: the ISR's) */
 }
 
@@ -641,7 +642,8 @@ static void layer_key(uint32_t l, uint32_t k)
             glo_tap();
         }
     } else if (l == LAYER_SCL) {
-        TSEL->p[P_ROOT] = (int16_t)((k + 5u) % 12u);    /* the key's note name (F3 = F) */
+        if (key_black(k))
+            TSEL->p[P_ROOT] = (int16_t)((k + 5u) % 12u);    /* black keys: ROOT note; white keys: chords 1..8 */
     } else if (l == LAYER_EDIT && !key_black(k)) {
         if (p < NENG_SHOWN && p < LY_INIT)
             edit_load(eng_vis(p), 0);
@@ -824,9 +826,16 @@ static uint32_t layer_leds(uint32_t *br)
             on = b ? p < NTRK && glo_sounding(p) : (p < NTRK && ((lys.solo >> k) & 1u)) || (p == 6u && ui.ml.on);
             can = !b && (p < NTRK || p == 5u || p == 6u || (p == 7u && !song.g[G_CLOCK]));
         } else if (l == LAYER_SCL) {                    /* the root lit, the scale's notes breathe */
-            e = (k + 5u + 12u - root) % 12u;
-            on = e == 0u;
-            can = (mask >> e) & 1u;
+            if (!b) {
+                uint32_t step = p % LOOM_CHORD_STEPS;
+                uint32_t active = trk_prog[trk_index(TSEL)].active_step;
+                on = (step == active);
+                can = 1u;
+            } else {
+                e = (k + 5u + 12u - root) % 12u;
+                on = e == 0u;
+                can = (mask >> e) & 1u;
+            }
         } else if (l == LAYER_EDIT && !b) {             /* the engine lit, the others and INIT breathe */
             on = p < NENG_SHOWN && p < LY_INIT && eng_vis(p) == TSEL->eng_req % NENGINES;
             can = p < NENG_SHOWN && p < LY_INIT ? 1u : p == LY_INIT && !chain_busy();

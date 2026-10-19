@@ -1648,6 +1648,72 @@ static void test_sidechain_compression(void)
     printf("  Preset filter auto-clear on track preset browsing verified (OK)\n");
 }
 
+static void test_chord_progression_performance(void)
+{
+    printf("\n--- Testing Chord Progression Performance (Direct & Strummed) ---\n");
+    song.sel = 0;
+    trk[0].p[P_ROOT] = 0;
+    trk[0].p[P_SCALE] = 1; /* Major */
+    trk[0].p[P_CCMPX] = 0; /* Simple triads (3 notes) */
+    ensure_track_prog(&trk[0]);
+    assert(trk_prog[0].chords[0].count >= 3);
+
+    /* Arm layer mask for SCL */
+    layer_masks();
+    assert(scl_mask != 0u);
+
+    /* Find white key 0 (p = 0) and white key 8 (p = 8) */
+    uint32_t wk0 = 0, wk8 = 0;
+    for (uint32_t k = 0; k < 27u; k++) {
+        if (!key_black(k) && key_place(k) == 0) wk0 = k;
+        if (!key_black(k) && key_place(k) == 8) wk8 = k;
+    }
+
+    /* Hold Scale button */
+    fm1_in.buttons |= 1u << panel.btn[B_SCL];
+    layer_masks();
+
+    /* Press White Key 1 (wk0) -> Direct Chord 0 */
+    fm1_in.notes |= 1u << wk0;
+    events_block(64);
+    assert(kb_scl_chord[wk0] == 1);
+    assert(trk_prog[0].active_step == 0);
+    assert(kb_scl_cnt[wk0] >= 3);
+    printf("  Scale + White Key 1 (Direct Chord 1) trigger verified (OK)\n");
+
+    /* Release White Key 1 */
+    fm1_in.notes &= ~(1u << wk0);
+    events_block(64);
+    assert(kb_scl_chord[wk0] == 0);
+    printf("  Scale + White Key 1 release (ADSR note-off) verified (OK)\n");
+
+    /* Press White Key 9 (wk8) -> Strummed Chord 0 over 1/2 step */
+    fm1_in.notes |= 1u << wk8;
+    events_block(64);
+    assert(kb_scl_chord[wk8] == 2);
+    assert(kb_strum[wk8].played[0] == 1); /* Note 0 played instantly */
+    printf("  Scale + White Key 9 (Strummed Chord 1 start) verified (OK)\n");
+
+    /* Advance time by running multiple audio blocks to allow the 1/2-step strum to trigger subsequent notes */
+    for (uint32_t blk = 0; blk < 60; blk++) {
+        events_block(64);
+    }
+    assert(kb_strum[wk8].played[1] == 1);
+    assert(kb_strum[wk8].played[2] == 1);
+    assert(kb_strum[wk8].active == 0); /* Strum complete, notes sustained */
+    printf("  Strum timing progression across 1/2 step verified (OK)\n");
+
+    /* Release White Key 9 */
+    fm1_in.notes &= ~(1u << wk8);
+    events_block(64);
+    assert(kb_scl_chord[wk8] == 0);
+    printf("  Strummed chord release verified (OK)\n");
+
+    /* Release Scale button */
+    fm1_in.buttons &= ~(1u << panel.btn[B_SCL]);
+    layer_masks();
+}
+
 int main(void)
 {
     panel_init();
@@ -1664,6 +1730,7 @@ int main(void)
     test_subtractive_and_track5_lock();
     test_wavetable_and_effects();
     test_sidechain_compression();
+    test_chord_progression_performance();
 
     printf("\n==================================================\n");
     printf("   ALL TESTS PASSED SUCCESSFULLY!                 \n");
