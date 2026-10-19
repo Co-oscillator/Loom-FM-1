@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOOM FM-1 · Groovebox Video Presentation & 1080p Generator</title>
+<meta name="description" content="2-3 minute code-generated 1080p video overview of Loom FM-1: 14 engines, arpeggiator, chord generator, sequencer, FX, and patching.">
+<style>
+@font-face {
+  font-family: "DotGothic16";
+  src: url("fonts/DotGothic16-subset.woff") format("woff");
+  font-display: swap;
+}
+
+:root {
+  --bg-deep: #060609;
+  --bg-surface: #101017;
+  --bg-card: rgba(18, 18, 26, 0.85);
+  --border-neon: rgba(0, 229, 255, 0.3);
+  --neon-cyan: #00E5FF;
+  --neon-purple: #BD00FF;
+  --neon-pink: #FF007F;
+  --neon-lime: #39FF14;
+  --neon-gold: #FFD700;
+  --neon-orange: #FF3300;
+  --text-main: #FFFFFF;
+  --text-dim: #9D9DA8;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "DotGothic16", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  user-select: none;
+}
+
+#stage-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #151522 0%, #08080c 75%, #030305 100%);
+}
+
+#video-canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 56.25vw; /* 16:9 */
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), 0 0 100px rgba(0, 229, 255, 0.08);
+  display: block;
+  background: #000;
+}
+
+@media (min-aspect-ratio: 16/9) {
+  #video-canvas {
+    max-width: 177.78vh;
+    max-height: 100vh;
+  }
+}
+
+/* Control Overlays */
+#hud-header {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 100;
+  transition: opacity 0.3s ease;
+}
+
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(12, 12, 18, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #E2E2EA;
+  pointer-events: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.hud-logo {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg, #00E5FF, #BD00FF, #FF007F);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#hud-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(940px, 94vw);
+  background: rgba(14, 14, 22, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65), 0 0 30px rgba(0, 229, 255, 0.12);
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.scrub-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-readout {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #A0A0B2;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+#scrubber-track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+#scrubber-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00E5FF, #BD00FF, #FF007F, #39FF14);
+  border-radius: 4px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.btn-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctl-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.ctl-btn:active {
+  transform: translateY(0);
+}
+
+.ctl-btn.primary {
+  background: #39FF14;
+  color: #061805;
+  border-color: #39FF14;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(57, 255, 20, 0.35);
+}
+
+.ctl-btn.primary:hover {
+  background: #50ff30;
+  box-shadow: 0 0 18px rgba(57, 255, 20, 0.55);
+}
+
+.ctl-btn.record {
+  background: #FF007F;
+  color: #FFFFFF;
+  border-color: #FF007F;
+  font-weight: 600;
+  box-shadow: 0 0 14px rgba(255, 0, 127, 0.4);
+}
+
+.ctl-btn.record:hover {
+  background: #ff2592;
+  box-shadow: 0 0 22px rgba(255, 0, 127, 0.65);
+}
+
+.ctl-btn.recording-active {
+  background: #FF3300;
+  border-color: #FF3300;
+  animation: pulse-glow 1.2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 51, 0, 0.4); }
+  50% { box-shadow: 0 0 24px rgba(255, 51, 0, 0.9); }
+}
+
+select.ctl-select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+select.ctl-select option {
+  background: #14141e;
+  color: #fff;
+}
+
+/* Floating Toast / Notification */
+#toast {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: rgba(14, 14, 22, 0.92);
+  border: 1px solid #00E5FF;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #00E5FF;
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 200;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+</head>
+<body>
+
+<div id="stage-container">
+  <canvas id="video-canvas" width="1920" height="1080"></canvas>
+</div>
+
+<!-- Header HUD -->
+<header id="hud-header">
+  <div class="hud-pill">
+    <span class="hud-logo">LOOM FM-1</span>
+    <span style="opacity: 0.35;">|</span>
+    <span id="hud-chapter-title">Cold Open · Boot Sequence</span>
+  </div>
+
+  <div class="hud-pill">
+    <span id="hud-slide-idx">Slide 0 / 24</span>
+    <span style="opacity: 0.35;">·</span>
+    <span style="color:#00E5FF;">1080p 60fps Presentation Video</span>
+  </div>
+</header>
+
+<!-- Floating Bottom Controls HUD -->
+<footer id="hud-controls">
+  <div class="scrub-row">
+    <span class="time-readout" id="time-current">00:00.0</span>
+    <div id="scrubber-track" title="Click or drag to seek">
+      <div id="scrubber-fill"></div>
+    </div>
+    <span class="time-readout" id="time-total" style="text-align: right;">02:34.0</span>
+  </div>
+
+  <div class="controls-row">
+    <div class="btn-group">
+      <button class="ctl-btn primary" id="btn-play-pause">▶ Play</button>
+      <button class="ctl-btn" id="btn-prev" title="Previous Slide">⏮ Prev</button>
+      <button class="ctl-btn" id="btn-next" title="Next Slide">Next ⏭</button>
+      <button class="ctl-btn" id="btn-restart" title="Replay from Beginning">↺ Replay</button>
+      <select class="ctl-select" id="select-slide" title="Jump to Slide"></select>
+    </div>
+
+    <div class="btn-group">
+      <select class="ctl-select" id="select-speed" title="Playback Speed">
+        <option value="1">1.0x Speed</option>
+        <option value="1.5">1.5x Speed</option>
+        <option value="2">2.0x Speed (Preview)</option>
+      </select>
+      <button class="ctl-btn" id="btn-mute">🔊 Audio</button>
+      <button class="ctl-btn record" id="btn-record">🎬 Record 1080p Video</button>
+      <button class="ctl-btn" id="btn-fullscreen" title="Toggle Fullscreen">⛶</button>
+    </div>
+  </div>
+</footer>
+
+<div id="toast">Recording Started</div>
+
+<script>
+/* =====================================================================
+   LOOM FM-1: 1080p 60FPS Video Presentation & Video Generator Engine
+   ===================================================================== */
+
+const canvas = document.getElementById("video-canvas");
+const ctx = canvas.getContext("2d");
+
+const hudChapterTitle = document.getElementById("hud-chapter-title");
+const hudSlideIdx = document.getElementById("hud-slide-idx");
+const timeCurrent = document.getElementById("time-current");
+const timeTotal = document.getElementById("time-total");
+const scrubberTrack = document.getElementById("scrubber-track");
+const scrubberFill = document.getElementById("scrubber-fill");
+
+const btnPlayPause = document.getElementById("btn-play-pause");
+const btnPrev = document.getElementById("btn-prev");
+const btnNext = document.getElementById("btn-next");
+const btnRestart = document.getElementById("btn-restart");
+const selectSlide = document.getElementById("select-slide");
+const selectSpeed = document.getElementById("select-speed");
+const btnMute = document.getElementById("btn-mute");
+const btnRecord = document.getElementById("btn-record");
+const btnFullscreen = document.getElementById("btn-fullscreen");
+const toastEl = document.getElementById("toast");
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 2800);
+}
+
+// ---------------------------------------------------------------------
+// 1. Asset Management (Images & Screenshots)
+// ---------------------------------------------------------------------
+const IMAGES = {
+  grain: "img/grain.png",
+  scrub: "img/scrub.png",
+  sample: "img/sample.png",
+  slice: "img/slice.png",
+  slice_edit: "img/slice_edit.png",
+  wavetable: "img/wavetable.png",
+  seq_4x4: "img/seq_4x4.png",
+  seq_8x8: "img/seq_8x8.png",
+  prog: "img/prog.png",
+  mixer: "img/mixer.png",
+  patch: "img/patch.png",
+  insert: "img/insert.png",
+  delay: "img/delay.png",
+  reverb: "img/reverb.png",
+  chorus: "img/chorus.png",
+  sidechain: "img/sidechain.png",
+  doc_hardware: "img/doc_hardware.png"
+};
+
+const loadedImages = {};
+let imagesReady = false;
+
+function preloadImages() {
+  const entries = Object.entries(IMAGES);
+  let loaded = 0;
+  entries.forEach(([k, src]) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      loaded++;
+      loadedImages[k] = img;
+      if (loaded === entries.length) imagesReady = true;
+    };
+    img.onerror = () => {
+      loaded++;
+      console.warn("Failed to load image asset:", src);
+      if (loaded === entries.length) imagesReady = true;
+    };
+    img.src = src;
+  });
+}
+preloadImages();
+
+// ---------------------------------------------------------------------
+// 2. Slide Deck Definitions & Content
+// ---------------------------------------------------------------------
+const SLIDES = [
+  // 0: Cold Open
+  {
+    id: "cold_open",
+    chapter: "COLD OPEN · BOOT SEQUENCE",
+    title: "LOOM FM-1",
+    subtitle: "Hardware Power-On & Bootscreen Sequence",
+    duration: 12.0,
+    themeColor: "#00E5FF",
+    accentColor: "#BD00FF",
+    type: "cold_open"
+  },
+  // 1: Introduction
+  {
+    id: "intro",
+    chapter: "GROOVEBOX ARCHITECTURE",
+    title: "LOOM FM-1 GROOVEBOX",
+    subtitle: "5 Tracks · 14 Synthesis Engines · 64-Step Polyphonic Sequencer · Multi-FX Suite",
+    duration: 8.0,
+    themeColor: "#00E5FF",
+    accentColor: "#39FF14",
+    image: "doc_hardware",
+    bullets: [
+      "5 Independent Polyphonic Tracks with dedicated engines and insert FX",
+      "Full hardware groovebox with 26 LED keys, 8 rotary encoders & OLED",
+      "Built on Felucca / SLOOP DSP core with real-time ARM Cortex & WebAssembly",
+      "Unified browser workbench: live emulator, visual config, and WebOTA flashing"
+    ],
+    params: ["5 TRACKS", "14 ENGINES", "64 STEPS", "STUDIO FX", "WEB WORKBENCH"]
+  },
+  // 2: Engine 1 - SUBTRACT
+  {
+    id: "eng_subtract",
+    chapter: "SYNTHESIS ENGINE 01 / 14",
+    title: "01 · SUBTRACT",
+    subtitle: "Virtual Analog Modeling · Dual Oscillators & 4-Pole Resonant Ladder Filter",
+    duration: 5.0,
+    themeColor: "#39FF14",
+    accentColor: "#00E5FF",
+    bullets: [
+      "Twin anti-aliased oscillators: Saw, Pulse/PWM, Triangle & Sub-Octave",
+      "Warm 24dB/oct resonant low-pass filter with drive & key tracking",
+      "Punchy dual exponential ADSR envelopes for filter and amplifier",
+      "Classic analog basslines, cutting synth leads, and retro brass stabs"
+    ],
+    params: ["CUTOFF", "RESONANCE", "DRIVE", "PULSE WIDTH", "FILTER ADSR"],
+    vectorType: "analog"
+  },
+  // 3: Engine 2 - PHASE
+  {
+    id: "eng_phase",
+    chapter: "SYNTHESIS ENGINE 02 / 14",
+    title: "02 · PHASE",
+    subtitle: "Phase Distortion Synthesis · Casio CZ-Style Morphing & Resonant Harmonics",
+    duration: 4.8,
+    themeColor: "#00E5FF",
+    accentColor: "#39FF14",
+    bullets: [
+      "Non-linear phase modulation generating cutting digital harmonics",
+      "8 phase-distortion waveforms: resonant saw, double sine, and pulse morph",
+      "Fast envelope modulation of phase angle for biting metallic transients",
+      "Signature crisp 1980s digital leads, glassy electric pianos, and synth basses"
+    ],
+    params: ["PD DEPTH", "WAVE MORPH", "RESONANCE", "ENV SPEED", "STEREO DETUNE"],
+    vectorType: "phase"
+  },
+  // 4: Engine 3 - LOFI
+  {
+    id: "eng_lofi",
+    chapter: "SYNTHESIS ENGINE 03 / 14",
+    title: "03 · LOFI",
+    subtitle: "Vintage Sampler Emulation · Variable Bit-Depth, Decimation & Tape Grit",
+    duration: 4.8,
+    themeColor: "#FF9900",
+    accentColor: "#00E5FF",
+    bullets: [
+      "Real-time continuous bit reduction (down to 2 bits) with non-linear companding",
+      "Sample rate decimation for vintage 12-bit SP1200 / Amiga aliasing crunch",
+      "Analog vinyl hiss, subtle wow/flutter tape drift, and warm saturation",
+      "Instant nostalgia for golden-era hip-hop beats and chip-tune textures"
+    ],
+    params: ["BIT DEPTH", "DECIMATE", "NOISE HISS", "WARBLE", "SATURATION"],
+    vectorType: "lofi"
+  },
+  // 5: Engine 4 - SAMPLE
+  {
+    id: "eng_sample",
+    chapter: "SYNTHESIS ENGINE 04 / 14",
+    title: "04 · SAMPLE",
+    subtitle: "High-Resolution Stereo PCM Playback · Multi-Sampling & Pitch Transposition",
+    duration: 5.0,
+    themeColor: "#FF007F",
+    accentColor: "#00E5FF",
+    image: "sample",
+    bullets: [
+      "Polyphonic PCM sample playback with sinc-interpolated pitch shifting",
+      "Flexible looping modes: forward, backward, alternating ping-pong",
+      "Variable sample start, loop start, and loop end points with zero-crossing",
+      "Integrated filter envelope, dynamic velocity response, and stereo panning"
+    ],
+    params: ["PITCH", "SAMPLE START", "LOOP LENGTH", "VELOCITY DEPTH", "PAN"]
+  },
+  // 6: Engine 5 - VOICE
+  {
+    id: "eng_voice",
+    chapter: "SYNTHESIS ENGINE 05 / 14",
+    title: "05 · VOICE",
+    subtitle: "Formant & Vocal Tract Modeling · Vowel Morphing, Whispers & Choir Resonances",
+    duration: 4.8,
+    themeColor: "#FF1493",
+    accentColor: "#FFD700",
+    bullets: [
+      "Dual cascaded acoustic formant filters emulating human vocal tract cavities",
+      "Continuous vowel morphing: A - E - I - O - U via knobs, LFOs, or envelopes",
+      "Adjustable glottal pulse excitation, vocal fry buzz, and turbulent breath hiss",
+      "Haunting robotic speech synthesis, ambient singing pads, and vocoder leads"
+    ],
+    params: ["VOWEL MORPH", "FORMANT TILT", "GLOTTAL DRIVE", "BREATH HISS", "VIBRATO"],
+    vectorType: "voice"
+  },
+  // 7: Engine 6 - SCRUB
+  {
+    id: "eng_scrub",
+    chapter: "SYNTHESIS ENGINE 06 / 14",
+    title: "06 · SCRUB",
+    subtitle: "Tape & Platter Scrub Engine · Physical Inertia, Spinbacks & Micro-Scrubbing",
+    duration: 5.2,
+    themeColor: "#FF007F",
+    accentColor: "#00E5FF",
+    image: "scrub",
+    bullets: [
+      "Physical vinyl platter and tape reel modeling with realistic mechanical momentum",
+      "Bi-directional scrub knob: scratch forward, backwards, spinback, and brake stop",
+      "Tape flutter, capstan motor wobble, and magnetic saturation harmonics",
+      "Micro-loop scrubbing: freeze audio on any millisecond slice for glitch textures"
+    ],
+    params: ["SCRUB POSITION", "INERTIA MASS", "MOTOR SPEED", "FLUTTER", "BRAKE TIME"]
+  },
+  // 8: Engine 7 - WHEEL
+  {
+    id: "eng_wheel",
+    chapter: "SYNTHESIS ENGINE 07 / 14",
+    title: "07 · WHEEL",
+    subtitle: "Electromagnetic Tonewheel Organ · 9 Drawbars, Key Click & Leslie Rotary Cabinet",
+    duration: 4.8,
+    themeColor: "#FFAA00",
+    accentColor: "#1E90FF",
+    bullets: [
+      "9 independent drawbars emulating vintage B3 electromagnetic spinning tone wheels",
+      "Physical Leslie rotating speaker horn & drum cabinet Doppler effect simulation",
+      "Variable percussion harmonics (2nd & 3rd harmonic) and dirty key click",
+      "Vacuum tube preamp drive with authentic overdrive and speaker cabinet resonance"
+    ],
+    params: ["DRAWBAR 1-9", "ROTOR SPEED", "KEY CLICK", "PERCUSSION", "TUBE DRIVE"],
+    vectorType: "wheel"
+  },
+  // 9: Engine 8 - GRAIN
+  {
+    id: "eng_grain",
+    chapter: "SYNTHESIS ENGINE 08 / 14",
+    title: "08 · GRAIN",
+    subtitle: "Granular Cloud Synthesizer · 16 Simultaneous Grains, Spray & Jitter",
+    duration: 5.2,
+    themeColor: "#BD00FF",
+    accentColor: "#00E5FF",
+    image: "grain",
+    bullets: [
+      "Deconstructs samples into microscopic grains with Hann and Gaussian envelopes",
+      "Up to 16 simultaneous grains with random position spray and stereo dispersion",
+      "Variable grain duration (10ms - 500ms) with pitch randomization and reverse odds",
+      "Generates lush cinematic soundscapes, shimmering ambient drones, and time-stretching"
+    ],
+    params: ["GRAIN SIZE", "POSITION SPRAY", "DENSITY", "PITCH JITTER", "STEREO SPREAD"]
+  },
+  // 10: Engine 9 - PHYS
+  {
+    id: "eng_phys",
+    chapter: "SYNTHESIS ENGINE 09 / 14",
+    title: "09 · PHYS",
+    subtitle: "DaisySP Physical Modeling · Resonant Waveguide Strings, Bells & Bowed Bars",
+    duration: 4.8,
+    themeColor: "#1E90FF",
+    accentColor: "#FFD700",
+    bullets: [
+      "Karplus-Strong tuned waveguide digital delay networks with non-linear dispersion",
+      "Modal acoustic resonance modeling: metallic chimes, struck bells, and marimbas",
+      "Friction bow modeling with stick-slip excitation for realistic bowed cello timbres",
+      "Dynamic strike stiffness, damping absorption, and spatial body resonance"
+    ],
+    params: ["BRIGHTNESS", "DAMPING", "EXCITATION", "STRIKE STIFF", "BODY RESONANCE"],
+    vectorType: "phys"
+  },
+  // 11: Engine 10 - NOISE
+  {
+    id: "eng_noise",
+    chapter: "SYNTHESIS ENGINE 10 / 14",
+    title: "10 · NOISE",
+    subtitle: "Filtered Noise & Metallic Resonators · Industrial Percussion & Atmospheres",
+    duration: 4.8,
+    themeColor: "#80FFFF",
+    accentColor: "#FF007F",
+    bullets: [
+      "Multi-spectral noise generators: White, Pink, Red (Brownian), and Velvet noise",
+      "Parallel dual resonant band-pass filters creating ringing metallic textures",
+      "Transient burst envelope generator for industrial snares, claps, and hi-hats",
+      "Sweeping atmospheric wind textures, ocean swells, and lo-fi generative hiss"
+    ],
+    params: ["NOISE COLOR", "BPF FREQ 1", "BPF FREQ 2", "RESONANCE", "BURST ENV"],
+    vectorType: "noise"
+  },
+  // 12: Engine 11 - FM6
+  {
+    id: "eng_fm6",
+    chapter: "SYNTHESIS ENGINE 11 / 14",
+    title: "11 · FM6",
+    subtitle: "6-Operator Frequency Modulation · Full DX7 Compatibility & 32 Classic Algorithms",
+    duration: 5.2,
+    themeColor: "#00FFFF",
+    accentColor: "#FF007F",
+    bullets: [
+      "Authentic 6-operator sine frequency modulation ported from MSFA engine",
+      "32 standard DX7 algorithm routing topologies with feedback loop modulation",
+      "Full DX7 SysEx patch import: load thousands of iconic presets directly",
+      "Individual 4-rate 4-level operator envelopes and keyboard level scaling"
+    ],
+    params: ["ALGORITHM (1-32)", "FEEDBACK", "OPERATOR RATIOS", "ENV RATES", "LEVELS"],
+    vectorType: "fm6"
+  },
+  // 13: Engine 12 - SLICE
+  {
+    id: "eng_slice",
+    chapter: "SYNTHESIS ENGINE 12 / 14",
+    title: "12 · SLICE",
+    subtitle: "Drum Break Slice & Transient Chopper · 16 Slice Pads & Micro-Editing",
+    duration: 5.2,
+    themeColor: "#FF007F",
+    accentColor: "#39FF14",
+    image: "slice",
+    bullets: [
+      "Automatic transient detection cuts breaks into 16 chromatic slice pads",
+      "Trigger slices directly from the 16 white keys or sequence complex drum fills",
+      "Per-slice non-destructive editing: tune pitch, reverse playback, level, and choke",
+      "Re-order, rearrange, and stutter classic jungle, breakbeat, and boom-bap loops"
+    ],
+    params: ["SLICE 1-16", "SLICE PITCH", "REVERSE TOGGLE", "TRANSIENT SENS", "CHOKE GROUP"]
+  },
+  // 14: Engine 13 - WAVETABLE
+  {
+    id: "eng_wavetable",
+    chapter: "SYNTHESIS ENGINE 13 / 14",
+    title: "13 · WAVETABLE",
+    subtitle: "Modern Wavetable Synthesis · Multi-Frame Spectral Scanning & Folding",
+    duration: 5.2,
+    themeColor: "#00E5FF",
+    accentColor: "#BD00FF",
+    image: "wavetable",
+    bullets: [
+      "Dynamic 2D/3D wavetable interpolation through morphing single-cycle frames",
+      "Real-time table position scanning modulated via envelope, LFO, and velocity",
+      "Harmonic spectral fold, phase warp, and pulse-width mirror distortions",
+      "Rich evolving cinematic pads, aggressive modern EDM basses, and morphing leads"
+    ],
+    params: ["TABLE INDEX", "POSITION SCAN", "SPECTRAL WARP", "FOLD AMOUNT", "SUB OSC"]
+  },
+  // 15: Engine 14 - DRUM
+  {
+    id: "eng_drum",
+    chapter: "SYNTHESIS ENGINE 14 / 14",
+    title: "14 · DRUM",
+    subtitle: "8-Lane Synthesized Drum Kit · Kicks, Snares, Hats & Percussion",
+    duration: 5.0,
+    themeColor: "#FFD700",
+    accentColor: "#FF4500",
+    bullets: [
+      "8 simultaneous polyphonic drum voices: Kick, Snare, Closed Hat, Open Hat, Tom, Rim, Clap, Perc",
+      "Analog drum modeling with dedicated pitch envelopes, transient clicks, and body boom",
+      "Velocity-sensitive dynamic velocity layers and choke groups for hi-hat realism",
+      "Self-contained groove foundation freeing other tracks for melodic synthesis"
+    ],
+    params: ["KICK TUNE/DECAY", "SNARE SNAP/TONE", "HAT SIZZLE", "PERC TUNE", "VOICE GAIN"],
+    vectorType: "drum"
+  },
+  // 16: Sequencer
+  {
+    id: "sequencer",
+    chapter: "POLYPHONIC COMPOSITION",
+    title: "64-STEP SEQUENCER",
+    subtitle: "4 Pages · Switchable 4x4 & 8x8 Visual Grid Views · Parameter Locks",
+    duration: 8.0,
+    themeColor: "#39FF14",
+    accentColor: "#00E5FF",
+    image: "seq_4x4",
+    bullets: [
+      "64 steps total divided into 4 pages of 16 steps with per-track pattern lengths",
+      "Dual grid views: 4x4 step-sequencer view & 8x8 bird's-eye polyphonic overview",
+      "Parameter Locks (P-locks): automate any synth, filter, or FX parameter per step",
+      "Micro-timing nudges, ratchets (2x/3x/4x burst retriggers), probability & swing"
+    ],
+    params: ["4 PAGES (64 STEPS)", "4x4 & 8x8 VIEWS", "P-LOCKS", "RATCHETS", "SWING / PROB"]
+  },
+  // 17: Arpeggiator
+  {
+    id: "arpeggiator",
+    chapter: "HARMONIC INTELLIGENCE",
+    title: "12-MODE ARPEGGIATOR",
+    subtitle: "Algorithmic Patterns · Counterpoint, Brownian Walk & Euclidean Gating",
+    duration: 7.5,
+    themeColor: "#00E5FF",
+    accentColor: "#BD00FF",
+    bullets: [
+      "12 sophisticated arpeggio patterns: UP, DOWN, UP/DOWN, RANDOM, THUMB BASS",
+      "Generative modes: BACH (polyphonic counterpoint) & BROWNIAN (drunken walk)",
+      "CONVERGE & DIVERGE bidirectional melodic movements across chord voicings",
+      "Octave spread (1-4 octaves), Euclidean rhythm gate generator, swing & latch hold"
+    ],
+    params: ["12 MODES", "BACH COUNTERPOINT", "BROWNIAN WALK", "1-4 OCT SPREAD", "EUCLIDEAN GATE"],
+    vectorType: "arp"
+  },
+  // 18: Chord Progression Generator
+  {
+    id: "chord_prog",
+    chapter: "HARMONIC INTELLIGENCE",
+    title: "8-CHORD PROGRESSION GENERATOR",
+    subtitle: "Intelligent Harmony, Voice-Leading & 1/2-Step Guitar-Style Strumming",
+    duration: 8.0,
+    themeColor: "#FF007F",
+    accentColor: "#FFD700",
+    image: "prog",
+    bullets: [
+      "Generates musical 8-chord progressions tailored to chosen musical scale and mood",
+      "Keys 1–8: Trigger full polyphonic chords with smooth harmonic voice-leading",
+      "Keys 9–16: Play the identical chords as natural 1/2-step guitar-style strums",
+      "Follows engine ADSR envelope settings: tap for short staccato, hold for lush sustain"
+    ],
+    params: ["8 PROGRESSION CHORDS", "SCALE & MOOD LOCK", "KEYS 1-8 DIRECT", "KEYS 9-16 STRUM", "VOICE LEADING"]
+  },
+  // 19: Insert FX
+  {
+    id: "fx_insert",
+    chapter: "STUDIO FX SUITE",
+    title: "DEDICATED TRACK INSERT FX",
+    subtitle: "Per-Track Processing · Vinyl Wobble, Octaver, Tube Overdrive & Auto-Panner",
+    duration: 7.0,
+    themeColor: "#FF9900",
+    accentColor: "#00E5FF",
+    image: "insert",
+    bullets: [
+      "Vinyl Wobble: subtle tape pitch drift, wow, flutter, and warble modulation",
+      "Polyphonic Octaver: adds thick sub-octaves (-1 / -2) and shimmering upper octaves (+1)",
+      "Tube Overdrive: creamy tape saturation to aggressive asymmetric wave-shaping clip",
+      "Auto-Panner: synchronized stereo panning LFO for wide spatial motion"
+    ],
+    params: ["VINYL WOBBLE", "SUB OCTAVER", "TUBE OVERDRIVE", "AUTO-PANNER", "DRY/WET MIX"]
+  },
+  // 20: Send FX
+  {
+    id: "fx_send",
+    chapter: "STUDIO FX SUITE",
+    title: "MASTER SEND FX: TAPE ECHO & REVERB",
+    subtitle: "Capstan Tape Delay with Trampoline Visualizer & Stereo Reverb Tank",
+    duration: 8.0,
+    themeColor: "#BD00FF",
+    accentColor: "#00E5FF",
+    image: "delay",
+    bullets: [
+      "Capstan-style tape delay with analog pitch sweeps on tempo changes and tape flutter",
+      "Physics-based trampoline bouncing dot display illustrating delay taps and feedback decay",
+      "Lush algorithmic stereo reverb tank: plate, hall, and cavern ambient decays",
+      "Dimension chorus for wide stereo stereo thickening and ensemble movement"
+    ],
+    params: ["TAPE ECHO", "TRAMPOLINE BOUNCE", "REVERB TANK", "DIMENSION CHORUS", "FEEDBACK"]
+  },
+  // 21: Master Ducking Sidechain
+  {
+    id: "fx_sidechain",
+    chapter: "STUDIO FX SUITE",
+    title: "MASTER BUS SIDECHAIN DUCKING",
+    subtitle: "Rhythmic Master Bus Compressor Keyed to Track 5 Kick & Snare",
+    duration: 7.5,
+    themeColor: "#00E5FF",
+    accentColor: "#39FF14",
+    image: "sidechain",
+    bullets: [
+      "Intelligent master ducking compressor keyed directly to Track 5 drum triggers",
+      "Creates the iconic rhythmic breathing/pumping groove of modern EDM and lo-fi beats",
+      "Adjustable compression threshold, ducking depth ratio, attack, and release curves",
+      "Ensures crystal-clear bass kick punch without muddying synth chords or pads"
+    ],
+    params: ["TRACK 5 KEYED", "DUCK RATIO", "THRESHOLD", "ATTACK TIME", "RELEASE CURVE"]
+  },
+  // 22: Patching & Modulation
+  {
+    id: "patching",
+    chapter: "MODULATION MATRIX",
+    title: "4-SLOT MOD MATRIX & DUAL LFOS",
+    subtitle: "21 Modulation Destinations · Dual Multi-Wave LFOs · Velocity & Aftertouch",
+    duration: 7.5,
+    themeColor: "#FFD700",
+    accentColor: "#BD00FF",
+    image: "patch",
+    bullets: [
+      "4 assignable modulation matrix slots with bipolar attenuation depth (-100% to +100%)",
+      "Modulation sources: Velocity, Key Tracking, Mod Wheel, Aftertouch & Dual LFOs",
+      "21 modulation destinations: filter cutoff, resonance, pitch, morph, drive, send FX",
+      "Dual multi-waveform LFOs: Sine, Triangle, Saw, Square, Sample & Hold, tempo sync"
+    ],
+    params: ["4 MOD SLOTS", "21 DESTINATIONS", "DUAL LFOS", "BIPOLAR DEPTH", "TEMPO SYNC"]
+  },
+  // 23: Web Workbench
+  {
+    id: "web_workbench",
+    chapter: "OPEN CREATIVE ECOSYSTEM",
+    title: "COMPLETE WEB WORKBENCH",
+    subtitle: "In-Browser WebAssembly Emulator · Real-Time Knob Inspector · WebOTA Updater",
+    duration: 8.0,
+    themeColor: "#39FF14",
+    accentColor: "#00E5FF",
+    image: "mixer",
+    bullets: [
+      "Full hardware emulation running in the browser at 48kHz via WebAssembly & Web Audio",
+      "Interactive parameter inspector: live knobs and toggle switches for all engines and FX",
+      "One-click browser OTA firmware flasher via WebUSB and WebMIDI",
+      "Sample uploader, backup manager, and preset exchange for the global community"
+    ],
+    params: ["WASM EMULATOR", "ROTARY KNOBS", "WEBOTA FLASHER", "SAMPLE UPLOADER", "CLOUD PRESETS"]
+  },
+  // 24: Outro
+  {
+    id: "outro",
+    chapter: "COMMUNITY & LINKS",
+    title: "START CREATING WITH LOOM",
+    subtitle: "Open Source Hardware & Web Groovebox",
+    duration: 9.5,
+    themeColor: "#00E5FF",
+    accentColor: "#FF007F",
+    type: "outro",
+    bullets: [
+      "Try the interactive emulator online: co-oscillator.github.io/Loom-FM-1",
+      "Open-source firmware, CAD enclosures & schematics on GitHub",
+      "Subscribe to the Loom Groovebox YouTube channel for tutorials and sound demos!",
+      "Built with love by Hügelton Instruments & the Loom Community"
+    ],
+    params: ["GITHUB OPEN SOURCE", "ONLINE EMULATOR", "SUBSCRIBE ON YOUTUBE", "LOOM COMMUNITY"]
+  }
+];
+
+// Calculate start times
+let totalDuration = 0;
+SLIDES.forEach((s) => {
+  s.startTime = totalDuration;
+  totalDuration += s.duration;
+});
+timeTotal.textContent = formatTime(totalDuration);
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const ms = Math.floor((sec % 1) * 10);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${ms}`;
+}
+
+// Populate slide select dropdown
+SLIDES.forEach((s, idx) => {
+  const opt = document.createElement("option");
+  opt.value = idx;
+  opt.textContent = `${String(idx).padStart(2, "0")} · ${s.title.replace(/^0[0-9] · /, "")}`;
+  selectSlide.appendChild(opt);
+});
+
+// ---------------------------------------------------------------------
+// 3. Audio Engine & Synthesizer Soundtrack
+// ---------------------------------------------------------------------
+let audioCtx = null;
+let audioMaster = null;
+let audioDest = null; // for MediaRecorder
+let audioMuted = false;
+let isAudioInitialized = false;
+
+// Synth soundtrack parameters (Key of D minor / F major, 116 BPM)
+const BPM = 116;
+const BEAT_DUR = 60 / BPM;
+const SIXTEENTH = BEAT_DUR / 4;
+
+function initAudio() {
+  if (isAudioInitialized) return;
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  audioCtx = new AudioContext({ sampleRate: 48000 });
+
+  audioMaster = audioCtx.createGain();
+  audioMaster.gain.setValueAtTime(0.85, audioCtx.currentTime);
+
+  const compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(-14, audioCtx.currentTime);
+  compressor.knee.setValueAtTime(10, audioCtx.currentTime);
+  compressor.ratio.setValueAtTime(4, audioCtx.currentTime);
+  compressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
+  compressor.release.setValueAtTime(0.12, audioCtx.currentTime);
+
+  audioMaster.connect(compressor);
+  compressor.connect(audioCtx.destination);
+
+  // Dedicated MediaStreamDestination for canvas video recording
+  audioDest = audioCtx.createMediaStreamDestination();
+  compressor.connect(audioDest);
+
+  isAudioInitialized = true;
+}
+
+// Procedural Sound Effects & Music Generator
+function playClick(t) {
+  if (!audioCtx || audioMuted) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(30, t + 0.04);
+  gain.gain.setValueAtTime(0.9, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  osc.connect(gain);
+  gain.connect(audioMaster);
+  osc.start(t);
+  osc.stop(t + 0.06);
+}
+
+function playLEDChime(t, pitchOffset = 0) {
+  if (!audioCtx || audioMuted) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(523.25 * Math.pow(2, pitchOffset / 12), t); // C5
+  gain.gain.setValueAtTime(0.001, t);
+  gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  osc.connect(gain);
+  gain.connect(audioMaster);
+  osc.start(t);
+  osc.stop(t + 0.4);
+}
+
+function playBootChord(t) {
+  if (!audioCtx || audioMuted) return;
+  // Dm9 chord: D3, F3, A3, C4, E4
+  const freqs = [146.83, 174.61, 220.00, 261.63, 329.63, 440.00];
+  freqs.forEach((f, i) => {
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+
+    osc.type = i % 2 === 0 ? "sawtooth" : "triangle";
+    osc.frequency.setValueAtTime(f + (Math.random() - 0.5) * 0.8, t);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(600, t);
+    filter.frequency.exponentialRampToValueAtTime(3200, t + 1.2);
+    filter.frequency.exponentialRampToValueAtTime(800, t + 3.0);
+    filter.Q.setValueAtTime(3.5, t);
+
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.08, t + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 3.4);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioMaster);
+    osc.start(t);
+    osc.stop(t + 3.5);
+  });
+}
+
+function playSubDrop(t) {
+  if (!audioCtx || audioMuted) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(140, t);
+  osc.frequency.exponentialRampToValueAtTime(28, t + 1.8);
+
+  gain.gain.setValueAtTime(0.01, t);
+  gain.gain.linearRampToValueAtTime(0.6, t + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+
+  osc.connect(gain);
+  gain.connect(audioMaster);
+  osc.start(t);
+  osc.stop(t + 2.1);
+}
+
+// Scheduled Music Loop state
+let nextBarTime = 0;
+let barCounter = 0;
+
+// Chord progression: [Dm9, Bbmaj7, Gm7, C7/Am7]
+const CHORD_PROGRESSION = [
+  [146.83, 220.00, 261.63, 329.63], // Dm9 (D3, A3, C4, E4)
+  [116.54, 233.08, 293.66, 349.23], // Bbmaj7 (Bb2, Bb3, D4, F4)
+  [98.00, 196.00, 293.66, 349.23],  // Gm7 (G2, G3, D4, F4)
+  [130.81, 196.00, 261.63, 329.63]  // Cadd9 (C3, G3, C4, E4)
+];
+
+const BASS_ROOTS = [73.42, 58.27, 49.00, 65.41]; // D2, Bb1, G1, C2
+
+function scheduleBar(t, barIdx) {
+  if (!audioCtx || audioMuted) return;
+  const chordIdx = barIdx % 4;
+  const chord = CHORD_PROGRESSION[chordIdx];
+  const bassRoot = BASS_ROOTS[chordIdx];
+
+  // 1. Warm Synth Pad (Sustained 4 beats)
+  chord.forEach((f, i) => {
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+
+    osc.type = i === 0 ? "sawtooth" : "triangle";
+    osc.frequency.setValueAtTime(f + (i * 0.4), t);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1400, t);
+    filter.frequency.linearRampToValueAtTime(2200, t + 2 * BEAT_DUR);
+    filter.frequency.linearRampToValueAtTime(1200, t + 4 * BEAT_DUR);
+    filter.Q.setValueAtTime(1.5, t);
+
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.05, t + 0.3);
+    gain.gain.setValueAtTime(0.045, t + 3.6 * BEAT_DUR);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 4 * BEAT_DUR);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioMaster);
+    osc.start(t);
+    osc.stop(t + 4 * BEAT_DUR);
+  });
+
+  // 2. Driving 16th-note Analog Bassline
+  for (let s = 0; s < 16; s++) {
+    const stepTime = t + s * SIXTEENTH;
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+
+    // Bassline pattern rhythm
+    const oct = (s === 3 || s === 7 || s === 11 || s === 14) ? 2 : 1;
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(bassRoot * oct, stepTime);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(350, stepTime);
+    filter.frequency.exponentialRampToValueAtTime(1200, stepTime + 0.02);
+    filter.frequency.exponentialRampToValueAtTime(320, stepTime + SIXTEENTH * 0.8);
+    filter.Q.setValueAtTime(4.0, stepTime);
+
+    const vol = (s % 4 === 0) ? 0.22 : 0.14;
+    gain.gain.setValueAtTime(vol, stepTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, stepTime + SIXTEENTH * 0.75);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioMaster);
+    osc.start(stepTime);
+    osc.stop(stepTime + SIXTEENTH);
+  }
+
+  // 3. Arpeggiator Lead (Bach/Brownian style melody)
+  const arpNotes = [chord[0] * 2, chord[2] * 2, chord[1] * 2, chord[3] * 2, chord[2] * 2, chord[0] * 2, chord[3] * 2, chord[1] * 2];
+  for (let s = 0; s < 16; s++) {
+    const stepTime = t + s * SIXTEENTH;
+    const noteFreq = arpNotes[s % arpNotes.length];
+
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(noteFreq, stepTime);
+
+    gain.gain.setValueAtTime(0.001, stepTime);
+    gain.gain.linearRampToValueAtTime(0.045, stepTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, stepTime + SIXTEENTH * 1.5);
+
+    osc.connect(gain);
+    gain.connect(audioMaster);
+    osc.start(stepTime);
+    osc.stop(stepTime + SIXTEENTH * 1.6);
+  }
+
+  // 4. Punchy Electronic Drum Foundation (Kick on 1, 2, 3, 4; Snare on 2 & 4)
+  for (let beat = 0; beat < 4; beat++) {
+    const beatTime = t + beat * BEAT_DUR;
+
+    // Kick
+    const kickOsc = audioCtx.createOscillator();
+    const kickGain = audioCtx.createGain();
+    kickOsc.frequency.setValueAtTime(130, beatTime);
+    kickOsc.frequency.exponentialRampToValueAtTime(38, beatTime + 0.12);
+    kickGain.gain.setValueAtTime(0.42, beatTime);
+    kickGain.gain.exponentialRampToValueAtTime(0.001, beatTime + 0.22);
+    kickOsc.connect(kickGain);
+    kickGain.connect(audioMaster);
+    kickOsc.start(beatTime);
+    kickOsc.stop(beatTime + 0.25);
+
+    // Snare / Clap on beats 2 and 4
+    if (beat === 1 || beat === 3) {
+      const snareOsc = audioCtx.createOscillator();
+      const snareGain = audioCtx.createGain();
+      snareOsc.type = "triangle";
+      snareOsc.frequency.setValueAtTime(190, beatTime);
+      snareOsc.frequency.exponentialRampToValueAtTime(80, beatTime + 0.1);
+      snareGain.gain.setValueAtTime(0.2, beatTime);
+      snareGain.gain.exponentialRampToValueAtTime(0.001, beatTime + 0.14);
+      snareOsc.connect(snareGain);
+      snareGain.connect(audioMaster);
+      snareOsc.start(beatTime);
+      snareOsc.stop(beatTime + 0.15);
+    }
+  }
+}
+
+// Sound scheduler check
+let lastColdOpenTrigger = -1;
+function updateAudioClock(playheadTime) {
+  if (!audioCtx) return;
+
+  // Cold open sounds
+  if (playheadTime >= 0.8 && playheadTime < 1.0 && lastColdOpenTrigger < 0.8) {
+    playClick(audioCtx.currentTime);
+    lastColdOpenTrigger = 0.8;
+  }
+  if (playheadTime >= 3.0 && playheadTime < 3.2 && lastColdOpenTrigger < 3.0) {
+    // LED sweep chime notes
+    for (let i = 0; i < 6; i++) {
+      playLEDChime(audioCtx.currentTime + i * 0.18, i * 2);
+    }
+    lastColdOpenTrigger = 3.0;
+  }
+  if (playheadTime >= 6.0 && playheadTime < 6.2 && lastColdOpenTrigger < 6.0) {
+    playBootChord(audioCtx.currentTime);
+    lastColdOpenTrigger = 6.0;
+  }
+  if (playheadTime >= 9.0 && playheadTime < 9.2 && lastColdOpenTrigger < 9.0) {
+    playSubDrop(audioCtx.currentTime);
+    lastColdOpenTrigger = 9.0;
+  }
+
+  // After cold open (12s onwards): start driving groove
+  if (playheadTime >= 12.0) {
+    const elapsedSinceGroove = playheadTime - 12.0;
+    const currentBar = Math.floor(elapsedSinceGroove / (4 * BEAT_DUR));
+    if (currentBar !== barCounter) {
+      barCounter = currentBar;
+      scheduleBar(audioCtx.currentTime, barCounter);
+    }
+  } else {
+    barCounter = -1;
+  }
+}
+
+// ---------------------------------------------------------------------
+// 4. Drawing & Animation Rendering System (1920 x 1080)
+// ---------------------------------------------------------------------
+const LOOM_COLORS = [
+  "#00E5FF", // Cyan
+  "#BD00FF", // Purple
+  "#FF007F", // Pink / Magenta
+  "#39FF14", // Lime Green
+  "#FFD700", // Gold
+  "#FF3300"  // Orange-Red
+];
+
+let playhead = 0.0;
+let isPlaying = false;
+let playbackSpeed = 1.0;
+let lastFrameTimestamp = performance.now();
+
+function getSlideAtTime(t) {
+  for (let i = SLIDES.length - 1; i >= 0; i--) {
+    if (t >= SLIDES[i].startTime) return { slide: SLIDES[i], index: i };
+  }
+  return { slide: SLIDES[0], index: 0 };
+}
+
+// ---------------- Cold Open Renderer ----------------
+function renderColdOpen(t, slide) {
+  // Clear to deep black studio
+  ctx.fillStyle = "#06060A";
+  ctx.fillRect(0, 0, 1920, 1080);
+
+  // Studio Vignette
+  const grad = ctx.createRadialGradient(960, 540, 100, 960, 540, 900);
+  grad.addColorStop(0, "rgba(22, 22, 34, 0.45)");
+  grad.addColorStop(1, "rgba(2, 2, 4, 0.95)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1920, 1080);
+
+  // Phases:
+  // 0.0 - 3.0s: Dark device with glowing power switch & click
+  // 3.0 - 6.0s: Rainbow LED wave across keys & buttons
+  // 6.0 - 9.0s: Screen powers on with Loom textile bootscreen
+  // 9.0 - 12.0s: Deep cinematic camera zoom into the woven logo grid -> black
+
+  ctx.save();
+
+  // If in phase 4 (zoom into grid): apply camera transform centered on grid
+  if (t >= 9.0) {
+    const zoomProgress = (t - 9.0) / 3.0; // 0..1
+    const easeZoom = Math.pow(zoomProgress, 3.2); // exponential zoom
+    const scale = 1.0 + easeZoom * 32.0;
+
+    // Centered on the 240x240 screen's grid center (960, 480)
+    ctx.translate(960, 480);
+    ctx.scale(scale, scale);
+    ctx.translate(-960, -480);
+
+    // Fade to black in final half-second
+    if (zoomProgress > 0.8) {
+      const fadeOut = (zoomProgress - 0.8) / 0.2;
+      ctx.globalAlpha = Math.max(0, 1 - fadeOut);
+    }
+  }
+
+  // Draw Loom FM-1 Device Chassis
+  const devX = 460, devY = 240, devW = 1000, devH = 620;
+  ctx.fillStyle = "#18181D";
+  ctx.strokeStyle = "#2D2D35";
+  ctx.lineWidth = 3;
+  roundRect(ctx, devX, devY, devW, devH, 32, true, true);
+
+  // Screen Bezel
+  const scrX = devX + 380, scrY = devY + 50, scrS = 240;
+  ctx.fillStyle = "#0A0A0D";
+  ctx.strokeStyle = "#383842";
+  ctx.lineWidth = 2;
+  roundRect(ctx, scrX - 6, scrY - 6, scrS + 12, scrS + 12, 14, true, true);
+
+  // Rotary Knobs (8 knobs)
+  const knobCoords = [
+    [devX + 90, devY + 110], [devX + 190, devY + 110],
+    [devX + 90, devY + 210], [devX + 190, devY + 210],
+    [devX + 710, devY + 110], [devX + 795, devY + 110],
+    [devX + 880, devY + 110], [devX + 965, devY + 110]
+  ];
+  knobCoords.forEach(([kx, ky], idx) => {
+    ctx.fillStyle = "#101013";
+    ctx.beginPath();
+    ctx.arc(kx, ky, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#3A3A42";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Knob pointer
+    ctx.strokeStyle = "#E0E0E6";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    const ang = -2.2 + idx * 0.6;
+    ctx.moveTo(kx, ky);
+    ctx.lineTo(kx + Math.cos(ang) * 18, ky + Math.sin(ang) * 18);
+    ctx.stroke();
+  });
+
+  // Power Switch & Label
+  const pwrX = devX + 70, pwrY = devY + 265;
+  ctx.fillStyle = "#111116";
+  roundRect(ctx, pwrX, pwrY, 60, 28, 6, true, false);
+  ctx.font = "bold 11px DotGothic16, monospace";
+  ctx.fillStyle = "#777785";
+  ctx.fillText("POWER", pwrX + 10, pwrY - 8);
+
+  // Switch Toggle
+  const isSwitchOn = t >= 0.8;
+  ctx.fillStyle = isSwitchOn ? "#39FF14" : "#44444C";
+  roundRect(ctx, isSwitchOn ? pwrX + 32 : pwrX + 4, pwrY + 4, 24, 20, 4, true, false);
+  if (isSwitchOn) {
+    ctx.shadowColor = "#39FF14";
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(pwrX + 38, pwrY + 8, 12, 12);
+    ctx.shadowBlur = 0;
+  }
+
+  // Keybed & Buttons
+  const keybedX = devX + 40, keybedY = devY + 360, keybedW = devW - 80;
+  const numKeys = 16;
+  const keyW = (keybedW - 20) / numKeys;
+
+  // LED Sweep Animation across Keys & Buttons (from t=3.0 to 6.0)
+  for (let k = 0; k < numKeys; k++) {
+    const kx = keybedX + 10 + k * keyW;
+    const ky = keybedY + 20;
+
+    ctx.fillStyle = "#222228";
+    roundRect(ctx, kx + 2, ky, keyW - 6, 180, 8, true, false);
+
+    // Slit LED
+    const slitX = kx + keyW / 2 - 2;
+    let ledColor = "rgba(50, 50, 60, 0.4)";
+    let isLit = false;
+
+    if (t >= 3.0) {
+      const sweepProgress = (t - 3.0) / 2.5; // 0..1
+      const keyPhase = k / numKeys;
+      if (sweepProgress >= keyPhase && sweepProgress <= keyPhase + 0.35) {
+        const colorIdx = k % LOOM_COLORS.length;
+        ledColor = LOOM_COLORS[colorIdx];
+        isLit = true;
+      } else if (t >= 5.5) {
+        // Idle ambient breathe
+        ledColor = "rgba(0, 229, 255, 0.45)";
+        isLit = true;
+      }
+    }
+
+    ctx.fillStyle = ledColor;
+    if (isLit) {
+      ctx.shadowColor = ledColor;
+      ctx.shadowBlur = 14;
+    }
+    roundRect(ctx, slitX, ky + 15, 5, 140, 3, true, false);
+    ctx.shadowBlur = 0;
+  }
+
+  // Draw 240x240 LCD Screen (Powers on at t=6.0)
+  if (t >= 6.0) {
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, scrX, scrY, scrS, scrS, 10, false, false);
+    ctx.clip();
+
+    // Dark screen background
+    ctx.fillStyle = "#050709";
+    ctx.fillRect(scrX, scrY, scrS, scrS);
+
+    // Render authentic Loom bootscreen from ui_draw.c
+    renderBootscreenContent(scrX, scrY, scrS, t);
+
+    // CRT Scanlines & Screen Glass Glow
+    ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+    for (let line = 0; line < scrS; line += 4) {
+      ctx.fillRect(scrX, scrY + line, scrS, 1.5);
+    }
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // Bottom Title during cold open
+  if (t < 9.0) {
+    ctx.font = "bold 22px DotGothic16, monospace";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.textAlign = "center";
+    ctx.fillText("LOOM FM-1 · HARDWARE INITIALIZATION", 960, 960);
+    ctx.font = "14px -apple-system, sans-serif";
+    ctx.fillStyle = "#00E5FF";
+    ctx.fillText("5-TRACK TEXTILE SYNTHESIZER & GROOVEBOX", 960, 990);
+    ctx.textAlign = "left";
+  }
+}
+
+// Pixel-perfect Loom Bootscreen Renderer (faithful to firmware/src/ui_draw.c:1400)
+function renderBootscreenContent(ox, oy, size, curTime) {
+  const scale = size / 240;
+  const GX = [65, 87, 109, 131, 153, 175];
+  const GY = [36, 46, 56, 66, 76, 86];
+
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
+
+  // 1. Horizontal weft threads across x=65..175 with rainbow spectrum
+  for (let j = 0; j < 6; j++) {
+    const y = GY[j];
+    const grad = ctx.createLinearGradient(65, y, 175, y);
+    LOOM_COLORS.forEach((col, idx) => {
+      grad.addColorStop(idx / 5, col);
+    });
+    ctx.fillStyle = grad;
+    ctx.fillRect(65, y, 110, 3);
+  }
+
+  // 2. Vertical warp threads across y=36..87
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = LOOM_COLORS[i];
+    ctx.fillRect(GX[i], 36, 3, 52);
+  }
+
+  // 3. Woven over/under textile depth at intersections
+  for (let j = 0; j < 6; j++) {
+    const y = GY[j];
+    for (let i = 0; i < 6; i++) {
+      const x = GX[i];
+      if ((i + j) % 2 === 1) {
+        // Horizontal thread crosses OVER vertical thread
+        ctx.fillStyle = LOOM_COLORS[i];
+        ctx.fillRect(x - 2, y, 7, 3);
+
+        // Shadows above and below
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(x, y - 1, 3, 1);
+        ctx.fillRect(x, y + 3, 3, 1);
+      } else {
+        // Vertical thread crosses OVER horizontal thread
+        ctx.fillStyle = LOOM_COLORS[i];
+        ctx.fillRect(x, y - 2, 3, 7);
+
+        // Shadows to the left and right
+        ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.fillRect(x - 1, y, 1, 3);
+        ctx.fillRect(x + 3, y, 1, 3);
+      }
+    }
+  }
+
+  // 4. Squiggly wavy yarn ends extending outward from grid edges
+  ctx.lineWidth = 2.5;
+  const timeDrift = (curTime - 6.0) * 1.5;
+
+  // Top yarn curves (extend upwards from y=36 to y=16)
+  for (let i = 0; i < 6; i++) {
+    const x = GX[i];
+    ctx.strokeStyle = LOOM_COLORS[i];
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, 36);
+    const dir = i < 3 ? -1 : 1;
+    const amp = 4 + (i < 3 ? i : 5 - i);
+    for (let p = 1; p <= 10; p++) {
+      const cy = 36 - 2 * p;
+      const cx = x + 1.5 + dir * (Math.sin(p * 0.7 + timeDrift) * amp + p * 0.5);
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  // Bottom yarn curves (extend downwards from y=87 to y=107)
+  for (let i = 0; i < 6; i++) {
+    const x = GX[i];
+    ctx.strokeStyle = LOOM_COLORS[i];
+    ctx.beginPath();
+    ctx.moveTo(x + 1.5, 87);
+    const dir = i < 3 ? -1 : 1;
+    const amp = 4 + (i < 3 ? (2 - i) : (i - 3));
+    for (let p = 1; p <= 10; p++) {
+      const cy = 87 + 2 * p;
+      const cx = x + 1.5 + dir * (Math.sin(p * 0.7 + timeDrift) * amp + p * 0.5);
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  // Left yarn curves (extend leftwards from x=65 to x=45)
+  for (let j = 0; j < 6; j++) {
+    const y = GY[j];
+    ctx.strokeStyle = LOOM_COLORS[j];
+    ctx.beginPath();
+    ctx.moveTo(65, y + 1.5);
+    const dir = j < 3 ? -1 : 1;
+    const amp = 3 + (j < 3 ? j : 5 - j);
+    for (let p = 1; p <= 10; p++) {
+      const cx = 65 - 2 * p;
+      const cy = y + 1.5 + dir * (Math.sin(p * 0.7 + timeDrift) * amp + p * 0.5);
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  // Right yarn curves (extend rightwards from x=175 to x=195)
+  for (let j = 0; j < 6; j++) {
+    const y = GY[j];
+    ctx.strokeStyle = LOOM_COLORS[j];
+    ctx.beginPath();
+    ctx.moveTo(175, y + 1.5);
+    const dir = j < 3 ? -1 : 1;
+    const amp = 3 + (j < 3 ? (2 - j) : (j - 3));
+    for (let p = 1; p <= 10; p++) {
+      const cx = 175 + 2 * p;
+      const cy = y + 1.5 + dir * (Math.sin(p * 0.7 + timeDrift) * amp + p * 0.5);
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  // 5. Glowing Loom Orange accent bar
+  ctx.fillStyle = "#FF4500";
+  ctx.shadowColor = "#FF4500";
+  ctx.shadowBlur = 10;
+  roundRect(ctx, 80, 126, 80, 3, 1.5, true, false);
+  ctx.shadowBlur = 0;
+
+  // 6. Typography: "L O O M" letter-spaced
+  ctx.font = "bold 28px DotGothic16, monospace";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "center";
+  ctx.fillText("L  O  O  M", 120, 165);
+
+  ctx.font = "bold 11px DotGothic16, monospace";
+  ctx.fillStyle = "#00E5FF";
+  ctx.fillText("GROOVEBOX · FM-1", 120, 185);
+
+  ctx.restore();
+}
+
+// ---------------- Standard Slide Renderer ----------------
+function renderStandardSlide(slide, elapsedInSlide, index) {
+  const theme = slide.themeColor || "#00E5FF";
+  const accent = slide.accentColor || "#BD00FF";
+
+  // Deep space background with subtle neon grid
+  ctx.fillStyle = "#08080E";
+  ctx.fillRect(0, 0, 1920, 1080);
+
+  // Background ambient glowing neon orb
+  const bgGrad = ctx.createRadialGradient(1400, 480, 50, 1400, 480, 800);
+  bgGrad.addColorStop(0, hexToRgba(theme, 0.16));
+  bgGrad.addColorStop(0.5, hexToRgba(accent, 0.05));
+  bgGrad.addColorStop(1, "rgba(8, 8, 14, 0)");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1920, 1080);
+
+  // Subtle grid lines
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < 1920; x += 80) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 1080);
+    ctx.stroke();
+  }
+  for (let y = 0; y < 1080; y += 80) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(1920, y);
+    ctx.stroke();
+  }
+
+  // Top Category Badge & Header Bar
+  ctx.save();
+  const badgeX = 90, badgeY = 70;
+  ctx.fillStyle = hexToRgba(theme, 0.15);
+  ctx.strokeStyle = hexToRgba(theme, 0.6);
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, badgeX, badgeY, 320, 36, 18, true, true);
+
+  ctx.font = "bold 12.5px DotGothic16, monospace";
+  ctx.fillStyle = theme;
+  ctx.fillText(slide.chapter, badgeX + 22, badgeY + 23);
+
+  // Timestamp & Slide Progress in upper right
+  ctx.font = "14px DotGothic16, monospace";
+  ctx.fillStyle = "#707085";
+  ctx.textAlign = "right";
+  ctx.fillText(`SCENE ${String(index + 1).padStart(2, "0")} / ${SLIDES.length}  ·  ${formatTime(playhead)}`, 1830, badgeY + 23);
+  ctx.textAlign = "left";
+
+  // Slide Title (Neon Glow)
+  ctx.font = "bold 52px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.shadowColor = theme;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillText(slide.title, 90, 175);
+  ctx.shadowBlur = 0;
+
+  // Subtitle / Sonic Description
+  ctx.font = "500 20px -apple-system, BlinkMacSystemFont, sans-serif";
+  ctx.fillStyle = "#C2C2D4";
+  ctx.fillText(slide.subtitle, 92, 218);
+
+  // Left Content Column: Bullet Points & Parameters (Width ~840px)
+  const colX = 90, startY = 275;
+  if (slide.bullets) {
+    slide.bullets.forEach((bullet, bIdx) => {
+      const by = startY + bIdx * 62;
+
+      // Glowing Diamond bullet icon
+      ctx.fillStyle = theme;
+      ctx.shadowColor = theme;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(colX + 8, by - 6);
+      ctx.lineTo(colX + 16, by);
+      ctx.lineTo(colX + 8, by + 6);
+      ctx.lineTo(colX, by);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Bullet Text
+      ctx.font = "400 19px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "#EAEAEA";
+      ctx.fillText(bullet, colX + 32, by + 6);
+    });
+  }
+
+  // Parameter Badges / Quick Knobs
+  if (slide.params) {
+    const paramY = 560;
+    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.fillStyle = "#888899";
+    ctx.fillText("KEY PARAMETERS & LIVE CONTROLS:", colX, paramY);
+
+    let px = colX;
+    slide.params.forEach((param, pIdx) => {
+      ctx.font = "bold 13px DotGothic16, monospace";
+      const txtWidth = ctx.measureText(param).width;
+      const pw = txtWidth + 24;
+
+      ctx.fillStyle = "rgba(22, 22, 34, 0.85)";
+      ctx.strokeStyle = hexToRgba(pIdx % 2 === 0 ? theme : accent, 0.55);
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, px, paramY + 14, pw, 34, 10, true, true);
+
+      ctx.fillStyle = pIdx % 2 === 0 ? theme : accent;
+      ctx.fillText(param, px + 12, paramY + 36);
+
+      px += pw + 12;
+    });
+  }
+
+  // Audio Waveform Reactive Visualizer Bar
+  renderWaveformVisualizer(colX, 660, 780, 110, theme, accent);
+
+  // Right Column: Graphic Display / Screenshot Frame (Width ~840px, Height ~640px)
+  const frameX = 970, frameY = 160, frameW = 860, frameH = 620;
+
+  // Glowing Glassmorphic Device Frame
+  ctx.fillStyle = "rgba(16, 16, 26, 0.75)";
+  ctx.strokeStyle = hexToRgba(theme, 0.45);
+  ctx.lineWidth = 2;
+  ctx.shadowColor = hexToRgba(theme, 0.25);
+  ctx.shadowBlur = 30;
+  roundRect(ctx, frameX, frameY, frameW, frameH, 24, true, true);
+  ctx.shadowBlur = 0;
+
+  // Render Inner Content (Image or Custom Procedural Vector)
+  const innerX = frameX + 24, innerY = frameY + 24, innerW = frameW - 48, innerH = frameH - 48;
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, innerX, innerY, innerW, innerH, 16, false, false);
+  ctx.clip();
+
+  if (slide.image && loadedImages[slide.image]) {
+    // Subtle Ken Burns motion on screenshot
+    const img = loadedImages[slide.image];
+    const zoom = 1.0 + Math.sin(elapsedInSlide * 0.3) * 0.04;
+    const drawW = innerW * zoom;
+    const drawH = innerH * zoom;
+    const drawX = innerX - (drawW - innerW) / 2;
+    const drawY = innerY - (drawH - innerH) / 2;
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+    // Frame bezel gloss
+    const gloss = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH);
+    gloss.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+    gloss.addColorStop(0.3, "rgba(255, 255, 255, 0.0)");
+    gloss.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+    ctx.fillStyle = gloss;
+    ctx.fillRect(innerX, innerY, innerW, innerH);
+  } else {
+    // Procedural Vector Display for engines without screenshots
+    renderProceduralVectorDisplay(innerX, innerY, innerW, innerH, slide.vectorType, theme, accent, elapsedInSlide);
+  }
+
+  ctx.restore();
+
+  // Bottom Timeline Neon Bar
+  const progWidth = (playhead / totalDuration) * 1920;
+  const barGrad = ctx.createLinearGradient(0, 1074, 1920, 1074);
+  barGrad.addColorStop(0, "#00E5FF");
+  barGrad.addColorStop(0.35, "#BD00FF");
+  barGrad.addColorStop(0.7, "#FF007F");
+  barGrad.addColorStop(1, "#39FF14");
+  ctx.fillStyle = barGrad;
+  ctx.fillRect(0, 1074, progWidth, 6);
+
+  ctx.restore();
+}
+
+// Procedural Oscilloscope & Display Engine for Synth Engines
+function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
+  // Deep dark display background
+  ctx.fillStyle = "#0A0B10";
+  ctx.fillRect(x, y, w, h);
+
+  // Grid lines
+  ctx.strokeStyle = "rgba(0, 229, 255, 0.08)";
+  ctx.lineWidth = 1;
+  for (let gx = x; gx < x + w; gx += 40) {
+    ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx, y + h); ctx.stroke();
+  }
+  for (let gy = y; gy < y + h; gy += 40) {
+    ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + w, gy); ctx.stroke();
+  }
+
+  const cx = x + w / 2, cy = y + h / 2;
+
+  if (type === "analog") {
+    // Oscilloscope dual waveforms + filter cutoff curve
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 16;
+
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 4) {
+      const ph = px * 0.03 + time * 3.5;
+      const wave = Math.sin(ph) * 0.6 + Math.sin(ph * 2) * 0.3; // Saw + Sub
+      const py = cy - 40 + wave * 90;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+
+    // 24dB Ladder Filter cutoff slope in accent color
+    ctx.strokeStyle = accent;
+    ctx.shadowColor = accent;
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 4) {
+      const norm = px / (w - 60);
+      const cutoff = 0.55 + Math.sin(time * 1.2) * 0.15;
+      const slope = norm < cutoff ? 1.0 : Math.exp(-(norm - cutoff) * 9);
+      const py = cy + 180 - slope * 130;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Badges
+    drawMiniBadge(x + 30, y + 30, "DUAL OSC (SAW + SUB)", theme);
+    drawMiniBadge(x + 30, y + 65, "24dB/OCT LADDER FILTER", accent);
+  }
+  else if (type === "phase") {
+    // Casio CZ Phase Modulation Curves
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 14;
+
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 3) {
+      const phi = (px / (w - 60)) * Math.PI * 4;
+      const dist = Math.sin(time * 2.0) * 0.7 + 0.8;
+      const distortedPhi = phi + dist * Math.sin(phi);
+      const wave = Math.sin(distortedPhi);
+      const py = cy + wave * 110;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    drawMiniBadge(x + 30, y + 30, "PHASE DISTORTION MORPH", theme);
+  }
+  else if (type === "lofi") {
+    // Stepped bit-crush quantized waveform & sample decimation
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 12;
+
+    const bits = 4;
+    const levels = Math.pow(2, bits);
+    ctx.beginPath();
+    const stepSize = 18;
+    for (let px = 0; px < w - 60; px += stepSize) {
+      const ph = px * 0.02 + time * 2;
+      const raw = Math.sin(ph);
+      const quant = Math.round(raw * (levels / 2)) / (levels / 2);
+      const py = cy + quant * 120;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else {
+        ctx.lineTo(x + 30 + px, py);
+        ctx.lineTo(x + 30 + px + stepSize, py);
+      }
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    drawMiniBadge(x + 30, y + 30, "4-BIT QUANTIZATION & DECIMATION", theme);
+  }
+  else if (type === "voice") {
+    // Formant vocal tract resonance cavities
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 14;
+
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 4) {
+      const f1 = 0.3 + Math.sin(time * 1.5) * 0.15;
+      const f2 = 0.7 + Math.cos(time * 1.2) * 0.12;
+      const norm = px / (w - 60);
+      const peak1 = Math.exp(-Math.pow((norm - f1) * 8, 2));
+      const peak2 = Math.exp(-Math.pow((norm - f2) * 9, 2)) * 0.8;
+      const py = cy + 120 - (peak1 + peak2) * 200;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    drawMiniBadge(x + 30, y + 30, "VOWEL TRACT FORMANT CAVITIES (F1 / F2)", theme);
+  }
+  else if (type === "wheel") {
+    // 9 Drawbars Visualizer
+    const drawbars = [8, 8, 6, 0, 0, 4, 3, 5, 8];
+    const bw = (w - 120) / 9;
+    drawbars.forEach((val, idx) => {
+      const bx = x + 60 + idx * bw;
+      const dynamicVal = Math.min(8, Math.max(0, val + Math.sin(time * 2 + idx) * 1.5));
+      const bh = (dynamicVal / 8) * (h - 180);
+
+      ctx.fillStyle = idx < 2 ? "#882222" : (idx < 5 ? "#EAEAEA" : "#222228");
+      ctx.strokeStyle = theme;
+      ctx.lineWidth = 2;
+      roundRect(ctx, bx, y + 80, bw - 12, bh, 6, true, true);
+
+      ctx.font = "bold 13px DotGothic16, monospace";
+      ctx.fillStyle = theme;
+      ctx.fillText(`${idx + 1}`, bx + bw / 2 - 8, y + 70);
+    });
+    drawMiniBadge(x + 30, y + 30, "9-DRAWBAR TONEWHEEL ENGINE", theme);
+  }
+  else if (type === "fm6") {
+    // FM6 Algorithm 32 Diagram & Operator Flow
+    const ops = [
+      { id: 1, cx: cx - 180, cy: cy + 100, isCarrier: true },
+      { id: 2, cx: cx - 180, cy: cy - 20, isCarrier: false },
+      { id: 3, cx: cx - 180, cy: cy - 140, isCarrier: false },
+      { id: 4, cx: cx + 180, cy: cy + 100, isCarrier: true },
+      { id: 5, cx: cx + 180, cy: cy - 20, isCarrier: false },
+      { id: 6, cx: cx + 180, cy: cy - 140, isCarrier: false }
+    ];
+
+    // Modulator connections
+    ctx.strokeStyle = "rgba(0, 229, 255, 0.5)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 180, cy - 140); ctx.lineTo(cx - 180, cy + 100);
+    ctx.moveTo(cx + 180, cy - 140); ctx.lineTo(cx + 180, cy + 100);
+    ctx.stroke();
+
+    ops.forEach((op) => {
+      ctx.fillStyle = op.isCarrier ? hexToRgba(theme, 0.3) : "rgba(22, 22, 36, 0.9)";
+      ctx.strokeStyle = op.isCarrier ? theme : accent;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = op.isCarrier ? theme : accent;
+      ctx.shadowBlur = 10;
+      roundRect(ctx, op.cx - 45, op.cy - 30, 90, 60, 10, true, true);
+      ctx.shadowBlur = 0;
+
+      ctx.font = "bold 18px DotGothic16, monospace";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.textAlign = "center";
+      ctx.fillText(`OP ${op.id}`, op.cx, op.cy + 6);
+    });
+    ctx.textAlign = "left";
+    drawMiniBadge(x + 30, y + 30, "6-OPERATOR FM ALGORITHM TOPOLOGY", theme);
+  }
+  else if (type === "phys") {
+    // Waveguide String Nodes & Physical Reflection
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = theme;
+    ctx.shadowColor = theme;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 4) {
+      const norm = px / (w - 60);
+      const envelope = Math.sin(norm * Math.PI); // string fixed at ends
+      const wave = Math.sin(norm * 14 + time * 8) * envelope;
+      const py = cy + wave * 90;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    drawMiniBadge(x + 30, y + 30, "KARPLUS-STRONG WAVEGUIDE DISPERSION", theme);
+  }
+  else if (type === "noise") {
+    // Multi-color filtered noise & resonant peaks
+    ctx.strokeStyle = theme;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let px = 0; px < w - 60; px += 2) {
+      const rand = (Math.random() - 0.5) * 140;
+      const py = cy + rand;
+      if (px === 0) ctx.moveTo(x + 30 + px, py);
+      else ctx.lineTo(x + 30 + px, py);
+    }
+    ctx.stroke();
+    drawMiniBadge(x + 30, y + 30, "DUAL RESONANT BAND-PASS NOISE", theme);
+  }
+  else if (type === "drum") {
+    // 8-Lane Drum Matrix
+    const lanes = ["KICK", "SNARE", "CHH", "OHH", "TOM", "RIM", "CLAP", "PERC"];
+    const lh = (h - 100) / 8;
+    lanes.forEach((name, lIdx) => {
+      const ly = y + 60 + lIdx * lh;
+      ctx.font = "bold 12px DotGothic16, monospace";
+      ctx.fillStyle = theme;
+      ctx.fillText(name, x + 30, ly + lh / 2 + 4);
+
+      // 16 step dots
+      for (let s = 0; s < 16; s++) {
+        const sx = x + 120 + s * ((w - 160) / 16);
+        const isActive = (s % 4 === 0 && lIdx === 0) || (s % 8 === 4 && lIdx === 1) || (s % 2 === 0 && lIdx === 2);
+        ctx.fillStyle = isActive ? accent : "rgba(255, 255, 255, 0.08)";
+        if (isActive) {
+          ctx.shadowColor = accent;
+          ctx.shadowBlur = 8;
+        }
+        ctx.beginPath();
+        ctx.arc(sx, ly + lh / 2, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    });
+    drawMiniBadge(x + 30, y + 30, "8-VOICE POLYPHONIC DRUM MATRIX", theme);
+  }
+  else if (type === "arp") {
+    // Algorithmic Arp Patterns
+    ctx.font = "bold 16px DotGothic16, monospace";
+    ctx.fillStyle = theme;
+    ctx.fillText("12 MODES: UP · DOWN · BACH · BROWNIAN · CONV · DIVG", x + 30, cy - 80);
+
+    // Brownian step walk
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = accent;
+    ctx.beginPath();
+    let walkY = cy + 40;
+    for (let px = 0; px < w - 80; px += 24) {
+      walkY += (Math.sin(px * 0.1 + time * 3) > 0 ? 18 : -18);
+      walkY = Math.max(cy - 40, Math.min(cy + 120, walkY));
+      if (px === 0) ctx.moveTo(x + 40 + px, walkY);
+      else ctx.lineTo(x + 40 + px, walkY);
+
+      ctx.fillStyle = theme;
+      ctx.fillRect(x + 37 + px, walkY - 3, 6, 6);
+    }
+    ctx.stroke();
+    drawMiniBadge(x + 30, y + 30, "BROWNIAN COUNTERPOINT GENERATOR", theme);
+  }
+}
+
+function drawMiniBadge(bx, by, text, color) {
+  ctx.fillStyle = "rgba(12, 12, 20, 0.88)";
+  ctx.strokeStyle = hexToRgba(color, 0.65);
+  ctx.lineWidth = 1.5;
+  ctx.font = "bold 11px DotGothic16, monospace";
+  const tw = ctx.measureText(text).width + 20;
+  roundRect(ctx, bx, by, tw, 26, 6, true, true);
+
+  ctx.fillStyle = color;
+  ctx.fillText(text, bx + 10, by + 17);
+}
+
+// Waveform visualizer reacting to audio
+function renderWaveformVisualizer(vx, vy, vw, vh, theme, accent) {
+  ctx.fillStyle = "rgba(14, 14, 22, 0.75)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+  ctx.lineWidth = 1;
+  roundRect(ctx, vx, vy, vw, vh, 14, true, true);
+
+  ctx.font = "bold 11px DotGothic16, monospace";
+  ctx.fillStyle = "#6E6E80";
+  ctx.fillText("REAL-TIME AUDIO SPECTRUM & BUS DYNAMICS", vx + 16, vy + 22);
+
+  const numBars = 36;
+  const barW = (vw - 40) / numBars;
+  for (let b = 0; b < numBars; b++) {
+    const ph = b * 0.2 + playhead * 4.5;
+    const mag = Math.max(6, (Math.sin(ph) * 0.5 + 0.5) * (vh - 45) * (0.4 + Math.random() * 0.6));
+    const bx = vx + 20 + b * barW;
+    const by = vy + vh - 15 - mag;
+
+    const grad = ctx.createLinearGradient(bx, by + mag, bx, by);
+    grad.addColorStop(0, theme);
+    grad.addColorStop(1, accent);
+    ctx.fillStyle = grad;
+    roundRect(ctx, bx, by, barW - 4, mag, 2, true, false);
+  }
+}
+
+// Utility: Round Rectangle
+function roundRect(context, x, y, w, h, r, fill, stroke) {
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.lineTo(x + w - r, y);
+  context.quadraticCurveTo(x + w, y, x + w, y + r);
+  context.lineTo(x + w, y + h - r);
+  context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  context.lineTo(x + r, y + h);
+  context.quadraticCurveTo(x, y + h, x, y + h - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
+  if (fill) context.fill();
+  if (stroke) context.stroke();
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// ---------------------------------------------------------------------
+// 5. Main Render Loop & Playback Controls
+// ---------------------------------------------------------------------
+function renderFrame(now) {
+  const delta = (now - lastFrameTimestamp) / 1000;
+  lastFrameTimestamp = now;
+
+  if (isPlaying) {
+    playhead += delta * playbackSpeed;
+    if (playhead >= totalDuration) {
+      playhead = totalDuration;
+      pause();
+      if (isRecording) stopRecording();
+    }
+  }
+
+  // Update audio synthesis clock
+  updateAudioClock(playhead);
+
+  // Render current slide
+  const { slide, index } = getSlideAtTime(playhead);
+  const elapsedInSlide = playhead - slide.startTime;
+
+  if (slide.type === "cold_open") {
+    renderColdOpen(elapsedInSlide, slide);
+  } else {
+    renderStandardSlide(slide, elapsedInSlide, index);
+  }
+
+  // Update HUD
+  hudChapterTitle.textContent = slide.chapter;
+  hudSlideIdx.textContent = `Slide ${index} / ${SLIDES.length - 1}`;
+  timeCurrent.textContent = formatTime(playhead);
+  scrubberFill.style.width = `${(playhead / totalDuration) * 100}%`;
+  selectSlide.value = index;
+
+  requestAnimationFrame(renderFrame);
+}
+requestAnimationFrame(renderFrame);
+
+// Play / Pause controls
+function play() {
+  initAudio();
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  isPlaying = true;
+  btnPlayPause.textContent = "⏸ Pause";
+  btnPlayPause.classList.remove("primary");
+}
+
+function pause() {
+  isPlaying = false;
+  btnPlayPause.textContent = "▶ Play";
+  btnPlayPause.classList.add("primary");
+}
+
+btnPlayPause.addEventListener("click", () => {
+  if (isPlaying) pause();
+  else play();
+});
+
+btnRestart.addEventListener("click", () => {
+  playhead = 0.0;
+  lastColdOpenTrigger = -1;
+  barCounter = -1;
+  play();
+});
+
+btnPrev.addEventListener("click", () => {
+  const { index } = getSlideAtTime(playhead);
+  if (index > 0) {
+    playhead = SLIDES[index - 1].startTime;
+    lastColdOpenTrigger = -1;
+    barCounter = -1;
+  }
+});
+
+btnNext.addEventListener("click", () => {
+  const { index } = getSlideAtTime(playhead);
+  if (index < SLIDES.length - 1) {
+    playhead = SLIDES[index + 1].startTime;
+    lastColdOpenTrigger = -1;
+    barCounter = -1;
+  }
+});
+
+selectSlide.addEventListener("change", (e) => {
+  const idx = parseInt(e.target.value, 10);
+  playhead = SLIDES[idx].startTime;
+  lastColdOpenTrigger = -1;
+  barCounter = -1;
+});
+
+selectSpeed.addEventListener("change", (e) => {
+  playbackSpeed = parseFloat(e.target.value);
+});
+
+btnMute.addEventListener("click", () => {
+  audioMuted = !audioMuted;
+  btnMute.textContent = audioMuted ? "🔇 Muted" : "🔊 Audio";
+  if (audioMaster && audioCtx) {
+    audioMaster.gain.setValueAtTime(audioMuted ? 0 : 0.85, audioCtx.currentTime);
+  }
+});
+
+// Scrubber Click & Drag
+let isScrubbing = false;
+function seekFromEvent(e) {
+  const rect = scrubberTrack.getBoundingClientRect();
+  const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  playhead = frac * totalDuration;
+  lastColdOpenTrigger = -1;
+  barCounter = -1;
+}
+
+scrubberTrack.addEventListener("pointerdown", (e) => {
+  isScrubbing = true;
+  scrubberTrack.setPointerCapture(e.pointerId);
+  seekFromEvent(e);
+});
+
+scrubberTrack.addEventListener("pointermove", (e) => {
+  if (isScrubbing) seekFromEvent(e);
+});
+
+window.addEventListener("pointerup", () => { isScrubbing = false; });
+window.addEventListener("pointercancel", () => { isScrubbing = false; });
+
+// Fullscreen
+btnFullscreen.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+});
+
+// ---------------------------------------------------------------------
+// 6. MediaRecorder 1080p 60fps Video Export Pipeline
+// ---------------------------------------------------------------------
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+
+function startRecording() {
+  initAudio();
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+
+  // Reset playhead to beginning
+  playhead = 0.0;
+  lastColdOpenTrigger = -1;
+  barCounter = -1;
+  playbackSpeed = 1.0;
+  selectSpeed.value = "1";
+
+  // Combine Canvas 60fps video stream + Web Audio destination
+  const videoStream = canvas.captureStream(60);
+  const combinedStream = new MediaStream();
+
+  videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
+  if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
+    audioDest.stream.getAudioTracks().forEach(track => combinedStream.addTrack(track));
+  }
+
+  // Detect supported mime type
+  const mimeTypes = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4"
+  ];
+  let chosenMime = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || "";
+
+  try {
+    mediaRecorder = new MediaRecorder(combinedStream, {
+      mimeType: chosenMime,
+      videoBitsPerSecond: 14000000 // 14 Mbps for crisp 1080p 60fps YouTube upload
+    });
+  } catch (err) {
+    console.error("Failed to initialize MediaRecorder with high bitrate, falling back:", err);
+    mediaRecorder = new MediaRecorder(combinedStream);
+  }
+
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    isRecording = false;
+    btnRecord.textContent = "🎬 Record 1080p Video";
+    btnRecord.classList.remove("recording-active");
+    showToast("Rendering Complete! Downloading video file...");
+
+    const blob = new Blob(recordedChunks, { type: chosenMime || "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "loom-fm1-groovebox-overview-1080p.webm";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
+  mediaRecorder.start(1000); // 1-second chunks
+  isRecording = true;
+  btnRecord.textContent = "⏹ Stop & Save Video";
+  btnRecord.classList.add("recording-active");
+  showToast("Recording 1080p 60fps presentation video...");
+
+  play();
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+}
+
+btnRecord.addEventListener("click", () => {
+  if (isRecording) stopRecording();
+  else startRecording();
+});
+
+// Auto-hide HUD on idle
+let hudTimeout = null;
+const hudEls = [document.getElementById("hud-header"), document.getElementById("hud-controls")];
+function resetHudTimer() {
+  hudEls.forEach(el => el.style.opacity = "1");
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => {
+    if (isPlaying) {
+      hudEls.forEach(el => el.style.opacity = "0");
+    }
+  }, 3500);
+}
+window.addEventListener("mousemove", resetHudTimer);
+window.addEventListener("pointerdown", resetHudTimer);
+resetHudTimer();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,3056 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only
+     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+     The page follows X0X's browser page, web/emu/index.html of charlesvestal/fm1-x0x (GPL-3.0), a Felucca fork. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loom FM-1</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22%23fff%22/%3E%3C/svg%3E">
+<meta name="description" content="Loom FM-1, multi-engine synthesizer and groovebox firmware for the M-VAVE FM-1.">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+/* DotGothic16 (SIL OFL 1.1, fonts/OFL.txt), cut to printable ASCII, for the knob labels */
+@font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
+:root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
+        --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
+        --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+html, body { background: var(--bg); }
+body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
+@media (orientation: portrait) and (max-width: 700px) { main { padding: 8px 8px 24px; } }
+a { color: inherit; }
+.device { position: relative; width: 100%; aspect-ratio: 1000 / 624; user-select: none; -webkit-user-select: none;
+          -webkit-touch-callout: none; touch-action: manipulation; }
+.device svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.device canvas { position: absolute; image-rendering: crisp-edges; image-rendering: pixelated; background: #000; }
+.hit { position: absolute; touch-action: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 10px; }
+.hit.knob { cursor: ns-resize; border-radius: 50%; }
+.hit:focus-visible { outline: 2px solid var(--lit); outline-offset: 2px; }
+.face { transition: fill .05s; }
+.dim .face.btn { fill: #3a3934; }
+.lit .face.btn { fill: var(--lit); }
+.lit text { fill: #1d1d1f; }
+.green .face.btn { fill: var(--green); }
+.green text { fill: #0d2414; }
+.face.key { fill: #0c0c0d; stroke: var(--edge); stroke-width: 1.5; }
+.slit { fill: #3a3a3c; transition: fill .05s; }
+.dim .slit { fill: #77777b; }
+.lit .slit { fill: #ececee; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .6)); }
+/* #119: what can be pressed breathes, dark .. ~60 % of lit and back (hal/fm1_input.h fm1_led_breath, ~1.1 s; MENU >
+ * LEDS DIM LO ~30 %): the peaks between dark and lit at ~0.8 / ~0.58 on screen (the LED's share, gamma-encoded) */
+@keyframes breath-btn { 0%, 100% { fill: #3a3934; } 50% { fill: #d8cfb6; } }
+@keyframes breath-slit { 0%, 100% { fill: #3a3a3c; } 50% { fill: #c8c8ca; } }
+@keyframes breath-btn-lo { 0%, 100% { fill: #3a3934; } 50% { fill: #aca592; } }
+@keyframes breath-slit-lo { 0%, 100% { fill: #3a3a3c; } 50% { fill: #a1a1a3; } }
+.breath .face.btn { animation: breath-btn 1.13s ease-in-out infinite; }
+.breath .slit { animation: breath-slit 1.13s ease-in-out infinite; }
+.dimlo .breath .face.btn { animation-name: breath-btn-lo; }
+.dimlo .breath .slit { animation-name: breath-slit-lo; }
+@media (prefers-reduced-motion: reduce) {
+  .breath .face.btn, .breath .slit { animation: none; }
+  .breath .face.btn { fill: #aca592; }
+  .breath .slit { fill: #a1a1a3; }
+}
+/* the DRUM grid's beats (hal/fm1_input.h fm1_led_mid): a steady level between the glow and lit, ~15 % (DIM LO ~10 %) */
+.mid .slit { fill: #9a9a9e; }
+.dimlo .mid .slit { fill: #8a8a8e; }
+.held .face { stroke: var(--lit); stroke-width: 3; }
+.latched .face { stroke: #79b8ff; stroke-width: 3; }
+.start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
+         background: rgba(0, 0, 0, .5); border-radius: 4% / 6%; }
+.start[hidden] { display: none; }
+.start button { font: inherit; font-size: 18px; padding: 12px 28px; background: #fff; color: #000; border: 0; cursor: pointer; }
+.start button:disabled { opacity: .4; cursor: progress; }
+.start p { margin: 0; max-width: 32em; text-align: center; color: #fff; }
+.keys, footer { margin: 16px 0 0; color: var(--dim); text-align: center; }
+.keys span { white-space: nowrap; margin: 0 8px; }
+kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rule); padding: 0 4px; color: var(--fg); }
+footer { margin-top: 12px; font-size: 12px; }
+footer nav a { margin: 0 6px; }
+footer small { font-size: 11px; opacity: .8; }
+/* Loom Workbench Navigation & Panels */
+.wb-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+          background: #1d1d1f; color: #ececee; padding: 10px 16px; border-radius: 14px; margin-bottom: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.22); }
+.wb-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: 0.4px; }
+.wb-badge { background: #ff2d78; color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 700; letter-spacing: 0.6px; }
+.wb-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.wb-tab { background: #2c2c2e; color: #d6d6d8; border: 1px solid #3a3a3e; border-radius: 8px; padding: 6px 13px;
+          font: 600 12.5px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; transition: all 0.12s; }
+.wb-tab:hover { background: #3a3a3e; color: #fff; }
+.wb-tab.active { background: #5fe08a; color: #0d2414; border-color: #5fe08a; }
+.wb-actions { display: flex; align-items: center; gap: 8px; }
+.wb-btn { background: #2c2c2e; color: #ececee; border: 1px solid #48484a; border-radius: 8px; padding: 6px 12px;
+          font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.wb-btn:hover:not(:disabled) { background: #3a3a3e; }
+.wb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wb-btn.rec-active { background: #ff453a; color: #fff; border-color: #ff453a; animation: pulse-rec 1s infinite; }
+.wb-btn.primary { background: #5fe08a; color: #0d2414; border-color: #5fe08a; }
+.wb-btn.warn { background: #ff9f0a; color: #1d1d1f; border-color: #ff9f0a; }
+@keyframes pulse-rec { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+.wb-panel { display: none; }
+.wb-panel.active { display: block; }
+.wb-card { background: #1d1d1f; color: #ececee; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
+.wb-card h2 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+.wb-card h3 { margin: 18px 0 8px; font-size: 14px; color: #5fe08a; text-transform: uppercase; letter-spacing: 0.5px; }
+.wb-card p { margin: 0 0 12px; color: #c7c7cc; font-size: 13.5px; }
+.wb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+.wb-box { background: #262629; border: 1px solid #3a3a3e; border-radius: 12px; padding: 16px; }
+.wb-box h4 { margin: 0 0 6px; font-size: 14px; color: #fff; }
+.wb-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 10px; border: 1px solid #48484a;
+             background: #262629; color: #fff; font: 14px -apple-system, BlinkMacSystemFont, sans-serif; margin-bottom: 16px; }
+.wb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wb-table th, .wb-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #323236; vertical-align: top; }
+.wb-table th { color: #5fe08a; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+.wb-table td code { background: #2c2c2e; color: #fff4d6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.wb-tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #323236; color: #5fe08a; }
+/* Magazine Style Interactive Manual */
+.mag-section { margin-top: 24px; }
+.mag-card { display: flex; gap: 20px; background: #262629; border: 1px solid #38383c; border-radius: 14px; padding: 18px; margin-bottom: 20px; align-items: flex-start; }
+.mag-aside { flex: 0 0 200px; max-width: 200px; }
+.mag-aside img { width: 100%; height: auto; border-radius: 10px; border: 1px solid #4a4a4e; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: block; }
+.mag-aside img + img { margin-top: 10px; }
+.mag-caption { font-size: 11px; color: #8e8e93; margin-top: 6px; text-align: center; }
+.mag-content { flex: 1 1 auto; min-width: 0; }
+.mag-content h4 { margin: 0 0 8px; font-size: 16px; color: #5fe08a; display: flex; align-items: center; gap: 8px; }
+.mag-content p { margin: 0 0 10px; font-size: 13px; line-height: 1.55; color: #d1d1d6; }
+.mag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 10px; }
+.mag-pill { background: #1c1c1e; border: 1px solid #323236; border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.mag-pill strong { color: #fff; }
+.mag-pill code { color: #5fe08a; background: #2a2a2e; padding: 1px 5px; border-radius: 4px; }
+.mag-links-card { background: #1a1a1d; border: 1px solid rgba(95, 224, 138, 0.35); border-radius: 14px; padding: 22px; margin-top: 28px; }
+.mag-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+.mag-link-btn { display: block; background: #262629; border: 1px solid #3c3c40; border-radius: 10px; padding: 14px; color: #ececee; text-decoration: none; transition: all 0.15s; }
+.mag-link-btn:hover { background: #323236; border-color: #5fe08a; transform: translateY(-2px); }
+.mag-link-btn h5 { margin: 0 0 4px; font-size: 14px; color: #5fe08a; }
+.mag-link-btn p { margin: 0; font-size: 12px; color: #9a9a9e; line-height: 1.4; }
+@media (max-width: 700px) {
+  .mag-card { flex-direction: column; }
+  .mag-aside { max-width: 100%; width: 100%; }
+}
+
+/* Loom Parameter Quick-Inspect Bar (3-Column Layout Matching User Diagram) */
+.wb-nav-inspect {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  background: #1d1d1f;
+  color: #ececee;
+  padding: 14px 18px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+  border: 1px solid #2a2a2d;
+  box-sizing: border-box;
+}
+
+.wb-inspect-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wb-inspect-col + .wb-inspect-col {
+  border-left: 1px solid #323236;
+  padding-left: 16px;
+}
+
+.wb-inspect-col-engines {
+  flex: 5;
+}
+
+.wb-inspect-col-comp {
+  flex: 2;
+  min-width: 145px;
+}
+
+.wb-inspect-col-fx {
+  flex: 4;
+}
+
+.wb-inspect-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wb-inspect-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: #262629;
+  border: 1px solid #3a3a40;
+  padding: 3px 12px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.wb-inspect-grid {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+
+/* 5 columns for 14 engines: 5 + 5 + 4 neatly balanced across 3 rows */
+.wb-grid-engines {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* 1 single column for Composition: 3 stacked pills matching the 3-row height */
+.wb-grid-comp {
+  grid-template-columns: 1fr;
+}
+
+/* 4 columns for 8 FX: 4 + 4 neatly balanced across 2 rows */
+.wb-grid-fx {
+  grid-template-columns: repeat(4, 1fr);
+  align-content: start;
+}
+
+.wb-inspect-pill {
+  background: #2c2c2e;
+  color: #d6d6d8;
+  border: 1px solid #3a3a3e;
+  border-radius: 8px;
+  padding: 6px 4px;
+  font: 600 11.5px -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+}
+
+.wb-inspect-pill:hover {
+  background: #3a3a3e;
+  color: #fff;
+  border-color: #505056;
+}
+
+.wb-inspect-pill.active {
+  background: #5fe08a;
+  color: #0d2414;
+  border-color: #5fe08a;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(95, 224, 138, 0.45);
+}
+
+@media (max-width: 900px) {
+  .wb-nav-inspect {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .wb-inspect-col + .wb-inspect-col {
+    border-left: none;
+    border-top: 1px solid #323236;
+    padding-left: 0;
+    padding-top: 14px;
+  }
+  .wb-grid-engines {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  .wb-grid-fx {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+}
+
+/* Parameter Inspector Panel & Quick-Inspect Bar */
+.wb-nav-inspect {
+  margin: 18px 0 0;
+}
+
+.param-inspector-panel {
+  display: block;
+  background: #1d1d1f;
+  color: #ececee;
+  border: 1px solid #343438;
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin: 14px 0 24px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32);
+  scroll-margin-top: 18px;
+}
+
+@keyframes inspect-pulse {
+  0% { box-shadow: 0 0 0 2px #5fe08a, 0 8px 28px rgba(0,0,0,0.32); }
+  50% { box-shadow: 0 0 0 4px #5fe08a, 0 8px 32px rgba(95, 224, 138, 0.4); }
+  100% { box-shadow: 0 0 0 1px #343438, 0 8px 28px rgba(0,0,0,0.32); }
+}
+
+.param-inspector-panel.highlight {
+  animation: inspect-pulse 0.9s ease;
+}
+
+.param-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #2c2c30;
+  margin-bottom: 16px;
+}
+
+.param-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.param-title-wrap h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.param-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.param-track-target {
+  font-size: 11px;
+  font-weight: 700;
+  background: #27272b;
+  color: #a1a1a6;
+  border: 1px solid #383840;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.param-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.param-trk-bar {
+  display: flex;
+  align-items: center;
+  background: #141416;
+  border: 1px solid #303036;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.param-trk-btn {
+  background: transparent;
+  color: #8e8e93;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.param-trk-btn:hover {
+  color: #fff;
+  background: #242429;
+}
+
+.param-trk-btn.active {
+  background: #2c2c34;
+  color: #5fe08a;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.param-eng-assign-btn {
+  background: #2a2a30;
+  color: #5fe08a;
+  border: 1px solid #3e3e48;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.param-eng-assign-btn:hover {
+  background: #383842;
+  border-color: #5fe08a;
+}
+
+.param-desc-main {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: #c7c7cc;
+  line-height: 1.5;
+}
+
+.param-pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.param-page-box {
+  background: #232327;
+  border: 1px solid #323236;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.param-page-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5fe08a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2a2a2e;
+  padding-bottom: 6px;
+}
+
+/* Interactive Parameter Row */
+.param-ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a2a2e;
+}
+
+.param-ctrl-row:last-child {
+  border-bottom: none;
+}
+
+.param-ctrl-widget {
+  flex: 0 0 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.param-ctrl-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.param-name-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.param-knob-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.param-knob-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: #323236;
+  color: #ff9f0a;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.param-live-val {
+  font-size: 11px;
+  color: var(--active-color, #5fe08a);
+  background: #18181b;
+  border: 1px solid #2f2f36;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 700;
+  text-align: right;
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+.param-range-sub {
+  font-size: 10px;
+  color: #71717a;
+  font-family: ui-monospace, Menlo, monospace;
+  margin-top: 1px;
+}
+
+.param-desc {
+  font-size: 11.5px;
+  color: #a1a1a6;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+/* Rotary Knob Component */
+.param-knob {
+  width: 44px;
+  height: 44px;
+  cursor: ns-resize;
+  position: relative;
+  touch-action: none;
+}
+
+.param-knob svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45));
+  transition: filter 0.12s ease;
+}
+
+.param-knob:hover svg, .param-knob.dragging svg {
+  filter: drop-shadow(0 2px 8px var(--active-color, rgba(95, 224, 138, 0.45)));
+}
+
+.param-knob:focus-visible {
+  outline: none;
+}
+
+.param-knob:focus-visible svg circle.knob-rim {
+  stroke: var(--active-color, #5fe08a);
+}
+
+/* Hardware Toggle Switch Component */
+.param-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.param-toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: #26262a;
+  border: 1px solid #3c3c44;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  touch-action: none;
+}
+
+.param-toggle:hover {
+  border-color: #52525c;
+}
+
+.param-toggle.active {
+  background: var(--active-color, #5fe08a);
+  border-color: var(--active-color, #5fe08a);
+  box-shadow: 0 0 10px var(--active-color, rgba(95, 224, 138, 0.5));
+}
+
+.param-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ececee;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  position: absolute;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), background-color 0.2s ease;
+}
+
+.param-toggle.active .param-toggle-thumb {
+  transform: translateX(18px);
+  background: #0d2414;
+}
+
+.param-tip {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #161618;
+  border-left: 3px solid #5fe08a;
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: #c7c7cc;
+}
+</style>
+</head>
+<body>
+<main>
+<nav class="wb-nav" aria-label="Loom Workbench Navigation">
+  <div class="wb-brand">
+    <span>🎛️ LOOM WORKBENCH</span>
+    <span class="wb-badge">FM-1</span>
+  </div>
+  <div class="wb-tabs" role="tablist">
+    <button class="wb-tab active" data-tab="play" role="tab" aria-selected="true">🎹 Play &amp; Emulator</button>
+    <button class="wb-tab" data-tab="editor" role="tab" aria-selected="false">🎚️ Editor &amp; Samples</button>
+    <button class="wb-tab" data-tab="updater" role="tab" aria-selected="false">⚡ Firmware Updater</button>
+    <button class="wb-tab" data-tab="manual" role="tab" aria-selected="false">📖 Manual &amp; Glossary</button>
+  </div>
+  <div class="wb-actions">
+    <a href="video.html" class="wb-btn" target="_blank" style="text-decoration:none; display:inline-flex; align-items:center; gap:5px;" title="Watch or export 1080p 60fps Loom FM-1 Video Overview">🎬 Video Tour</a>
+    <button id="resample-btn" class="wb-btn" type="button" disabled title="Record emulator audio output to a 16-bit WAV file that you can load into USR1..3 in Editor & Samples">● Resample Audio</button>
+  </div>
+</nav>
+
+<!-- TAB 1: PLAY & EMULATOR -->
+<section id="tab-play" class="wb-panel active" role="tabpanel">
+<div class="device" id="device">
+  <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
+  <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
+  <div class="start" id="start">
+    <button id="go" type="button">Switch on</button>
+    <div style="color: #5fe08a; font-size: 13px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">LOOM FM-1 · Multi-Engine Groovebox, Tape Scrub, Wavetable &amp; Ducking FX</div>
+    <p id="status" hidden></p>
+  </div>
+</div>
+
+<p class="keys">
+  <span><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd> keys</span>
+  <span><kbd>1</kbd>–<kbd>=</kbd> FX … REC</span>
+  <span><kbd>[</kbd> <kbd>]</kbd> OCT</span>
+  <span><kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
+  <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
+  <span><kbd>Shift</kbd>-click holds a button</span>
+</p>
+
+<!-- PARAMETER QUICK-INSPECT BAR (UNDERNEATH EMULATED FM-1) -->
+<nav class="wb-nav wb-nav-inspect" aria-label="Loom Parameter Quick-Inspect Bar">
+  <!-- SECTION 1: ENGINES -->
+  <div class="wb-inspect-col wb-inspect-col-engines">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#5fe08a;">Engines</span>
+    </div>
+    <div class="wb-inspect-grid wb-grid-engines">
+      <button class="wb-inspect-pill" data-inspect="subtract" data-color="#ff7300">SUBTRACT</button>
+      <button class="wb-inspect-pill" data-inspect="phase" data-color="#00e5ff">PHASE</button>
+      <button class="wb-inspect-pill" data-inspect="lofi" data-color="#ffd600">LOFI</button>
+      <button class="wb-inspect-pill" data-inspect="sample" data-color="#ff007f">SAMPLE</button>
+      <button class="wb-inspect-pill" data-inspect="voice" data-color="#d500f9">VOICE</button>
+      <button class="wb-inspect-pill" data-inspect="scrub" data-color="#ff2d78">SCRUB</button>
+      <button class="wb-inspect-pill" data-inspect="wheel" data-color="#76ff03">WHEEL</button>
+      <button class="wb-inspect-pill" data-inspect="grain" data-color="#ff6d00">GRAIN</button>
+      <button class="wb-inspect-pill" data-inspect="phys" data-color="#00e676">PHYS</button>
+      <button class="wb-inspect-pill" data-inspect="noise" data-color="#b0bec5">NOISE</button>
+      <button class="wb-inspect-pill" data-inspect="fm6" data-color="#ff1744">FM6</button>
+      <button class="wb-inspect-pill" data-inspect="slice" data-color="#00c853">SLICE</button>
+      <button class="wb-inspect-pill" data-inspect="wavetable" data-color="#00b0ff">WAVETABLE</button>
+      <button class="wb-inspect-pill" data-inspect="drum" data-color="#ff5252">DRUM</button>
+    </div>
+  </div>
+
+  <!-- SECTION 2: COMPOSITION -->
+  <div class="wb-inspect-col wb-inspect-col-comp">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#ffd600;">Composition</span>
+    </div>
+    <div class="wb-inspect-grid wb-grid-comp">
+      <button class="wb-inspect-pill" data-inspect="seq" data-color="#5fe08a">SEQUENCER</button>
+      <button class="wb-inspect-pill" data-inspect="arp" data-color="#ffd600">ARPEGGIATOR</button>
+      <button class="wb-inspect-pill" data-inspect="scale" data-color="#00e5ff">SCALES &amp; CHORDS</button>
+    </div>
+  </div>
+
+  <!-- SECTION 3: INSERT & SEND FX -->
+  <div class="wb-inspect-col wb-inspect-col-fx">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#ff9f0a;">Insert &amp; Send FX</span>
+    </div>
+    <div class="wb-inspect-grid wb-grid-fx">
+      <button class="wb-inspect-pill" data-inspect="wobble" data-color="#ff007f">WOBBLE</button>
+      <button class="wb-inspect-pill" data-inspect="octaver" data-color="#76ff03">OCTAVER</button>
+      <button class="wb-inspect-pill" data-inspect="overdrive" data-color="#ff3d00">OVERDRIVE</button>
+      <button class="wb-inspect-pill" data-inspect="panner" data-color="#d500f9">PANNER</button>
+      <button class="wb-inspect-pill" data-inspect="delay" data-color="#ffab00">TAPE ECHO</button>
+      <button class="wb-inspect-pill" data-inspect="reverb" data-color="#ff1744">REVERB</button>
+      <button class="wb-inspect-pill" data-inspect="chorus" data-color="#2979ff">CHORUS</button>
+      <button class="wb-inspect-pill" data-inspect="sidechain" data-color="#00e676">SIDECHAIN</button>
+    </div>
+  </div>
+</nav>
+
+<!-- PARAMETER INSPECTOR PANEL (LIVE REAL-TIME VALUES & CONTROLS) -->
+<section id="param-inspector" class="param-inspector-panel" aria-label="Parameter Inspector">
+  <div class="param-header">
+    <div class="param-title-wrap">
+      <span class="param-badge" id="param-badge" style="background:#ff7300; color:#111;">ENGINE</span>
+      <h3 id="param-title">SUBTRACT (4-Osc Subtractive Synth)</h3>
+      <span id="param-track-target" class="param-track-target"></span>
+    </div>
+    <div class="param-header-actions" id="param-header-actions">
+      <div class="param-trk-bar" id="param-trk-bar" title="Select active track">
+        <button class="param-trk-btn active" data-trk="0">T1</button>
+        <button class="param-trk-btn" data-trk="1">T2</button>
+        <button class="param-trk-btn" data-trk="2">T3</button>
+        <button class="param-trk-btn" data-trk="3">T4</button>
+        <button class="param-trk-btn" data-trk="4">DRUM</button>
+      </div>
+      <button id="param-eng-assign-btn" class="param-eng-assign-btn" style="display:none;"></button>
+    </div>
+  </div>
+  <p class="param-desc-main" id="param-desc-main">Four rich morphing oscillators with hard sync, wavefolder, resonant 24dB/12dB LP/BP/HP filters, sub-oscillator, and dedicated envelopes.</p>
+  <div class="param-pages-grid" id="param-pages-container"></div>
+  <div class="param-tip" id="param-tip">
+    <strong>💡 Sound Design Tip:</strong> Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).
+  </div>
+</section>
+</section>
+
+<!-- TAB 2: EDITOR & SAMPLES -->
+<section id="tab-editor" class="wb-panel" role="tabpanel">
+  <div class="wb-card" style="padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <div>
+      <strong style="color:#fff;">Loom Device Editor, <code>.MP3</code>/<code>.WAV</code> Sample Converter (<code>USR1..3</code>) &amp; <code>.MID</code> Multi-Track Importer</strong>
+      <div style="font-size:12px; color:#c7c7cc;">Works directly with the <strong>Browser Emulator</strong> (auto-connected) or a physical <strong>USB FM-1</strong>. Convert &amp; trim <code>.mp3</code>/<code>.wav</code> files into <code>USR1</code>–<code>USR3</code> (immediately playable in <code>SAMPLE</code>, <code>SLICE</code>, <code>SCRUB</code>, <code>WAVETABLE</code> &amp; <code>GRAIN</code>), or import <code>.mid</code>/<code>.midi</code> files with custom track-to-track routing.</div>
+    </div>
+    <a href="editor.html" target="_blank" class="wb-btn primary" style="text-decoration:none;">Open Fullscreen ↗</a>
+  </div>
+  <iframe id="editor-frame" title="Loom Device Editor & Sample Manager" style="width:100%; height:760px; border:0; border-radius:16px; background:#141415; box-shadow: 0 6px 20px rgba(0,0,0,0.25);"></iframe>
+</section>
+
+<!-- TAB 3: FIRMWARE UPDATER -->
+<section id="tab-updater" class="wb-panel" role="tabpanel">
+  <div class="wb-card">
+    <h2>⚡ USB-MIDI Firmware Updater &amp; Stock V15 Recovery</h2>
+    <p>Update a physical M-VAVE FM-1 directly from Chrome or Edge over a standard USB data cable (WebMIDI SysEx). No external hardware probe is needed. Static hosting (such as <strong>GitHub Pages</strong> or <code>localhost</code>) serves the firmware images directly to your browser.</p>
+
+    <div class="wb-grid">
+      <div class="wb-box">
+        <h4>1. Install Loom FM-1 Firmware</h4>
+        <p style="font-size:12.5px;">Flashes the built <code>loom-groovebox.fswc</code> Loom FM-1 firmware package to your connected FM-1.</p>
+        <p id="ota-pkg-info" style="font-size:12px; color:#5fe08a;">Checking for bundled <code>loom-groovebox.fswc</code>…</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+          <button id="ota-install-btn" class="wb-btn primary" type="button" disabled>⚡ Install Loom FM-1</button>
+          <label class="wb-btn" style="cursor:pointer;">
+            📂 Load Custom .fswc / .fwsc
+            <input id="ota-custom-file" type="file" accept=".fswc,.fwsc" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="wb-box">
+        <h4>2. Restore Official M-VAVE Stock V15</h4>
+        <p style="font-size:12.5px;">Automatically backs up your Loom songs, presets, and samples to a JSON archive, then restores the official factory <code>FM-1_015.fwsc</code> firmware.</p>
+        <p id="ota-stock-info" style="font-size:12px; color:#ff9f0a;">Checking for bundled <code>FM-1_015.fwsc</code>…</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+          <button id="ota-stock-btn" class="wb-btn warn" type="button" disabled>↺ Back Up &amp; Restore Stock V15</button>
+          <label class="wb-btn" style="cursor:pointer;">
+            📂 Select V15 .fwsc
+            <input id="ota-stock-file" type="file" accept=".fwsc" style="display:none;">
+          </label>
+        </div>
+        <label style="display:block; margin-top:10px; font-size:12px; color:#c7c7cc;">
+          <input id="ota-stock-resume" type="checkbox"> Resume interrupted restore (skip backup if device is already in <code>ota-FM-1</code> loader mode)
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <progress id="ota-bar" max="100" value="0" style="width:100%; height:8px; border-radius:4px;"></progress>
+      <div id="ota-status" style="margin-top:8px; font-weight:600; color:#5fe08a; min-height:1.5em;">Ready. Connect your FM-1 via USB.</div>
+      <pre id="ota-log" style="background:#141415; color:#9a9a9e; padding:12px; border-radius:8px; font-size:11.5px; max-height:180px; overflow:auto; margin-top:8px; white-space:pre-wrap;"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- TAB 4: MANUAL & GLOSSARY -->
+<section id="tab-manual" class="wb-panel" role="tabpanel">
+  <div class="wb-card">
+    <h2>📖 Loom FM-1 Illustrated Guide &amp; Interactive Reference Manual</h2>
+    <p>Explore the 5-track groovebox architecture, master send effects, per-track insert DSP, and hardware keyboard shortcuts in an illustrated magazine format. Type in the search box below to instantly filter any parameter, button, or engine across the guide.</p>
+    <input id="manual-search" class="wb-search" type="search" placeholder="🔍 Search shortcuts, buttons, menus, or parameter names (e.g. Scale, Resample, Save, Duck, Scrub, Slice, Chorus, Delay, Drive)...">
+
+    <!-- ARTICLE 1: 5-TRACK ARCHITECTURE & SHORTCUTS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/mixer.png" alt="Loom 5-Track Mixer">
+        <div class="mag-caption">5-Track Mixer Screen (HOME Tap)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎛️ 5-Track Architecture &amp; Hardware Shortcuts</h4>
+        <p>Loom FM-1 expands the M-VAVE FM-1 into a 5-track polyphonic groovebox with 4 melodic synth/sampler tracks (<code>1</code>–<code>4</code>) and a dedicated 5th synthesized Drum track (<code>D</code>). Tapping <code>HOME</code> toggles the live 5-column mixer where each track features high-resolution LED dials for <strong>LEVEL</strong> (dB with live meters), <strong>PAN</strong>, and <strong>REV</strong> send. All tracks support full parameter automation, choke groups, and independent sound engines.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>Hold HOME + White Keys 1–5:</strong> Select active Track <code>T1</code>, <code>T2</code>, <code>T3</code>, <code>T4</code>, or <code>DRUM (D)</code>.</div>
+          <div class="mag-pill"><strong>Hold HOME + White Keys 6–10:</strong> Mute or unmute Track <code>T1</code>, <code>T2</code>, <code>T3</code>, <code>T4</code>, or <code>DRUM (D)</code>.</div>
+          <div class="mag-pill"><strong>White Keys 11–16:</strong> Unassigned / spare for future live performance triggers.</div>
+          <div class="mag-pill"><strong>Hold HOME + Turn K1–K4 / ALGO:</strong> Quick volume fader adjustment for Tracks 1–4 (K1–K4) and Drum track (ALGO).</div>
+          <div class="mag-pill"><strong>Hold HOME Alone (~0.6s):</strong> Opens and closes the hardware Settings Menu (Display, Audio, MIDI, System).</div>
+          <div class="mag-pill"><strong>Hold FX + White Keys 1–4:</strong> Punch-in momentary performance FX (Repeat, Stutter, Tape Stop, Half-Speed).</div>
+          <div class="mag-pill"><strong>Hold FX + Turn K1–K4:</strong> Quick send adjustments for <code>DUCK</code>, <code>CHOR</code>, <code>DLY</code>, and <code>RVB</code>.</div>
+          <div class="mag-pill"><strong>Hold SEQ + White Keys 1–16:</strong> Direct step inspection, step parameter-locking, or toggle drum hits on the active lane.</div>
+          <div class="mag-pill"><strong>Tap EDIT (on STEP page):</strong> Clears notes and motion locks on the active sequencer step.</div>
+          <div class="mag-pill"><strong>Hold EDIT + Turn Knob:</strong> Parameter-locks (motion locks) that knob value onto the current step.</div>
+          <div class="mag-pill"><strong>Hold REC (~0.6s):</strong> Toggles the Metronome click on/off.</div>
+          <div class="mag-pill"><strong>Hold SAVE (~0.6s):</strong> Instant quick-save into current project slot (<code>S01</code>–<code>S16</code>).</div>
+          <div class="mag-pill"><strong>Shift + Click (Web Emulator):</strong> Latches (holds down) buttons to execute multi-button combos with a mouse.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 2: SIDECHAIN DUCKING COMPRESSOR -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/sidechain.png" alt="Sidechain Ducking Screen">
+        <div class="mag-caption">Sidechain Compressor (FX Menu)</div>
+      </div>
+      <div class="mag-content">
+        <h4>💥 Sidechain Ducking Compressor (Send 1 / Duck Page)</h4>
+        <p>Ducks tracks and/or master FX whenever the selected drum trigger hits. TRIG selects KICK (default), K+SNR (kick + snare), K+TOM (kick + tom), or ALL (responds to every drum part); PUMP sets threshold/ratio depth; RELS sets release recovery speed; FXDK ducks the global Chorus/Delay/Reverb tails.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TRIG (Trigger Source):</strong> Selects drum trigger filtering — <code>KICK</code> (default, standard 4-on-the-floor pumping), <code>K+SNR</code> (kick + snare), <code>K+TOM</code> (kick + tom), or <code>ALL</code> (responds to every drum part).</div>
+          <div class="mag-pill"><strong>PUMP (Compression Depth):</strong> Sets threshold and compression ratio depth, determining how aggressively synth tracks duck below drum hits.</div>
+          <div class="mag-pill"><strong>RELS (Release Time):</strong> Controls recovery speed (10 ms to 800 ms), dialling in the rhythmic bounce and breathing feel of your groove.</div>
+          <div class="mag-pill"><strong>ATK (Attack Time):</strong> Fast transient response (0.5 ms to 25 ms) that squashes volume smoothly without audible audio clicks.</div>
+          <div class="mag-pill"><strong>FXDK (Master FX Duck):</strong> Directly ducks the global Chorus, Delay, and Reverb return buses (0% to 100%), keeping reverb tails and delay repeats punchy and mud-free.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 3: TAPE ECHO DELAY -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/delay.png" alt="Tape Echo Delay Screen">
+        <div class="mag-caption">Continuous Tape Echo (Delay Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>📼 Continuous Analog Tape Echo (Delay Page)</h4>
+        <p>A continuous analog tape echo emulation featuring smooth delay time sweeps with realistic capstan transport inertia for classic pitch-bent dub maneuvers.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TIME (Delay Time):</strong> Continuous delay time from 5 ms to 720 ms with physical inertia; sweeping the knob glides pitch naturally like a tape reel.</div>
+          <div class="mag-pill"><strong>FDBK (Feedback):</strong> Echo regeneration from 0% to 120%, supporting single rhythmic slapbacks up to endless self-oscillating dub feedback.</div>
+          <div class="mag-pill"><strong>TAPE (Wow, Flutter &amp; Saturation):</strong> Simulates vintage tape transport aging. Increases both Wow (slow capstan motor drift) and Flutter (rapid tape transport vibrations) scaled in an authentic 3:1 ratio with tape-head saturation.</div>
+          <div class="mag-pill"><strong>CROSS (Cross-Feedback Ping-Pong):</strong> Routes left channel delay echoes into the right delay line and vice versa, creating wide, spatial bouncing stereo movement across the stereo field instead of rigid mono repeats.</div>
+          <div class="mag-pill"><strong>MIX (Wet Return):</strong> Blends the global delay echo return into the master mix bus.</div>
+          <div class="mag-pill" style="grid-column: 1 / -1; background: #1f2227; border-color: rgba(255, 175, 50, 0.4);">
+            <strong style="color: #ffaf32;">🎨 Screen Visualization Guide:</strong> The display visualizes the analog tape loop as a vibrant, bouncy amber trampoline line with glowing dots bouncing along it:
+            <ul style="margin: 6px 0 0 18px; padding: 0; line-height: 1.5; color: #ececee;">
+              <li><strong>TIME:</strong> Controls the vertical bounce cadence of the dots. Shorter delay times bounce rapidly, while longer delay times bounce at a slower tempo.</li>
+              <li><strong>FDBK (Feedback):</strong> Multiplies the number of bouncing dots (from 1 dot at very low feedback up to 16 dots at full feedback) oscillating across the trampoline line in staggered phase offsets.</li>
+              <li><strong>TAPE (Wobble):</strong> Warps the trampoline surface with undulating sine waviness and increases stroke thickness (1 to 4 px) to reflect capstan motor drift and heavier tape saturation.</li>
+              <li><strong>CROSS:</strong> Splits and rotates the trampoline into two counter-angled planes up to &plusmn;45&deg; (lower-left to upper-right and lower-right to upper-left), with dots bouncing diagonally between channels to illustrate stereo ping-pong cross-coupling.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 4: MULTI-VOICE CHORUS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/chorus.png" alt="Multi-Voice Chorus Screen">
+        <div class="mag-caption">Multi-Voice Chorus (Chorus Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🌊 Multi-Voice Stereo Chorus &amp; Ensemble (Chorus Page)</h4>
+        <p>Lush quadrature multi-voice chorus that thickens tracks into wide stereo textures and vintage analog ensemble pads.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>CRT (Rate):</strong> Modulation speed / LFO frequency. Controls the cycle speed of the quadrature delay modulation, ranging from slow, gentle undulating spatial motion to fast, shimmering vibrato flutter.</div>
+          <div class="mag-pill"><strong>CDP (Depth):</strong> Modulation depth / pitch detune width. Widens the delay sweep amplitude, increasing pitch detuning between voices for a thicker, richer, and more massive ensemble chorus sound.</div>
+          <div class="mag-pill"><strong>TONE / DAMP (Filter Tone):</strong> High-frequency rolloff / damping filter. Negative/lower values roll off high frequencies for dark, warm analog bucket-brigade (BBD) warmth, while positive/higher values let crisp high-frequency chime and glassy stereo shimmer shine through.</div>
+          <div class="mag-pill"><strong>VOIC (Voice Count):</strong> Selects 1, 2, 3, or 4 independent detuned quadrature chorus voices for lush multi-voice spatial width.</div>
+          <div class="mag-pill" style="grid-column: 1 / -1; background: #1f2529; border-color: rgba(95, 224, 220, 0.4);">
+            <strong style="color: #5fe0dc;">🎨 Screen Visualization Guide:</strong> The display features an expressive singing emoji character paired with an animated modulation sine wave:
+            <ul style="margin: 6px 0 0 18px; padding: 0; line-height: 1.5; color: #ececee;">
+              <li><strong>VOIC (Voicing):</strong> 1 voice shows a single open-mouthed singing face. Selecting 2, 3, or 4 voices renders stacked wireframe edge silhouettes behind and to the left of the main face, visually stacking the chorus ensemble.</li>
+              <li><strong>CRT (Rate):</strong> Regulates modulation speed, visualized by the sine wave becoming denser across the screen (scaling up to 10 tightly packed waves) at the same amplitude, while maintaining a smooth, slow drift.</li>
+              <li><strong>CDP (Depth):</strong> Scales the vertical amplitude (height) of the sine wave, reflecting the pitch detune excursion.</li>
+              <li><strong>TONE:</strong> Dynamically shifts the face and waveform across a vivid color spectrum from warm red (vintage analog warmth) to cool electric blue (crisp shimmer) for high screen visibility.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 5: STEREO REVERB -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/reverb.png" alt="Stereo Reverb Screen">
+        <div class="mag-caption">Stereo Reverb Tank (Reverb Page)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🏛️ Stereo Reverb Tank (Reverb Page)</h4>
+        <p>Rich algorithmic stereo reverberation providing acoustic space and ambient atmospheric decay.</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>TYPE:</strong> Selects the physical chamber model: <code>ROOM</code> (tight acoustic reflections), <code>SPRING</code> (metallic vintage tank), <code>HALL</code> (massive spacious concert hall), or <code>SPACE</code> (cosmic modulated reverb with multi-rate LFO detuning and celestial ambient wash).</div>
+          <div class="mag-pill"><strong>SIZE:</strong> Reverberant room size and decay tail duration.</div>
+          <div class="mag-pill"><strong>DAMP:</strong> High-frequency damping absorbing reflections over time.</div>
+          <div class="mag-pill"><strong>TONE:</strong> Master spectral tilt shaping the reverb tank from dark/warm (negative) to bright/hard (positive).</div>
+          <div class="mag-pill" style="grid-column: 1 / -1; background: #231f29; border-color: rgba(186, 169, 255, 0.4);">
+            <strong style="color: #baa9ff;">🎨 Screen Visualization Guide:</strong> The display renders an underground acoustic cavern that models your space in real time:
+            <ul style="margin: 6px 0 0 18px; padding: 0; line-height: 1.5; color: #ececee;">
+              <li><strong>SIZE:</strong> Dynamically expands or shrinks the cavern arch diameter, ceiling height, and floor span to depict room volume and decay tail length.</li>
+              <li><strong>DAMP (Damping):</strong> Multiplies the number and density of rocky stalactites hanging from the cavern roof (from 2 up to 14 stalactites), illustrating high frequencies being absorbed by uneven cave surfaces.</li>
+              <li><strong>TONE:</strong> Adjusts the overall illumination and brightness of the cavern walls and floor from deep shadowy dark tones to luminous, reflective highlights.</li>
+              <li><strong>TYPE (Chamber Model):</strong> Transforms the cave's atmospheric color palette:
+                <strong>ROOM</strong> (warm amber limestone),
+                <strong>SPRING</strong> (surf teal tank),
+                <strong>HALL</strong> (cathedral crimson red), or
+                <strong>SPACE</strong> (deep cosmic purple illuminated by animated twinkling cyan and white starlight crystals).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 6: PER-TRACK INSERT EFFECTS -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/insert.png" alt="Track Insert FX Screen">
+        <div class="mag-caption">Per-Track Insert FX &amp; Transfer Curve</div>
+      </div>
+      <div class="mag-content">
+        <h4>⚡ Per-Track Dedicated Insert Effects (Insert Page)</h4>
+        <p>Each of the 5 tracks features its own dedicated insert effect processor before the global send buses, complete with live real-time distortion transfer curve visualizations:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SOFT (Soft Clip Drive):</strong> Smooth hyperbolic analog overdrive. <code>DRIVE</code> sets input saturation pre-gain (1x–13x); <code>TONE</code> rolls off harsh highs with dual low-pass filters; <code>LEVEL</code> trims output volume (0 dB at 112).</div>
+          <div class="mag-pill"><strong>HARD (Hard Clip Distortion):</strong> Aggressive brickwall wave clipping. <code>DRIVE</code> pushes the signal into flat hard clipping; <code>TONE</code> tames high-frequency buzz; <code>LEVEL</code> manages output gain.</div>
+          <div class="mag-pill"><strong>FOLD (Wavefolder):</strong> West-Coast triangular wavefolder that inverts waveform peaks back inward. <code>DRIVE</code> controls folding depth and harmonic multiplication; <code>TONE</code> shapes brightness; <code>LEVEL</code> balances output gain.</div>
+          <div class="mag-pill"><strong>FUZZ (Asymmetric Vintage Fuzz):</strong> Transistor fuzz with a hard-clipped positive peak and soft-saturated negative half. <code>DRIVE</code> sets fuzz intensity; <code>TONE</code> shapes harmonic balance; <code>LEVEL</code> controls volume.</div>
+          <div class="mag-pill"><strong>CRUSH (Bitcrush &amp; Decimator):</strong> Retro digital lo-fi degrader. <code>BITS</code> reduces bit depth (1–16 bits) for gritty quantizing noise; <code>RATE</code> decimates sample rate (689 Hz to 44.1 kHz) for retro sampler aliasing; <code>LPF</code> smooths harsh high-frequency aliasing hash.</div>
+          <div class="mag-pill"><strong>PHASR (4-Stage Phaser):</strong> Classic sweeping phase shifter. <code>RATE</code> sets LFO sweep speed (0.1–20 Hz); <code>DEPTH</code> controls frequency range (150 Hz to 4.8 kHz); <code>FDBK</code> sets all-pass resonance for vocal sweeps.</div>
+          <div class="mag-pill"><strong>FLANG (Comb Flanger):</strong> Modulated short delay comb-filtering. <code>RATE</code> controls sweep speed; <code>DEPTH</code> sets delay range (0.25 ms to 5.0 ms); <code>FDBK</code> sets resonant feedback (0% to 85%) for jet-plane swooshes.</div>
+          <div class="mag-pill"><strong>CHOR (Micro Chorus):</strong> Dedicated per-track stereo doubling chorus. <code>RATE</code> controls modulation speed; <code>DEPTH</code> controls detune depth; <code>FDBK</code> adds subtle recirculation resonance.</div>
+          <div class="mag-pill"><strong>WOBBL (Tape Wobble):</strong> Analog tape transport wow and flutter with saturation. <code>RATE</code> sets modulation speed; <code>DEPTH</code> sets flutter depth; <code>SAT</code> injects warm magnetic tape saturation.</div>
+          <div class="mag-pill"><strong>OCTAV (Octaver / Harmonizer):</strong> Granular dual-window pitch shifter. <code>MODE</code> selects harmony interval (<code>+1OCT</code>, <code>+2OCT</code>, <code>-1OCT</code>, <code>-2OCT</code>, <code>DUAL</code>, <code>MAJOR</code>, <code>DOM7</code>, <code>MAJ7</code>, <code>MIN7</code>, <code>DIM</code>); <code>UNIS</code> controls detune; <code>TONE</code> filters harmony voices.</div>
+          <div class="mag-pill"><strong>OVDRI (Loom Overdrive):</strong> Multi-stage custom overdrive with bass tightening. <code>DRIVE</code> pushes clipping gain; <code>TONE</code> controls filter cutoff; <code>GRIT</code> injects non-linear sine wavefolding grit into loud peaks.</div>
+          <div class="mag-pill"><strong>PANNR (AutoPanner / Tremolo):</strong> Modulated stereo panning and amplitude modulation. <code>RATE</code> sets pan speed; <code>DEPTH</code> sets stereo sweep width; <code>SHAPE</code> selects modulation shape (<code>SINE</code>, <code>TRI</code>, <code>SQR</code>).</div>
+          <div class="mag-pill"><strong>MIX (Insert Page 2):</strong> Linear dry/wet blend (0% to 100%) available for all insert effect types.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7A: SCRUB ENGINE (TAPE & TURNTABLE PLATTER) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/scrub.png" alt="Tape Scrub Engine">
+        <div class="mag-caption">SCRUB Engine (Tape &amp; Turntable)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎛️ SCRUB Engine: Turntable Platter &amp; Reel-to-Reel Tape</h4>
+        <p>Real-time physical vinyl platter and magnetic tape scrubbing engine. Features physical inertia simulation, bi-directional motorized playback, surface drag friction, and vintage tape drift with live waveform and needle tracking:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>POS (Tape Position):</strong> Absolute playhead position (0%–100%) across the sample buffer. Turn directly to scratch forward or backward.</div>
+          <div class="mag-pill"><strong>MOTOR (Motor Speed):</strong> Continuous motorized drive speed from <code>-3.0x</code> reverse, through <code>0.0x</code> (stopped), to <code>+3.0x</code> forward.</div>
+          <div class="mag-pill"><strong>INERT (Platter Inertia):</strong> Rotational momentum of the virtual 12" platter. High values produce smooth spin-up and gradual coasting to a stop; low values provide instant punchy scratching.</div>
+          <div class="mag-pill"><strong>FRIC (Braking Friction):</strong> Surface drag and motor braking resistance. Controls how quickly the platter decelerates when released.</div>
+          <div class="mag-pill"><strong>SRC (Audio Source):</strong> Selects built-in break/piano material or custom user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>LOOP (Loop Mode):</strong> Sets tape transport looping bounds (<code>OFF</code> plays once; <code>FWD</code> forward loop; <code>REV</code> reverse loop; <code>PING</code> bi-directional ping-pong platter bounce).</div>
+          <div class="mag-pill"><strong>DRV (Tape Saturation):</strong> Preamp saturation drive adding warm magnetic tape harmonics and soft-clipping.</div>
+          <div class="mag-pill"><strong>WOW (Wow &amp; Flutter):</strong> Subtle mechanical pitch drift and transport flutter for authentic vintage tape warmth.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7A: SAMPLE ENGINE (CHROMATIC SAMPLER & TEMPO SYNC) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/sample.png" alt="Chromatic Sample Engine">
+        <div class="mag-caption">SAMPLE Engine (Playback &amp; Tempo Sync)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎹 SAMPLE Engine: Chromatic Polyphonic Sampler &amp; Tempo Sync</h4>
+        <p>Direct chromatic sample playback across keyboard zones with independent tape-speed pitching, granular time-stretching, loop trim, and tempo sync:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SET (Sample Source):</strong> Built-in multi-sample sets (<code>PIANO</code>, <code>EP</code>, <code>FLUTE</code>, <code>SAX</code>) or user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>MODE (Trigger &amp; Direction):</strong> Playback mode and direction — <code>ONE</code> (forward one-shot), <code>SUS</code> (forward sustain), <code>LOOP</code> (forward loop), <code>REV</code> (reverse playback), or <code>PING</code> (bi-directional ping-pong bounce between trim markers).</div>
+          <div class="mag-pill"><strong>PTCH (Fine Pitch):</strong> Chromatic transposition (<code>-24</code> to <code>+24</code> semitones) without altering stretch length.</div>
+          <div class="mag-pill"><strong>SPEED (Playback Speed):</strong> Varispeed motor rate (10% to 400%), shifting tape speed and playback pitch naturally.</div>
+          <div class="mag-pill"><strong>STRCH (Time Stretch):</strong> Granular time-stretch length factor (25% to 400%). Automatically calculated when using <code>SYNC</code>.</div>
+          <div class="mag-pill"><strong>START / END:</strong> Non-destructive sample start and end trim boundaries (0% to 100%).</div>
+          <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps sample playback length to current song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> to lock duration while preserving chosen <code>SPEED</code> textures.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7B: SLICE ENGINE (TRANSIENT BEAT SLICER) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/slice.png" alt="Sample Slice Engine">
+        <div class="mag-caption">SLICE Engine (Transient Beat Slicer)</div>
+      </div>
+      <div class="mag-content">
+        <h4>✂️ SLICE Engine: Auto-Transient Beat Slicer &amp; 16-Pad Chops</h4>
+        <p>Intelligent transient beat slicer that chops loops and drum breaks into tempo-synchronized slices with individual trigger pads. The 16 hardware white keys trigger individual slices in real time:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SLCS (Slice Count):</strong> Number of active slices (1–16). Dynamically recalibrates slice markers to snap directly to the strongest transients.</div>
+          <div class="mag-pill"><strong>SRC (Source Sample):</strong> Selects source material from built-in breakbeats, acoustic piano, or user sample slots (<code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>PTCH (Slice Pitch):</strong> Chromatic transposition (<code>-24</code> to <code>+24</code> semitones) without altering playback duration.</div>
+          <div class="mag-pill"><strong>SPEED (Playback Speed):</strong> Playback time-stretch speed (10% to 400%) for extreme slow-motion chops or tempo matching.</div>
+          <div class="mag-pill"><strong>STRCH (Time Stretch Length):</strong> Granular time-stretch length factor (25% to 400%) preserving transient punch.</div>
+          <div class="mag-pill"><strong>MODE (Trigger Gate):</strong> Gate mode (<code>SHOT</code> plays slice to completion; <code>GATE</code> sounds only while held; <code>LOOP</code> continuously loops the slice).</div>
+          <div class="mag-pill"><strong>DIR (Playback Direction):</strong> Playback direction across slice markers (<code>FWD</code> forward; <code>REV</code> reverse; <code>PING</code> bi-directional ping-pong slice bounce).</div>
+          <div class="mag-pill"><strong>SYNC (Tempo Sync Trigger):</strong> Snaps total loop playback duration to song tempo across <code>1 STEP</code>, <code>2 STEPS</code>, <code>1 BEAT</code>, <code>2 BEATS</code>, <code>1 BAR</code>, <code>2 BARS</code>, or <code>4 BARS</code>. Automatically recalculates <code>STRCH</code> so the overall loop matches the selected bar/beat length at the current BPM, while individual slice points preserve natural transient placement (averaging 1 step per slice across a 1-bar 16-slice break).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7B-2: MANUAL SLICE POINT EDITOR -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/slice_edit.png" alt="Manual Slice Point Editor (SLICES Page)">
+        <div class="mag-caption">Manual Slice Waveform Editor (SLICES 3/5)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🔬 Manual Slice Point Fine-Tuning, Splitting &amp; Merging (SLICES Page)</h4>
+        <p>Tap the <strong>EDIT</strong> button on any SLICE track to access the dedicated <strong>SLICES</strong> waveform editor (Page 3 of the EDIT family). Here you can inspect the decoded waveform, nudge boundaries with adaptive zoom, and split or join slices by hand:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>Selecting a Slice (Knob 1 or White Keys):</strong> Turn <code>K1 (SLICE)</code> to cycle through markers <code>1/N</code> to <code>N/N</code>, or select the <code>END</code> tail marker. Alternatively, strike any white key on the keyboard to instantly jump to that slice—the key LEDs light up to confirm which keys play the active slice.</div>
+          <div class="mag-pill"><strong>Fine Tuning Slice Points (Knob 2 POS):</strong> Turn <code>K2 (POS)</code> to nudge the selected boundary marker earlier or later in time (displayed with millisecond precision, e.g. <code>1.240 S</code>). The display features <em>adaptive dynamic zoom</em>: the viewport automatically spans only the region between the preceding and succeeding markers, providing smooth, column-by-column fine-step resolution. Moving marker 1 trims sample attack; moving the <code>END</code> marker trims the tail. For user slots (<code>USR1</code>–<code>USR3</code>), moving any marker automatically enters custom manual slicing (<code>DIV = MAN</code>).</div>
+          <div class="mag-pill"><strong>Splitting a Slice (Knob 3 SPLIT + OCT+):</strong> Select the slice you wish to divide, turn <code>K3 (SPLIT)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button to execute. The slice is cleanly cut in half at its midpoint into two separate slices (supporting up to 32 slices). <code>SPLIT</code> remains armed so you can tap <strong>OCT+</strong> repeatedly to rapidly subdivide breaks. Tap <strong>OCT-</strong> to disarm.</div>
+          <div class="mag-pill"><strong>Merging / Joining Slices (Knob 4 JOIN + OCT+):</strong> Select any slice from slice 2 onward, turn <code>K4 (JOIN)</code> clockwise to arm the action in the footer, then press the <strong>OCT+</strong> button. The selected slice's start boundary is deleted, seamlessly joining it into the preceding slice. Tap <strong>OCT+</strong> again for sequential merges, or tap <strong>OCT-</strong> to disarm.</div>
+          <div class="mag-pill"><strong>Adaptive Dynamic Zoom:</strong> The viewport automatically scales to show only the region between adjacent markers, giving fine column resolution to lock slice points right on zero-crossings and transient attacks.</div>
+          <div class="mag-pill"><strong>Auto-Save to Flash:</strong> All manual slice adjustments, splits, and joins are kept live in audio playback and automatically committed to flash memory with the sample when navigating away from the page.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7C: WAVETABLE ENGINE (3D MORPHING SYNTHESIS) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/wavetable.png" alt="Wavetable Synthesizer Engine">
+        <div class="mag-caption">WAVETABLE Engine (3D Stack)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🌊 WAVETABLE Engine: 3D Morphing Wavetable Synthesis</h4>
+        <p>Multi-frame wavetable synthesis engine featuring 8 single-cycle frames (512 samples each) with 3D isometric stack visualization, non-linear phase distortion warping, and analog drive:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SRC (Wavetable Bank):</strong> Selects wavetable source (<code>BASIC</code> synthetic morph, <code>PIANO</code>, <code>FLUTE</code>, <code>SAX</code>, <code>BREAK</code>, or <code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>POS (Table Position):</strong> Continuous position sweep across the 8 frames (0% to 100%) with band-limited crossfade interpolation.</div>
+          <div class="mag-pill"><strong>WARP (Phase Warp):</strong> Asymmetric non-linear phase distortion (<code>-64</code> to <code>+63</code>) compressing or bending the waveform for aggressive formant shifts.</div>
+          <div class="mag-pill"><strong>DETN (Unison Detune):</strong> Micro-pitch unison detuning spread across voices for wide stereo chorus thickness.</div>
+          <div class="mag-pill"><strong>BITS (Bit Reduction):</strong> Digital quantizer reduction (16 bits down to 2 bits) for crunchy retro PPG and vintage wavetable character.</div>
+          <div class="mag-pill"><strong>SRAT (Sample Decimation):</strong> Downsamples the playback rate (down to 689 Hz) for retro aliasing harmonics.</div>
+          <div class="mag-pill"><strong>DRV (Analog Drive):</strong> Progressive saturation gain (1.0x to 5.0x) with analog soft-clipping warmth.</div>
+          <div class="mag-pill"><strong>GLID (Portamento):</strong> Pitch glide rate between notes for smooth legato synth sweeps.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7D: GRANULAR SYNTHESIS ENGINE -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/grain.png" alt="Granular Cloud Engine">
+        <div class="mag-caption">GRAIN Engine (Granular Cloud)</div>
+      </div>
+      <div class="mag-content">
+        <h4>✨ GRAIN Engine: Asynchronous Granular Cloud Synthesis</h4>
+        <p>Real-time granular synthesis engine that deconstructs sample audio into streams of microscopic sound grains with multidimensional temporal and pitch scattering:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>SRC (Sample Source):</strong> Source sample buffer (<code>PIANO</code>, <code>FLUTE</code>, <code>SAX</code>, <code>BREAK</code>, or custom user slots <code>USR1</code>–<code>USR3</code>).</div>
+          <div class="mag-pill"><strong>POS (Scan Position):</strong> Base playback position (0% to 100%) within the sample audio buffer where grains are extracted.</div>
+          <div class="mag-pill"><strong>SIZE (Grain Duration):</strong> Duration of each grain window (5 ms to 250 ms), shifting from smooth ambient washes to rhythmic stutter clicks.</div>
+          <div class="mag-pill"><strong>DENS (Cloud Density):</strong> Stream density and overlap (1 to 32 concurrent grain streams) producing thick harmonic clouds.</div>
+          <div class="mag-pill"><strong>PTCH (Grain Pitch):</strong> Transposes individual grains across a 4-octave range (<code>-24</code> to <code>+24</code> semitones).</div>
+          <div class="mag-pill"><strong>SPRY (Position Spray):</strong> Random time jitter scattering grain start points across the sample buffer for wide diffuse textures.</div>
+          <div class="mag-pill"><strong>REV (Reverse Probability):</strong> Probability (0% to 100%) that individual grains play in reverse for eerie swelling textures.</div>
+          <div class="mag-pill"><strong>TONE (Damping Filter):</strong> 1-pole low-pass filter smoothing grain transitions and taming harsh high frequencies.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 7E: PATCH & MACRO MODULATION MATRIX (LFO MENU) -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/patch.png" alt="Patch Modulation Matrix Screen">
+        <div class="mag-caption">Patch Modulation Matrix (LFO Menu Pages 4–7)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎚️ Multi-Track Patch &amp; Macro Modulation Matrix (LFO Menu Pages 4–7)</h4>
+        <p>Loom FM-1 features a comprehensive 4-knob performance macro matrix accessible by tapping the <strong>LFO</strong> button to open pages 4 through 7 (<code>MACRO 1 4/7</code> through <code>MACRO 4 7/7</code>). A single physical macro knob can simultaneously modulate up to <strong>three completely independent parameters across any combination of tracks</strong> with precision bipolar attenuation:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>3 Destination Slots per Knob (P1, P2, P3):</strong> Each macro knob (1–4) controls up to three simultaneous parameter targets with a single twist.</div>
+          <div class="mag-pill"><strong>Cross-Track Routing (Any Track):</strong> Target assignments are freely assignable across Track 1 through 4 (<code>T1</code>–<code>T4</code>) or the Drum track (<code>DRM</code>). For example, a single macro turn can open the synth cutoff on <code>T1</code>, duck pad volume on <code>T2</code>, and pitch up the kick drum on <code>DRM</code> simultaneously.</div>
+          <div class="mag-pill"><strong>Bipolar Attenuation (-100% to +100%):</strong> Each of the three destinations features its own independent bipolar depth from <code>-100%</code> to <code>+100%</code>. Positive values increase the parameter as the macro turns up; negative values invert the modulation (attenuating or closing down the parameter as the macro knob advances).</div>
+          <div class="mag-pill"><strong>Rich Parameter Destinations:</strong> Common parameters include <code>PITCH</code>, <code>CUT</code> (filter cutoff), <code>AMP</code> (amplitude gain), <code>PAN</code> (stereo panning), <code>DLY</code> (delay send), and <code>REV</code> (reverb send). Target assignments also include all 8 engine-specific macro parameters (<code>E1</code>–<code>E8</code>) or individual drum instrument levels (<code>KICK</code>, <code>SNAR</code>, <code>CLAP</code>, <code>HATS</code>, <code>CYMB</code>, <code>TOM</code>, <code>PERC</code>, <code>BELL</code>).</div>
+          <div class="mag-pill"><strong>Matrix Setup Knobs:</strong>
+            <code>K1 (PARAM):</code> Selects destination slot 1, 2, or 3 (<code>1/3</code>, <code>2/3</code>, <code>3/3</code>);
+            <code>K2 (TRK):</code> Selects target track (<code>T1</code>..<code>T4</code>, <code>DRM</code>);
+            <code>K3 (DEST):</code> Selects the destination parameter;
+            <code>K4 (AMT):</code> Dials bipolar modulation strength (<code>-100%</code> to <code>+100%</code>).
+          </div>
+          <div class="mag-pill"><strong>Live Visual Feedback:</strong> The header shows the real-time macro level (<code>VAL: 0..127</code>) and progress bar. Each parameter row displays an intuitive routing diagram (e.g. <code>P1 T1 → CUT +76%</code>) with a color-coded bipolar meter: glowing green for positive modulation and red for inverted negative attenuation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 8: 64-STEP DUAL-VIEW SEQUENCER -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/seq.png" alt="64-Step Dual-View Sequencer (8x8 View)">
+        <img src="img/seq_4x4.png" alt="64-Step Dual-View Sequencer (4x4 View)">
+        <div class="mag-caption">64-Step Sequencer (8x8 &amp; 4x4 Views)</div>
+      </div>
+      <div class="mag-content">
+        <h4>🎹 64-Step Dual-View Sequencer: Step &amp; Pattern Workflows</h4>
+        <p>Loom features an expressive dual-view 64-step sequencer across four dedicated pages (<code>4x4 STEP 1/4</code>, <code>4x4 PAT 2/4</code>, <code>8x8 STEP 3/4</code>, <code>8x8 PAT 4/4</code>). Tap <strong>SEQ</strong> to cycle between views. Notes can be recorded live from the hardware keys, step-entered, or motion-automated with full per-step parameter locks:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>STEP (Step Cursor):</strong> Active step selection (1–64). Turn K1 to scrub across the pattern with live pitch preview.</div>
+          <div class="mag-pill"><strong>BANK (16-Step Banks 1–4):</strong> Jumps between Bank 1 (steps 1–16), Bank 2 (17–32), Bank 3 (33–48), and Bank 4 (49–64) on 4x4 view.</div>
+          <div class="mag-pill"><strong>SLICE / INST / NOTE (Step Target):</strong> Directly puts or edits a specific sound target on the step: selects <code>SLICE</code> (<code>SLC 1</code>..<code>16</code>) when on the SLICE engine, drum voice (<code>KICK</code>, <code>SNARE</code>, <code>CLAP</code>...) when on the DRUM engine, or chromatic pitch (<code>C-1</code> to <code>G9</code>) on synths and samplers. Available on Knob 3 in 4x4 STEP and Knob 2 in 8x8 STEP.</div>
+          <div class="mag-pill"><strong>OPT (Trigger Behavior):</strong> Selects trigger behavior: <code>OFF</code> (silent rest), <code>PLAY</code> (standard note strike), <code>TIE</code> (legato tie sustaining previous note without re-triggering envelopes), <code>PUNCH</code> (hard accented strike with maximum velocity), <code>RATCH 2</code> (2-hit sub-step burst), <code>RATCH 3</code> (3-hit triplet sub-step roll), <code>RATCH 4</code> (4-hit rapid burst), and <code>P+RATCH</code> (accented burst).</div>
+          <div class="mag-pill"><strong>VEL (Step Velocity):</strong> Dynamic strike velocity (1–127). Hold any step and adjust velocity.</div>
+          <div class="mag-pill"><strong>P-LOCKS (Parameter Locks):</strong> Hold any active sequencer step and turn any knob to lock specific cutoff, resonance, pitch, or effect values to that individual step.</div>
+          <div class="mag-pill"><strong>LEN (Pattern Length / P_SLEN):</strong> Sets total loop length from 1 to 64 steps, allowing polyrhythms and odd meters (e.g. 5, 7, 11, 15).</div>
+          <div class="mag-pill"><strong>DIV (Clock Divider / P_SDIV):</strong> Sequence clock speed (1/1 whole, 1/2 half, 1/4 quarter, 1/8 eighth, 1/16 sixteenth, 1/32 thirty-second, plus triplets).</div>
+          <div class="mag-pill"><strong>SWING (Groove Shuffle / P_SSWING):</strong> Bipolar groove swing timing (<code>-50%</code> to <code>+50%</code>, 0% straight).</div>
+          <div class="mag-pill"><strong>HUMAN (Humanize / P_SHUMAN):</strong> Micro-timing and velocity humanization (0% to 100%) adding natural live-feel variation.</div>
+          <div class="mag-pill"><strong>CLEAR (Quick Erase):</strong> One-twist step or pattern clearing to instantly erase notes or reset automation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTICLE 9: SAVE MENU PAGES -->
+    <div class="mag-card">
+      <div class="mag-aside">
+        <img src="img/save.png" alt="SAVE Project Screen">
+        <div class="mag-caption">SAVE Menu (PROJECT 1/5)</div>
+      </div>
+      <div class="mag-content">
+        <h4>💾 SAVE Menu Pages &amp; Project Workflow (Pages 1–5)</h4>
+        <p>Manage sounds, projects, phrases, and personal boot templates across 5 organized pages. Tap <strong>SAVE</strong> to open; turn K1 to browse pages:</p>
+        <div class="mag-grid">
+          <div class="mag-pill"><strong>1/5 PROJECT:</strong> Full song memory (slots <code>A</code>–<code>D</code>). Turn K1 to choose slot, K3 to Load, K4 to Save. Turn K2 (<code>INIT+</code>) to save your current layout as the custom boot template.</div>
+          <div class="mag-pill"><strong>2/5 TOOLS:</strong> Quick-reset tools. <code>TRACK</code> resets active track; <code>SEQ</code> clears step pattern; <code>SOUND</code> resets synth patch; <code>LOCKS</code> removes automation.</div>
+          <div class="mag-pill"><strong>3/5 USER:</strong> 32 flash user patch slots (<code>U01</code>–<code>U32</code>). Save custom sounds on the active track or load them into any track.</div>
+          <div class="mag-pill"><strong>4/5 PRESETS:</strong> Full preset browser and favorites (<code>★</code>). Filter by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.).</div>
+          <div class="mag-pill"><strong>5/5 PHRASES:</strong> 16-step sequence bank (<code>P01</code>–<code>P16</code>). Save or load sequence riffs and motion locks independently of the song.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOOM ECOSYSTEM LINKS -->
+    <div class="mag-links-card">
+      <h4 style="margin:0 0 6px; font-size:16px; color:#5fe08a;">🌐 Explore the Complete Loom Ecosystem</h4>
+      <p style="margin:0 0 12px; font-size:13px; color:#c7c7cc;">Looking for more tracks, larger tactile displays, or full multi-touch expressive control? Explore the other projects in the Loom family:</p>
+      <div class="mag-links-grid">
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-Pi" target="_blank" rel="noopener">
+          <h5>🎛️ Loom Pi (Raspberry Pi Hardware) →</h5>
+          <p>Dedicated standalone hardware groovebox powered by Raspberry Pi. Features a rich high-resolution color UI, multi-track audio recording, advanced physical rotary encoders, and expanded connectivity. Integrates seamlessly with generic USB and DIN MIDI controllers.</p>
+        </a>
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/loom-groovebox" target="_blank" rel="noopener">
+          <h5>📱 Loom Groovebox for Android →</h5>
+          <p>Expressive mobile touchscreen groovebox app for Android tablets and phones. Full multi-touch piano roll, tactile synth editing, real-time automation, and portable loop creation. Integrates smoothly with generic class-compliant USB and Bluetooth MIDI controllers.</p>
+        </a>
+        <a class="mag-link-btn" href="https://github.com/Co-oscillator/Loom-FM-1" target="_blank" rel="noopener">
+          <h5>⚡ Loom FM-1 Source &amp; Releases →</h5>
+          <p>Ultra-compact 5-track groovebox firmware for the M-VAVE FM-1. 14 engines, 64-step sequencer, web workbench, and complete open-source GPL-3.0 codebase.</p>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer>
+  <small class="version">@VERSION@@PREVIEW@</small><br>
+  Loom FM-1 Groovebox · Built on Felucca / SLOOP core · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
+  <div style="margin-top:6px;">
+    Explore more: <a href="video.html" style="color:#00E5FF; text-decoration:none; margin-right:12px;" target="_blank">🎬 1080p Video Overview</a> · <a href="https://github.com/Co-oscillator/Loom-Pi" style="color:#5fe08a; text-decoration:none;">Loom Pi</a> · <a href="https://github.com/Co-oscillator/loom-groovebox" style="color:#5fe08a; text-decoration:none;">Loom for Android</a> · <a href="https://github.com/Co-oscillator/Loom-FM-1" style="color:#5fe08a; text-decoration:none;">Loom FM-1 GitHub</a>
+  </div>
+  <small style="color:#6e6e73; display:block; margin-top:4px;">M-VAVE and FM-1 are trademarks of their respective owners.</small>
+</footer>
+</main>
+
+<script type="module">
+const NS = "http://www.w3.org/2000/svg";
+// panel.c's labels (bit = label) and encoder roles
+const B = { FX: 0, SCL: 1, ENV: 2, LFO: 3, EDIT: 4, GLO: 5, HOME: 6, SAVE: 7, ARP: 8, SEQ: 9, PLAY: 10, REC: 11, "OCT-": 12, "OCT+": 13 };
+const EN = { SELECT: 0, ALGORITHM: 1, PRESETS: 2, "KNOB 1": 3, "KNOB 2": 4, "KNOB 3": 5, "KNOB 4": 6 };
+const PLAY_GREEN = 14;
+// the 27 keys F3..G5: key k = k semitones above F3
+const WHITE = [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26];
+const BLACK = [1, 3, 5, 8, 10, 13, 15, 17, 20, 22, 25];
+const BLACK_AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];      // the white key each black one follows
+const STORE = "loom-emu-flash-v2";
+try { localStorage.removeItem("felucca-emu-flash"); localStorage.removeItem("loom-emu-flash"); } catch {}
+
+// ------------------------------------------------------------------ the panel
+// Two drawings of the same controls: WIDE after the FM-1's own layout, TALL for a phone held upright (the
+// screen larger, the keys across the whole width). Rebuilt when the orientation changes; the state stays.
+const ROW1 = ["FX", "SCL", "ENV", "LFO", "EDIT", "GLO"], ROW2 = ["HOME", "SAVE", "ARP", "SEQ", "PLAY", "REC"];
+const KNOBS = ["MASTER", "SELECT", "PRESETS", "ALGORITHM", "KNOB 1", "KNOB 2", "KNOB 3", "KNOB 4"];
+const LAYOUTS = {
+  wide: {
+    w: 1000, h: 624, screen: [292, 44, 256],
+    knobs: [[105, 100, 24], [215, 100, 24], [105, 205, 24], [215, 205, 24], [610, 100, 22], [714, 100, 22], [818, 100, 22], [922, 100, 22]],
+    trays: [[50, 250, 220, 50], [568, 160, 400, 140]],
+    oct: [[60, 258, 90, 34], [170, 258, 90, 34]],
+    grid: [582, 174, 54, 48, 63, 62], keybed: [36, 332, 928, 256],
+  },
+  tall: {
+    w: 600, h: 1070, screen: [130, 104, 340],
+    knobs: [[66, 64, 24], [186, 64, 24], [414, 64, 24], [534, 64, 24], [90, 512, 26], [230, 512, 26], [370, 512, 26], [510, 512, 26]],
+    trays: [[14, 572, 572, 146], [150, 728, 300, 62]],
+    oct: [[164, 737, 128, 44], [308, 737, 128, 44]],
+    grid: [24, 582, 86, 60, 94, 70], keybed: [14, 800, 572, 256],
+  },
+};
+const svg = document.getElementById("panel"), device = document.getElementById("device"), canvas = document.getElementById("screen");
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  parent.appendChild(e);
+  return e;
+}
+const SANS = "-apple-system, 'Helvetica Neue', Arial, sans-serif", DOT = "'DotGothic16', " + SANS;
+function label(parent, x, y, s, size, font = SANS, ink = "var(--label)") {
+  const t = el("text", { x, y, "text-anchor": "middle", "font-family": font,
+                         "font-size": size, "font-weight": 600, fill: ink, "letter-spacing": ".04em" }, parent);
+  t.textContent = s;
+  return t;
+}
+const KEYNAMES = ["F", "F♯", "G", "G♯", "A", "A♯", "B", "C", "C♯", "D", "D♯", "E"];
+const keyName = (k) => KEYNAMES[k % 12] + (3 + Math.floor((k + 5) / 12));
+
+let node = null, btnMask = 0, keyMask = 0, latched = 0, masterValue = 700, lastLeds = [0, 0, 0, 0, 0], layout = null;
+const angle = Object.fromEntries(KNOBS.map((n) => [n, 0]));
+angle.MASTER = -135 + 270 * masterValue / 1023;
+const knobs = [], buttons = [], keys = [];
+const btnBy = new Map(), keyBy = new Map();                   // pointer / key code -> label bit or key
+const send = (m) => { if (node) node.port.postMessage(m); };
+
+function build(name) {
+  const L = LAYOUTS[name];
+  layout = name;
+  svg.innerHTML = "";
+  svg.setAttribute("viewBox", `0 0 ${L.w} ${L.h}`);
+  device.style.aspectRatio = `${L.w} / ${L.h}`;
+  for (const d of device.querySelectorAll(".hit")) d.remove();
+  knobs.length = buttons.length = keys.length = 0;
+  el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)" });
+  for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)" });
+  const [sx, sy, ss] = L.screen;
+  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c" });
+  const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
+  Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
+                                width: `${(ss - 2 * inset) / L.w * 100}%`, height: `${(ss - 2 * inset) / L.h * 100}%` });
+  KNOBS.forEach((n, i) => {
+    const [x, y, r] = L.knobs[i], g = el("g", {});
+    el("circle", { cx: x, cy: y, r: r + 5, fill: "var(--tray)" }, g);
+    el("circle", { cx: x, cy: y, r, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 2 }, g);
+    const ind = n === "MASTER" ? el("line", { x1: x, y1: y - r + 5, x2: x, y2: y - r + 14, stroke: "var(--label)", "stroke-width": 3, "stroke-linecap": "round" }, g) : null;
+    label(g, x, y - r - 12, n, 16, DOT);
+    el("circle", { cx: x, cy: y, r: r + 12, fill: "transparent" }, g);
+    knobs.push({ g, ind, x, y, name: n, role: n === "MASTER" ? "master" : EN[n] });
+  });
+  const button = ([x, y, w, h], n, sub) => {
+    const g = el("g", {});
+    el("rect", { x, y, width: w, height: h, rx: 8, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
+    const ink = n === "REC" ? "#ff453a" : undefined;
+    if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 10.8, SANS, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 9.9); }
+    else label(g, x + w / 2, y + h / 2 + 4.5, n, 12.6, SANS, ink);
+    buttons.push({ g, bit: B[n], name: sub ? `${n} / ${sub}` : n });
+  };
+  button(L.oct[0], "OCT-");
+  button(L.oct[1], "OCT+");
+  const [gx, gy, gw, gh, dx, dy] = L.grid;
+  for (let i = 0; i < 6; i++) {
+    button([gx + i * dx, gy, gw, gh], ROW1[i]);
+    button([gx + i * dx, gy + dy, gw, gh], ROW2[i], ROW2[i] === "PLAY" ? "STOP" : "");
+  }
+  const [x0, y0, w, h] = L.keybed;
+  el("rect", { x: x0, y: y0, width: w, height: h, rx: 18, fill: "var(--tray)" });
+  // the keys: two rows of the same black keys, each with a slit down its middle that lights
+  const pitch = (w - 24) / 16, kw = pitch * 0.78, kh = h * 0.425, sw = Math.max(3, kw * 0.14);
+  const key = (cx, cy, k) => {
+    const g = el("g", {}), y = cy - kh / 2;
+    el("rect", { x: cx - kw / 2, y, width: kw, height: kh, rx: kw / 2, class: "face key" }, g);
+    el("rect", { x: cx - sw / 2, y: y + kw * 0.4, width: sw, height: kh - kw * 0.8, rx: sw / 2, class: "slit" }, g);
+    el("rect", { x: cx - pitch / 2, y: cy - h * 0.24, width: pitch, height: h * 0.48, fill: "transparent" }, g);   // its target
+    keys[k] = { g, name: keyName(k) };
+  };
+  WHITE.forEach((k, i) => key(x0 + 12 + (i + 0.5) * pitch, y0 + h * 0.75, k));
+  BLACK_AFTER.forEach((a, j) => key(x0 + 12 + (a + 1) * pitch, y0 + h * 0.25, BLACK[j]));
+  // HTML targets over the drawing (pointer-events: none): touch-action and pointer capture work on them everywhere
+  const hit = (c, cls, role) => {
+    const b = c.g.getBBox(), d = document.createElement("div");
+    d.className = "hit" + (cls ? " " + cls : "");
+    Object.assign(d.style, { left: `${b.x / L.w * 100}%`, top: `${b.y / L.h * 100}%`,
+                             width: `${b.width / L.w * 100}%`, height: `${b.height / L.h * 100}%` });
+    d.setAttribute("role", role);
+    d.setAttribute("aria-label", c.name);
+    d.title = c.name;
+    d.tabIndex = 0;
+    d.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
+    d.addEventListener("contextmenu", (e) => e.preventDefault());
+    device.insertBefore(d, document.getElementById("start"));
+    c.hit = d;
+  };
+  knobs.forEach((k) => { hit(k, "knob", "slider"); bindKnob(k); drawKnob(k); });
+  buttons.forEach((b) => { hit(b, "", "button"); bindButton(b); });
+  keys.forEach((k, i) => { hit(k, "", "button"); bindKey(k, i); });
+  syncButtons(true);
+  syncKeys(true);
+  drawLights(lastLeds);
+}
+
+// ------------------------------------------------------------------ input
+function syncButtons(redraw) {
+  let m = latched;
+  for (const b of btnBy.values()) m |= 1 << b;
+  if (m !== btnMask) { btnMask = m; send({ type: "buttons", mask: m }); }
+  else if (!redraw) return;
+  for (const b of buttons) {
+    const on = !!(m & (1 << b.bit));
+    b.g.classList.toggle("held", on);
+    b.g.classList.toggle("latched", !!(latched & (1 << b.bit)));
+    b.hit.setAttribute("aria-pressed", on);
+  }
+}
+function syncKeys(redraw) {
+  let m = 0;
+  for (const k of keyBy.values()) m |= 1 << k;
+  if (m !== keyMask) { keyMask = m; send({ type: "keys", mask: m }); }
+  else if (!redraw) return;
+  keys.forEach((k, i) => k.g.classList.toggle("held", !!(m & (1 << i))));
+}
+function bindButton(b) {
+  b.hit.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (e.shiftKey || e.button === 2) { latched ^= 1 << b.bit; syncButtons(true); return; }
+    if (latched & (1 << b.bit)) { latched &= ~(1 << b.bit); syncButtons(true); return; }
+    b.hit.setPointerCapture(e.pointerId);
+    btnBy.set("p" + e.pointerId, b.bit);
+    syncButtons();
+  });
+  b.hit.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && !e.repeat) { btnBy.set("f" + b.bit, b.bit); syncButtons(); e.preventDefault(); e.stopPropagation(); }
+  });
+  b.hit.addEventListener("keyup", () => { if (btnBy.delete("f" + b.bit)) syncButtons(); });
+}
+function bindKey(k, i) {
+  k.hit.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    k.hit.setPointerCapture(e.pointerId);
+    keyBy.set("p" + e.pointerId, i);
+    syncKeys();
+  });
+}
+function release(e) {
+  const id = "p" + e.pointerId;
+  if (btnBy.delete(id)) syncButtons();
+  if (keyBy.delete(id)) syncKeys();
+}
+for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) device.addEventListener(t, release);
+
+function drawKnob(k) { if (k.ind) k.ind.setAttribute("transform", `rotate(${angle[k.name]} ${k.x} ${k.y})`); }
+function turn(k, n) {
+  if (!n) return;
+  if (k.role === "master") {
+    masterValue = Math.max(0, Math.min(1023, masterValue + n * 16));
+    angle.MASTER = -135 + 270 * masterValue / 1023;
+    send({ type: "master", value: masterValue });
+  } else {
+    angle[k.name] = (angle[k.name] + n * 18) % 360;            // 20 detents a turn
+    send({ type: "enc", role: k.role, n });
+  }
+  drawKnob(k);
+}
+function bindKnob(k) {
+  let drag = null, wheel = 0;
+  k.hit.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    k.hit.setPointerCapture(e.pointerId);
+    drag = { y: e.clientY, acc: 0 };
+  });
+  k.hit.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    drag.acc += drag.y - e.clientY;
+    drag.y = e.clientY;
+    const step = k.role === "master" ? 3 : 8, n = Math.trunc(drag.acc / step);
+    if (n) { drag.acc -= n * step; turn(k, n); }
+  });
+  const end = () => { drag = null; };
+  k.hit.addEventListener("pointerup", end);
+  k.hit.addEventListener("pointercancel", end);
+  k.hit.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+    if (Math.abs(dy) >= 50) { turn(k, dy < 0 ? 1 : -1); wheel = 0; return; }   // a wheel notch: one detent
+    wheel -= dy;                                                                   // a trackpad: by distance
+    const n = Math.trunc(wheel / 25);
+    if (n) { wheel -= n * 25; turn(k, n); }
+  }, { passive: false });
+  k.hit.addEventListener("keydown", (e) => {
+    const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (d) { turn(k, d); e.preventDefault(); e.stopPropagation(); }
+  });
+}
+const tall = matchMedia("(orientation: portrait) and (max-width: 700px)");
+build(tall.matches ? "tall" : "wide");
+tall.addEventListener("change", () => build(tall.matches ? "tall" : "wide"));
+document.fonts?.load("16px DotGothic16").then(() => build(layout), () => {});   // the labels' width: the hit areas
+
+// the computer keyboard, every key one control: F3..A#4 on the Z (white) and A (black) rows, B4..G5 on Q..O
+// in semitones, the twelve buttons on the number row in the panel's order (held while the key is), [ ] OCT
+const KEYMAP = {};
+["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period", "Slash"].forEach((c, i) => KEYMAP[c] = { key: WHITE[i] });
+[["KeyS", 1], ["KeyD", 3], ["KeyF", 5], ["KeyH", 8], ["KeyJ", 10], ["KeyL", 13], ["Semicolon", 15], ["Quote", 17]].forEach(([c, k]) => KEYMAP[c] = { key: k });
+["KeyQ", "KeyW", "KeyE", "KeyR", "KeyT", "KeyY", "KeyU", "KeyI", "KeyO"].forEach((c, i) => KEYMAP[c] = { key: 18 + i });
+["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Digit0", "Minus", "Equal"]
+  .forEach((c, i) => KEYMAP[c] = { btn: B[[...ROW1, ...ROW2][i]] });
+Object.assign(KEYMAP, { BracketLeft: { btn: B["OCT-"] }, BracketRight: { btn: B["OCT+"] } });
+const ARROWS = { ArrowUp: [EN.SELECT, 1], ArrowDown: [EN.SELECT, -1], ArrowRight: [EN.ALGORITHM, 1], ArrowLeft: [EN.ALGORITHM, -1] };
+addEventListener("keydown", (e) => {
+  if (!node || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.(".hit.knob, input, textarea, select") || !document.getElementById("tab-play").classList.contains("active")) return;
+  if (ARROWS[e.code]) { const [r, n] = ARROWS[e.code]; turn(knobs.find((k) => k.role === r), n); e.preventDefault(); return; }
+  const m = KEYMAP[e.code];
+  if (!m) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (m.key !== undefined) { keyBy.set("k" + e.code, m.key); syncKeys(); }
+  else { btnBy.set("k" + e.code, m.btn); syncButtons(); }
+});
+addEventListener("keyup", (e) => {
+  const id = "k" + e.code;
+  if (keyBy.delete(id)) syncKeys();
+  if (btnBy.delete(id)) syncButtons();
+});
+addEventListener("blur", () => {
+  for (const id of [...btnBy.keys()]) if (id[0] !== "p") btnBy.delete(id);
+  for (const id of [...keyBy.keys()]) if (id[0] !== "p") keyBy.delete(id);
+  syncButtons();
+  syncKeys();
+});
+
+// ------------------------------------------------------------------ screen and lights
+const ctx = document.getElementById("screen").getContext("2d");
+const img = ctx.createImageData(240, 240);
+function drawScreen(fb) {
+  const d = img.data;
+  for (let i = 0; i < 240 * 240; i++) {
+    const v = fb[i], p = ((v >> 8) | (v << 8)) & 0xFFFF;          // the panel's byte order -> RGB565
+    d[i * 4] = ((p >> 11) & 31) * 255 / 31;
+    d[i * 4 + 1] = ((p >> 5) & 63) * 255 / 63;
+    d[i * 4 + 2] = (p & 31) * 255 / 31;
+    d[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+// the power-on sweep (hal/fm1_led_anim.h): a level per LED, lit frames /64 (| 128: the glow under them), drawn as the
+// LED's share of lit between its dark (or glowing) colour and the lit one, mixed in linear light
+const lin = (h) => [1, 3, 5].map((i) => (parseInt(h.slice(i, i + 2), 16) / 255) ** 2.2);
+const ANIM = { btn: [lin("#3a3934"), lin("#3a3934"), lin("#fff4d6")], slit: [lin("#3a3a3c"), lin("#77777b"), lin("#ececee")] };
+function animFill(kind, q) {
+  const [dark, glow, lit] = ANIM[kind], s = Math.min(q & 127, 64) / 64, base = q & 128 ? glow : dark;
+  const c = base.map((v, i) => Math.round(255 * (v + (lit[i] - v) * s) ** (1 / 2.2)));
+  return `rgb(${c.join(",")})`;
+}
+function drawAnim(anim) {
+  for (const b of buttons) b.g.querySelector(".face").style.fill = anim ? animFill("btn", anim[b.bit]) : "";
+  keys.forEach((k, i) => { k.g.querySelector(".slit").style.fill = anim ? animFill("slit", anim[14 + i]) : ""; });
+}
+function drawLights([litB, litK, dimB, dimK, dimLo = 0, brB = 0, brK = 0, midK = 0], anim = null) {
+  drawAnim(anim);
+  document.documentElement.classList.toggle("dimlo", !!dimLo);   // (the breath's lower peak)
+  for (const b of buttons) {
+    const bit = 1 << b.bit, green = b.bit === B.PLAY && (litB & (1 << PLAY_GREEN));
+    b.g.classList.toggle("lit", !!(litB & bit) && !green);
+    b.g.classList.toggle("green", !!green);
+    b.g.classList.toggle("dim", !!(dimB & bit));
+    b.g.classList.toggle("breath", !!(brB & bit));
+  }
+  keys.forEach((k, i) => {
+    k.g.classList.toggle("lit", !!(litK & (1 << i)));
+    k.g.classList.toggle("dim", !!(dimK & (1 << i)));
+    k.g.classList.toggle("breath", !!(brK & (1 << i)));
+    k.g.classList.toggle("mid", !!(midK & (1 << i)));
+  });
+}
+
+// ------------------------------------------------------------------ the flash, kept in this browser
+function loadFlash() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) || "{}"), out = {};
+    for (const [off, b64] of Object.entries(raw)) out[off] = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return out;
+  } catch { return {}; }
+}
+function saveFlash(sectors) {
+  try {
+    const raw = {};
+    for (const [off, u8] of Object.entries(sectors)) {
+      let s = "";
+      for (let i = 0; i < u8.length; i += 4096) s += String.fromCharCode.apply(null, u8.subarray(i, i + 4096));
+      raw[off] = btoa(s);
+    }
+    localStorage.setItem(STORE, JSON.stringify(raw));
+    return true;
+  } catch { return false; }                                       // private mode, full: this session only
+}
+
+// ------------------------------------------------------------------ Web MIDI in (channel messages)
+async function midiOn() {
+  if (!navigator.requestMIDIAccess) return;
+  try {
+    const access = await navigator.requestMIDIAccess();
+    const bind = () => {
+      for (const input of access.inputs.values()) {
+        input.onmidimessage = (e) => {
+          const d = e.data;
+          if (d.length >= 2 && d[0] >= 0x80 && d[0] < 0xF0) send({ type: "midi", data: [d[0], d[1], d[2] || 0] });
+        };
+      }
+    };
+    access.onstatechange = bind;
+    bind();
+  } catch { /* no permission: the panel only */ }
+}
+
+// ------------------------------------------------------------------ switching on & Live Audio Resampler
+let audioCtx = null, resampleActive = false, resampleChunksL = [], resampleChunksR = [], resampleProc = null;
+const resampleBtn = document.getElementById("resample-btn");
+
+function encodeWavStereo(chunksL, chunksR, sampleRate) {
+  let total = 0;
+  for (const c of chunksL) total += c.length;
+  const buf = new ArrayBuffer(44 + total * 4);
+  const view = new DataView(buf);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + total * 4, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 2, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 4, true);
+  view.setUint16(32, 4, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, "data");
+  view.setUint32(40, total * 4, true);
+  let off = 44;
+  for (let b = 0; b < chunksL.length; b++) {
+    const L = chunksL[b], R = chunksR[b];
+    for (let i = 0; i < L.length; i++) {
+      const sL = Math.max(-1, Math.min(1, L[i]));
+      const sR = Math.max(-1, Math.min(1, R[i]));
+      view.setInt16(off, sL < 0 ? sL * 0x8000 : sL * 0x7FFF, true);
+      view.setInt16(off + 2, sR < 0 ? sR * 0x8000 : sR * 0x7FFF, true);
+      off += 4;
+    }
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+resampleBtn.addEventListener("click", () => {
+  if (!audioCtx || !node) return;
+  if (!resampleActive) {
+    resampleChunksL = [];
+    resampleChunksR = [];
+    resampleProc = audioCtx.createScriptProcessor(4096, 2, 2);
+    resampleProc.onaudioprocess = (e) => {
+      if (!resampleActive) return;
+      resampleChunksL.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      resampleChunksR.push(new Float32Array(e.inputBuffer.getChannelData(1)));
+    };
+    node.connect(resampleProc);
+    resampleProc.connect(audioCtx.destination);
+    resampleActive = true;
+    resampleBtn.classList.add("rec-active");
+    resampleBtn.textContent = "■ Stop & Save WAV";
+  } else {
+    resampleActive = false;
+    try { node.disconnect(resampleProc); resampleProc.disconnect(); } catch {}
+    resampleProc = null;
+    resampleBtn.classList.remove("rec-active");
+    resampleBtn.textContent = "● Resample Audio";
+    if (resampleChunksL.length > 0) {
+      const wav = encodeWavStereo(resampleChunksL, resampleChunksR, audioCtx.sampleRate);
+      const url = URL.createObjectURL(wav);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `loom-resample-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.wav`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+  }
+});
+
+const status = document.getElementById("status");
+const say = (t) => { status.textContent = t; status.hidden = !t; };
+async function switchOn() {
+  const go = document.getElementById("go");
+  go.disabled = true;
+  go.textContent = "Starting…";
+  try {
+    const ac = new AudioContext({ sampleRate: 44100, latencyHint: "interactive" });
+    audioCtx = ac;
+    const cacheBust = Date.now();
+    console.log(`[Loom FM-1] Initializing Loom firmware (v=${cacheBust})...`);
+    const [wasm] = await Promise.all([
+      fetch(`felucca.wasm?v=${cacheBust}`, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(`felucca.wasm: ${r.status}`); return r.arrayBuffer(); }),
+      ac.audioWorklet.addModule(`worklet.js?v=${cacheBust}`)]);
+    node = new AudioWorkletNode(ac, "felucca", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+    node.connect(ac.destination);
+    let warned = false;
+    await new Promise((res, rej) => {
+      node.port.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "ready") res();
+        else if (m.type === "error") rej(new Error(m.message));
+        else if (m.type === "frame") {
+          if (m.fb) drawScreen(m.fb);
+          if (m.leds) drawLights(lastLeds = m.leds, m.anim);
+          if (m.sectors && !saveFlash(m.sectors) && !warned) {
+            warned = true;
+            console.warn("Felucca: this browser does not keep the saves; they last until the page closes.");
+          }
+        } else if (m.type === "params") {
+          onParamsUpdate(m);
+        }
+      };
+      node.port.postMessage({ type: "load", wasm, sectors: loadFlash(), master: masterValue }, [wasm]);
+    });
+    await ac.resume();
+    document.getElementById("start").hidden = true;
+    go.textContent = "On";
+    resampleBtn.disabled = false;
+    if (ac.sampleRate !== 44100) console.warn(`Felucca: the browser plays at ${ac.sampleRate} Hz, the pitch is off by ${(1200 * Math.log2(ac.sampleRate / 44100)).toFixed(0)} cents.`);
+    syncButtons();
+    syncKeys();
+    send({ type: "get_params" });
+    send({ type: "visible", on: !document.hidden });
+    if (pendingMidiImport) {
+      send(pendingMidiImport);
+      pendingMidiImport = null;
+    }
+    midiOn();
+  } catch (err) {
+    node = null;
+    go.disabled = false;
+    go.textContent = "Switch on";
+    say("Could not start: " + (err && err.message || err) + ". A current Chrome, Edge, Firefox or Safari should work.");
+  }
+}
+document.getElementById("go").addEventListener("click", switchOn);
+document.addEventListener("visibilitychange", () => send({ type: "visible", on: !document.hidden }));
+
+// ------------------------------------------------------------------ Editor <-> Emulator Bridge (.MP3 Sample & .MID Sequencer Import)
+let pendingMidiImport = null;
+function persistSampleSlotToFlash(k, hdr, data) {
+  if (k < 0 || k >= 3) return;
+  const base = 0xA0000 + k * 0x14000;
+  const slotBuf = new Uint8Array(0x14000);
+  slotBuf.fill(0xFF);
+  if (hdr && hdr.length) slotBuf.set(hdr.subarray(0, Math.min(hdr.length, 512)), 0);
+  if (data && data.length) slotBuf.set(data.subarray(0, Math.min(data.length, 0x14000 - 512)), 512);
+  const sectors = loadFlash();
+  for (let off = 0; off < 0x14000; off += 4096) {
+    const sec = slotBuf.subarray(off, off + 4096);
+    let any = false;
+    for (let i = 0; i < 4096; i++) { if (sec[i] !== 0xFF) { any = true; break; } }
+    if (any) sectors[base + off] = new Uint8Array(sec);
+    else delete sectors[base + off];
+  }
+  saveFlash(sectors);
+}
+
+window.addEventListener("message", (e) => {
+  const m = e.data;
+  if (!m || typeof m.type !== "string") return;
+  if (m.type === "loom-emu-sample") {
+    const k = m.slot | 0;
+    const hdr = new Uint8Array(m.hdr || []);
+    const data = new Uint8Array(m.data || []);
+    persistSampleSlotToFlash(k, hdr, data);
+    if (node) {
+      send({ type: "smp_slot", slot: k, hdr, data, select: m.select !== false });
+    }
+  } else if (m.type === "loom-emu-sample-erase") {
+    const k = m.slot | 0;
+    persistSampleSlotToFlash(k, null, null);
+    if (node) {
+      send({ type: "smp_slot", slot: k, hdr: new Uint8Array(0), data: new Uint8Array(0), select: false });
+    }
+  } else if (m.type === "loom-emu-midi-seq") {
+    const payload = { type: "midi_seq_import", bpm: m.bpm, tracks: m.tracks };
+    if (node) send(payload);
+    else pendingMidiImport = payload;
+  }
+});
+
+// ------------------------------------------------------------------ Workbench Tabs & Searchable Manual
+let editorLoaded = false, updaterInitialized = false;
+function activateTab(target, editorAction = null) {
+  document.querySelectorAll(".wb-tab").forEach((b) => {
+    const active = b.dataset.tab === target;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", active);
+  });
+  document.querySelectorAll(".wb-panel").forEach((p) => {
+    p.classList.toggle("active", p.id === `tab-${target}`);
+  });
+  if (target === "editor") {
+    const frame = document.getElementById("editor-frame");
+    if (!editorLoaded) {
+      editorLoaded = true;
+      frame.src = "editor.html";
+      if (editorAction) {
+        frame.addEventListener("load", () => {
+          setTimeout(() => frame.contentWindow?.postMessage({ type: "loom-editor-action", action: editorAction }, "*"), 220);
+        }, { once: true });
+      }
+    } else if (editorAction) {
+      frame.contentWindow?.postMessage({ type: "loom-editor-action", action: editorAction }, "*");
+    }
+  }
+  if (target === "updater" && !updaterInitialized) {
+    updaterInitialized = true;
+    initFirmwareUpdater();
+  }
+}
+document.querySelectorAll(".wb-tab").forEach((btn) => {
+  btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+});
+
+document.getElementById("manual-search").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll("#tab-manual .wb-table tbody tr").forEach((tr) => {
+    tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+  document.querySelectorAll("#tab-manual .mag-card").forEach((card) => {
+    card.style.display = !q || card.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+
+// ------------------------------------------------------------------ Parameter Quick-Inspect Bar & Panel
+let currentParams = null;
+let activeInspectKey = "subtract";
+let activeDrag = null;
+
+const ENGINE_MAP = {
+  subtract: 0,
+  phase: 2,
+  lofi: 3,
+  sample: 4,
+  voice: 5,
+  scrub: 6,
+  wheel: 7,
+  grain: 8,
+  phys: 9,
+  drum: 10,
+  noise: 11,
+  fm6: 12,
+  slice: 13,
+  wavetable: 14
+};
+
+const ENGINE_NAMES = [
+  "SUBTRACT", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "SCRUB", "WHEEL", "GRAIN", "PHYS", "DRUM", "NOISE", "FM6", "SLICE", "WAVETABLE"
+];
+
+const PARAM_DATA = {
+  subtract: {
+    category: "ENGINE",
+    title: "SUBTRACT — 4-Osc Subtractive Synth",
+    color: "#ff7300",
+    desc: "Four morphing analog oscillators with recursive wave folding, per-oscillator drive, independent glide, and multi-mode resonant filter (LP, BP, HP).",
+    tip: "Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).",
+    pages: [
+      {
+        name: "Page 1: Oscillators (OSC)",
+        sub: "EDIT P1/3",
+        params: [
+          { key: "sub_osc_sel", knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects active oscillator for waveform shaping and mixing.", type: "enum", scope: "sub_osc", field: 0, min: 0, max: 3, options: ["OSC 1", "OSC 2", "OSC 3", "SUB (4)"] },
+          { key: "sub_wave", knob: "K2", name: "WAVE", range: "0–127", desc: "Smooth continuous morph: Sine (0) → Triangle (42) → Saw (85) → Square (127).", type: "knob", scope: "sub_osc", field: 1, min: 0, max: 127, def: 85, fmt: v => v < 22 ? "SINE" : v < 64 ? "TRI" : v < 106 ? "SAW" : "SQR" },
+          { key: "sub_fold", knob: "K3", name: "FOLD", range: "0–127", desc: "Recursive analog wave folder adding complex high-frequency harmonics.", type: "knob", scope: "sub_osc", field: 2, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_mix", knob: "K4", name: "MIX", range: "0–127", desc: "Oscillator output level. Set to 0 (OFF) to completely bypass and save CPU.", type: "knob", scope: "sub_osc", field: 3, min: 0, max: 127, def: 127, fmt: v => v === 0 ? "OFF" : Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Pitch & Drive (TUNE)",
+        sub: "EDIT P2/3",
+        params: [
+          { key: "sub_osc_sel2", knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects oscillator (mirrors Page 1 selection).", type: "enum", scope: "sub_osc", field: 0, min: 0, max: 3, options: ["OSC 1", "OSC 2", "OSC 3", "SUB (4)"] },
+          { key: "sub_pitch", knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Coarse semitone pitch offset. SUB defaults to -12 ST (-1 octave).", type: "knob", scope: "sub_osc", field: 4, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "sub_drive", knob: "K3", name: "DRV", range: "0–127", desc: "Per-oscillator asymmetric saturation and warm drive.", type: "knob", scope: "sub_osc", field: 5, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_glide", knob: "K4", name: "GLID", range: "0–127", desc: "Independent per-oscillator portamento glide speed.", type: "knob", scope: "sub_osc", field: 6, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 3: Filter (FILTER)",
+        sub: "EDIT P3/3",
+        params: [
+          { key: "sub_ftype", knob: "K1", name: "TYPE", range: "LP, BP, HP", desc: "State-variable resonant filter response mode.", type: "enum", scope: "track", id: 101, min: 0, max: 2, options: ["LP", "BP", "HP"] },
+          { key: "sub_cut", knob: "K2", name: "CUT", range: "20Hz–20kHz", desc: "Master filter cutoff frequency with smooth exponential response.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 90, fmt: v => v === 127 ? "20 kHz" : Math.round(20 * Math.pow(1000, v / 127)) + " Hz" },
+          { key: "sub_res", knob: "K3", name: "RES", range: "0–127", desc: "Filter resonance peak; self-oscillates at high values.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_ktr", knob: "K4", name: "KTR", range: "0–100%", desc: "Keyboard pitch tracking amount for uniform brightness across octaves.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  phase: {
+    category: "ENGINE",
+    title: "PHASE — Phase Distortion Synthesizer",
+    color: "#00e5ff",
+    desc: "Dual-line phase distortion engine inspired by classic Casio CZ synths. Uses bent phase angles, alternating wave cycles, and ring modulation.",
+    tip: "Blend in WAVE2 for evolving stereo textures, or toggle LINE from MIX to RING for cutting metallic bell timbres.",
+    pages: [
+      {
+        name: "Page 1: Phase Angle (PHS)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "phs_wave", knob: "K1", name: "WAVE", range: "SAW..RTRP", desc: "Primary phase waveform: SAW, SQR, PLS, DSIN, SPLS, RSAW, RTRI, RTRP.", type: "enum", scope: "track", id: 106, min: 0, max: 7, options: ["SAW", "SQR", "PLS", "DSIN", "SPLS", "RSAW", "RTRI", "RTRP"] },
+          { key: "phs_wave2", knob: "K2", name: "WAVE2", range: "-, SAW..RTRP", desc: "Secondary waveform alternating every other cycle (or '-' for single wave).", type: "enum", scope: "track", id: 107, min: 0, max: 8, options: ["-", "SAW", "SQR", "PLS", "DSIN", "SPLS", "RSAW", "RTRI", "RTRP"] },
+          { key: "phs_dcw", knob: "K3", name: "DCW", range: "0–127", desc: "Distorted phase bend depth (equivalent to filter cutoff in subtractive).", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "phs_env", knob: "K4", name: "ENV", range: "0–127", desc: "Dedicated ADSR envelope modulation depth routed to DCW.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Secondary Line (LINE)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "phs_dtn", knob: "K1", name: "DTN", range: "0–127 ct", desc: "Detune between primary and secondary phase lines in cents.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 0, fmt: v => v + " ct" },
+          { key: "phs_line", knob: "K2", name: "LINE", range: "MIX, RING", desc: "Routing mode: additive MIX or aggressive RING modulation.", type: "toggle", scope: "track", id: 111, min: 0, max: 1, options: ["MIX", "RING"] },
+          { key: "phs_sub", knob: "K3", name: "SUB", range: "0–127", desc: "Clean sine sub-oscillator level anchored 1 octave down.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "phs_esync", knob: "K4", name: "ESYNC", range: "OFF, ON", desc: "Envelope sync to project tempo divisions.", type: "toggle", scope: "track", id: 102, min: 0, max: 1, options: ["OFF", "SYNC"] }
+        ]
+      }
+    ]
+  },
+  lofi: {
+    category: "ENGINE",
+    title: "LOFI — Chiptune & Algorithmic 8-Bit Engine",
+    color: "#ffd600",
+    desc: "Authentic retro gaming sounds inspired by Game Boy, NES, SID 6581, custom 4-bit Wave RAM, and 15-step staircase envelope DAC emulation.",
+    tip: "Select CHIP = WRAM to scrub through classic wavetable waveforms, or enable ARP for rapid vintage chiptune chord arpeggios.",
+    pages: [
+      {
+        name: "Page 1: Sound Chip (CHIP)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "lofi_chip", knob: "K1", name: "CHIP", range: "GB, NES, SID, WRAM, STEP", desc: "Emulated sound chip hardware architecture.", type: "enum", scope: "track", id: 106, min: 0, max: 4, options: ["GB", "NES", "SID", "WRAM", "STEP"] },
+          { key: "lofi_wave", knob: "K2", name: "WAVE", range: "Pulse, Tri, Noise, Tables", desc: "Available waveforms or Wave RAM table slots.", type: "enum", scope: "track", id: 107, min: 0, max: 4, options: ["PULSE", "TRI", "NOISE", "TABLE", "CUST"] },
+          { key: "lofi_duty", knob: "K3", name: "DUTY", range: "12.5%–87.5% / 0–15", desc: "Pulse duty cycle width, or Wave RAM table selector.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_crsh", knob: "K4", name: "CRSH", range: "0–127", desc: "Hardware bit-crush and staircase envelope decay step speed.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Motion & Tone (MOTN)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "lofi_swp", knob: "K1", name: "SWP", range: "0–127", desc: "Fast pitch sweep speed for arcade laser zaps and kick transients.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_vib", knob: "K2", name: "VIB", range: "0–127", desc: "Vintage pitch vibrato depth and speed.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_arp", knob: "K3", name: "ARP", range: "OFF, FAST, MED, SLOW", desc: "Automated hardware chiptune arpeggio speed.", type: "enum", scope: "track", id: 112, min: 0, max: 3, options: ["OFF", "FAST", "MED", "SLOW"] },
+          { key: "lofi_tone", knob: "K4", name: "TONE", range: "0–127", desc: "High-frequency tone filtering and DAC reconstruction smoothing.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  sample: {
+    category: "ENGINE",
+    title: "SAMPLE — Chromatic Polyphonic Sampler",
+    color: "#ff007f",
+    desc: "Multi-voice chromatic sampler featuring sample playback with forward, reverse, and ping-pong looping, root pitch shifting, and tempo sync.",
+    tip: "Set LOOP to PING for ambient pad beds, or turn K1 (BANK) to audition user samples loaded via the Web Editor.",
+    pages: [
+      {
+        name: "Page 1: Sample & Pitch (SAMP)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "smp_bank", knob: "K1", name: "BANK", range: "PIANO..U01-16", desc: "Selects onboard multisamples or custom user sample banks.", type: "enum", scope: "track", id: 106, min: 0, max: 18, options: ["PIANO", "EP", "ORGAN", "STRINGS", "BRASS", "CHOIR", "BASS", "GUITAR", "BELL", "LEAD", "PAD", "PLUCK", "PERC", "HIT", "SFX", "CUSTOM", "USR1", "USR2", "USR3"] },
+          { key: "smp_mode", knob: "K2", name: "MODE", range: "ONE, LOOP, PING..", desc: "Sample playback loop direction mode.", type: "enum", scope: "track", id: 107, min: 0, max: 4, options: ["ONE-SHOT", "FORWARD", "REVERSE", "PING-PONG", "GATE"] },
+          { key: "smp_pitch", knob: "K3", name: "PTCH", range: "-24..+24 ST", desc: "Semitone transposition pitch shift.", type: "knob", scope: "track", id: 108, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "smp_spd", knob: "K4", name: "SPEED", range: "10%–400%", desc: "Continuous sample playback speed.", type: "knob", scope: "track", id: 109, min: 10, max: 400, def: 100, fmt: v => v + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Time & Boundary (TIME)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "smp_strch", knob: "K1", name: "STRCH", range: "25%–400%", desc: "Granular time-stretch speed without changing pitch.", type: "knob", scope: "track", id: 110, min: 25, max: 400, def: 100, fmt: v => v + "%" },
+          { key: "smp_start", knob: "K2", name: "START", range: "0–100%", desc: "Sample playback start point offset.", type: "knob", scope: "track", id: 111, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "smp_end", knob: "K3", name: "END", range: "0–100%", desc: "Sample playback end point window boundary.", type: "knob", scope: "track", id: 112, min: 0, max: 100, def: 100, fmt: v => v + "%" },
+          { key: "smp_sync", knob: "K4", name: "SYNC", range: "OFF, 1/1..1/16", desc: "Tempo-sync sample duration to current project BPM.", type: "enum", scope: "track", id: 113, min: 0, max: 7, options: ["OFF", "1/1", "1/2", "1/4", "1/8", "1/16", "2BAR", "4BAR"] }
+        ]
+      }
+    ]
+  },
+  voice: {
+    category: "ENGINE",
+    title: "VOICE — Formant & Speech Synthesis",
+    color: "#d500f9",
+    desc: "Acoustic vocal tract model synthesizing vowels, synthetic choral pads, speech timbres, glottal pulse shaping, and vocal fry jitter.",
+    tip: "Modulate Knob 1 (FORM) with LFO 1 to generate realistic talking lead lines and morphing vocal vowel chants.",
+    pages: [
+      {
+        name: "Page 1: Formant Model (VOWEL)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "vox_vowl", knob: "K1", name: "VOWL", range: "A, E, I, O, U", desc: "Continuous formant vowel throat model morphing.", type: "knob", scope: "track", id: 106, min: 0, max: 127, def: 0, fmt: v => v < 25 ? "A (ah)" : v < 50 ? "E (eh)" : v < 75 ? "I (ee)" : v < 100 ? "O (oh)" : "U (oo)" },
+          { key: "vox_vowl2", knob: "K2", name: "VOWL2", range: "A, E, I, O, U", desc: "Secondary vowel target morphed into over time.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => v < 25 ? "A (ah)" : v < 50 ? "E (eh)" : v < 75 ? "I (ee)" : v < 100 ? "O (oh)" : "U (oo)" },
+          { key: "vox_talk", knob: "K3", name: "TALK", range: "0–127", desc: "Formant transition glide time between vowels.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 0, fmt: v => (v * 15) + " ms" },
+          { key: "vox_shift", knob: "K4", name: "SHIFT", range: "-12..+12 ST", desc: "Formant frequency shift (gender throat scaling).", type: "knob", scope: "track", id: 109, min: -12, max: 12, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
+        ]
+      },
+      {
+        name: "Page 2: Articulation (VOX)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "vox_buzz", knob: "K1", name: "BUZZ", range: "0–127", desc: "Glottal pulse wave shape buzzy vocal cord harmonics.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_brth", knob: "K2", name: "BRTH", range: "0–127", desc: "Aspiration breath noise injected into the vocal tract.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 10, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_q", knob: "K3", name: "Q", range: "0–127", desc: "Vocal tract formant resonance bandwidth sharpness.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_rnd", knob: "K4", name: "RAND", range: "0–127", desc: "Micro-pitch jitter and organic vocal instability.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  scrub: {
+    category: "ENGINE",
+    title: "SCRUB — Turntable Platter & Tape Scrub",
+    color: "#ff2d78",
+    desc: "Physical reel-to-reel tape and vinyl turntable scrub engine. Playback speed, continuous scrubbing, motor brake friction, and wow & flutter.",
+    tip: "Turn Knob 1 (POS) while holding a note for live vinyl scratch performance, or use Knob 3 (FRIC) for turntable motor power-down drops.",
+    pages: [
+      {
+        name: "Page 1: Transport & Motor (PLAY)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "sc_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Scrub head position across the loaded tape audio buffer.", type: "knob", scope: "track", id: 106, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sc_spd", knob: "K2", name: "MOTOR", range: "-3.0x..+3.0x", desc: "Tape transport speed (bipolar: negative plays in reverse).", type: "knob", scope: "track", id: 107, min: -30, max: 30, def: 10, fmt: v => (v / 10).toFixed(1) + "x" },
+          { key: "sc_inert", knob: "K3", name: "INERT", range: "0–100%", desc: "Turntable motor flywheel weight and inertia deceleration.", type: "knob", scope: "track", id: 108, min: 0, max: 100, def: 50, fmt: v => v + "%" },
+          { key: "sc_fric", knob: "K4", name: "FRIC", range: "0–100%", desc: "Platter brake friction and tape capstan drag.", type: "knob", scope: "track", id: 109, min: 0, max: 100, def: 50, fmt: v => v + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Loop & Preamp (LOOP)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "sc_src", knob: "K1", name: "SRC", range: "USR1..3, MIC", desc: "Selected tape buffer audio source.", type: "enum", scope: "track", id: 110, min: 0, max: 3, options: ["USR1", "USR2", "USR3", "MIC/IN"] },
+          { key: "sc_loop", knob: "K2", name: "LOOP", range: "OFF, LOOP, PING..", desc: "Scrub buffer looping behavior.", type: "enum", scope: "track", id: 111, min: 0, max: 3, options: ["OFF", "LOOP", "PING", "GATE"] },
+          { key: "sc_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Analog preamp drive and magnetic tape head saturation.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sc_wow", knob: "K4", name: "WOW", range: "0–100%", desc: "Capstan motor wow, flutter, and warm tape drift.", type: "knob", scope: "track", id: 113, min: 0, max: 100, def: 10, fmt: v => v + "%" }
+        ]
+      }
+    ]
+  },
+  wheel: {
+    category: "ENGINE",
+    title: "WHEEL — Dual Tonewheel Drawbar Organ",
+    color: "#76ff03",
+    desc: "Classic electromagnetic tonewheel organ emulation with 4 primary drawbar footages, rotary Leslie speaker cabinet, tube drive, and key click.",
+    tip: "Toggle K4 (ROTR) from SLOW to FAST on musical chord changes for dramatic Leslie rotary speaker acceleration.",
+    pages: [
+      {
+        name: "Page 1: Drawbars (WHEEL)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "wh_reg", knob: "K1", name: "REG", range: "1..16", desc: "Drawbar registration preset curve.", type: "knob", scope: "track", id: 106, min: 0, max: 15, def: 4, fmt: v => "REG " + (v + 1) },
+          { key: "wh_sub", knob: "K2", name: "16'", range: "-8..+8", desc: "Sub-bass 16-foot fundamental drawbar footage level.", type: "knob", scope: "track", id: 107, min: -8, max: 8, def: 0, fmt: v => v },
+          { key: "wh_body", knob: "K3", name: "8'", range: "-8..+8", desc: "Primary 8-foot unison drawbar footage level.", type: "knob", scope: "track", id: 108, min: -8, max: 8, def: 0, fmt: v => v },
+          { key: "wh_top", knob: "K4", name: "4'", range: "-8..+8", desc: "Octave 4-foot harmonic drawbar footage level.", type: "knob", scope: "track", id: 109, min: -8, max: 8, def: 0, fmt: v => v }
+        ]
+      },
+      {
+        name: "Page 2: Rotor & Preamp (ROTOR)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "wh_perc", knob: "K1", name: "PERC", range: "OFF, 2ND, 3RD..", desc: "Mechanical harmonic percussion transient key contact.", type: "enum", scope: "track", id: 110, min: 0, max: 6, options: ["OFF", "2ND SOFT", "2ND HARD", "3RD SOFT", "3RD HARD", "FAST", "SLOW"] },
+          { key: "wh_clk", knob: "K2", name: "CLICK", range: "0–127", desc: "Key contact vintage percussion click intensity.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wh_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Vintage 12AX7 tube preamp saturation and grit.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wh_rotr", knob: "K4", name: "ROTR", range: "STOP, SLOW, FAST", desc: "Leslie rotary horn and drum speaker speed.", type: "enum", scope: "track", id: 113, min: 0, max: 2, options: ["STOP", "SLOW", "FAST"] }
+        ]
+      }
+    ]
+  },
+  grain: {
+    category: "ENGINE",
+    title: "GRAIN — Granular Cloud Synthesizer",
+    color: "#ff6d00",
+    desc: "Asynchronous granular synthesizer extracting overlapping micro-sound grains with variable window size, density, positional spray, and pitch randomization.",
+    tip: "Increase SPRY and SPREAD to expand mono samples into a lush, sprawling three-dimensional stereo cloud.",
+    pages: [
+      {
+        name: "Page 1: Granular Cloud (CLOUD)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "gr_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Audio buffer grain scan center position.", type: "knob", scope: "track", id: 106, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_size", knob: "K2", name: "SIZE", range: "10ms–500ms", desc: "Individual grain window duration.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => (10 + v * 4) + " ms" },
+          { key: "gr_dens", knob: "K3", name: "DENS", range: "1..32 gr/s", desc: "Grain spawn rate and polyphonic cloud density.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 64, fmt: v => Math.round(1 + v * 31 / 127) + " gr/s" },
+          { key: "gr_pitch", knob: "K4", name: "PTCH", range: "-24..+24 ST", desc: "Transposition of grain playback in semitones.", type: "knob", scope: "track", id: 109, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
+        ]
+      },
+      {
+        name: "Page 2: Pitch & Space (PITCH)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "gr_spry", knob: "K1", name: "SPRY", range: "0–100%", desc: "Random positional jitter around the scan center.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_rev", knob: "K2", name: "REV", range: "0–100%", desc: "Probability of individual grains playing in reverse.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_tone", knob: "K3", name: "TONE", range: "0–100%", desc: "High-frequency tone damping across the cloud.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_sprd", knob: "K4", name: "SPRD", range: "0–100%", desc: "Stereo spatial cloud diffusion and panning spread.", type: "knob", scope: "track", id: 78, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  phys: {
+    category: "ENGINE",
+    title: "PHYS — Physical Modeling Synthesizer",
+    color: "#00e676",
+    desc: "DaisySP physical modeling engine simulating acoustic instruments: plucked strings (Karplus-Strong), struck modal bars, vibrating tubes, and bells.",
+    tip: "Automate STRC and DAMP to smoothly transition between metallic chime hits and warm acoustic upright bass plucks.",
+    pages: [
+      {
+        name: "Page 1: Physical Model (PHYS)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "ph_model", knob: "K1", name: "MODEL", range: "STRG, BAR, TUBE, BELL", desc: "Acoustic physical resonator model selection.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["STRING", "MODAL BAR", "TUBE", "BELL"] },
+          { key: "ph_strc", knob: "K2", name: "STRC", range: "0–127", desc: "Material stiffness and harmonic non-linearity.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_brit", knob: "K3", name: "BRIT", range: "0–127", desc: "High-frequency surface friction damping brightness.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_damp", knob: "K4", name: "DAMP", range: "0–127", desc: "Decay damping dissipation rate.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Resonator Body (BODY)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "ph_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Excitation strike or pluck position along the physical body.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 20, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_acc", knob: "K2", name: "ACC", range: "0–127", desc: "Strike accent force and transient impact punch.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_bow", knob: "K3", name: "BOW", range: "0–127", desc: "Continuous bowing friction excitation amount.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_exc", knob: "K4", name: "EXC", range: "0–127", desc: "Exciter noise injection balance.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  noise: {
+    category: "ENGINE",
+    title: "NOISE — Colored Noise & Percussion Engine",
+    color: "#b0bec5",
+    desc: "Multi-spectrum noise generator with White, Pink, Brown, Red, Blue, and Metallic cymbal ring colors, particle bursts, and resonant band-pass filtering.",
+    tip: "Use the Metallic color with high RES and short DECAY for realistic vintage 808/909 hats and metallic ride cymbals.",
+    pages: [
+      {
+        name: "Page 1: Noise Generator (NOISE)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "ns_mode", knob: "K1", name: "MODE", range: "WHT, PNK, BRN, MET", desc: "Spectral noise distribution color curve.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["WHITE", "PINK", "BROWN", "METALLIC"] },
+          { key: "ns_colr", knob: "K2", name: "COLR", range: "0–127", desc: "Spectral tilt brightness and high-frequency harmonic slope.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_freq", knob: "K3", name: "FREQ", range: "20Hz–20kHz", desc: "Resonant tracking filter center frequency.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 80, fmt: v => Math.round(20 * Math.pow(1000, v / 127)) + " Hz" },
+          { key: "ns_res", knob: "K4", name: "RES", range: "0–127", desc: "Filter resonance peak sharpness.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Texture & Granularity (GRAIN)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "ns_trk", knob: "K1", name: "TRK", range: "0–100%", desc: "Keyboard pitch tracking amount for tuned noise plucks.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_dens", knob: "K2", name: "DENS", range: "0–127", desc: "Particle strike rate and granular noise grain density.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_drft", knob: "K3", name: "DRFT", range: "0–127", desc: "Random drift and flutter fluctuation across frequencies.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_crsh", knob: "K4", name: "CRSH", range: "0–127", desc: "Sample rate decimation for raw crunchy vintage digital textures.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  fm6: {
+    category: "ENGINE",
+    title: "FM6 — 6-Operator DX7 FM Synth",
+    color: "#ff1744",
+    desc: "Authentic 6-operator FM synthesis engine with all 32 classic algorithms, fractional frequency ratios, operator feedback, and full .syx voice import.",
+    tip: "Turn Knob 1 (ALGO) to explore different carrier/modulator arrangements, or adjust OP FEEDBACK for rich brass and saw waveforms.",
+    pages: [
+      {
+        name: "Page 1: Algorithm & Feedback (FM)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "fm_alg", knob: "K1", name: "ALG", range: "1..32", desc: "Selects 6-operator FM routing algorithm.", type: "knob", scope: "track", id: 106, min: 0, max: 32, def: 0, fmt: v => "ALGO " + (v || 1) },
+          { key: "fm_fdbk", knob: "K2", name: "FDBK", range: "-7..+7", desc: "Operator feedback loop intensity.", type: "knob", scope: "track", id: 107, min: -7, max: 7, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_brit", knob: "K3", name: "BRIT", range: "-64..+63", desc: "Global FM brightness / carrier-modulator balance.", type: "knob", scope: "track", id: 108, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_harm", knob: "K4", name: "HARM", range: "-16..+16", desc: "Operator harmonic multiplier ratio offset.", type: "knob", scope: "track", id: 109, min: -16, max: 16, def: 0, fmt: v => (v > 0 ? "+" + v : v) }
+        ]
+      },
+      {
+        name: "Page 2: Decay & Detune (DECAY)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "fm_decy", knob: "K1", name: "DECY", range: "-64..+63", desc: "Envelope decay scaling across all operators.", type: "knob", scope: "track", id: 110, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_sens", knob: "K2", name: "SENS", range: "-7..+7", desc: "Key velocity sensitivity depth.", type: "knob", scope: "track", id: 111, min: -7, max: 7, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_dtun", knob: "K3", name: "DTUN", range: "0–127", desc: "Operator phase detune spread in cents.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => v + " ct" },
+          { key: "fm_slot", knob: "K4", name: "SLOT", range: "1..48", desc: "Selects active preset patch voice slot.", type: "knob", scope: "track", id: 113, min: 0, max: 48, def: 0, fmt: v => "PATCH " + (v + 1) }
+        ]
+      }
+    ]
+  },
+  slice: {
+    category: "ENGINE",
+    title: "SLICE — 16-Pad Transient Beat Slicer",
+    color: "#00c853",
+    desc: "Audio chopper and transient beat slicer. Automatically detects beats and chops loops across 16 pads with per-slice reverse, pitch, pan, and choke groups.",
+    tip: "Use the SLICES page to fine-tune slice start/end points, or assign multiple slices to the same CUT GROUP for realistic open/closed hat chokes.",
+    pages: [
+      {
+        name: "Page 1: Sample & Slices (SLICE)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "sl_src", knob: "K1", name: "SRC", range: "USR1..3, MIC", desc: "Audio buffer source for beat slicing.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["USR1", "USR2", "USR3", "MIC/IN"] },
+          { key: "sl_slcs", knob: "K2", name: "SLCS", range: "1..16", desc: "Number of chop subdivisions across the loop.", type: "knob", scope: "track", id: 107, min: 1, max: 16, def: 16, fmt: v => v + " slices" },
+          { key: "sl_pitch", knob: "K3", name: "PTCH", range: "-24..+24 ST", desc: "Per-slice independent pitch transposition.", type: "knob", scope: "track", id: 108, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "sl_speed", knob: "K4", name: "SPEED", range: "10%–400%", desc: "Playback speed without changing slice length.", type: "knob", scope: "track", id: 109, min: 10, max: 400, def: 100, fmt: v => v + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Mode & Sync (PLAY)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "sl_strch", knob: "K1", name: "STRCH", range: "25%–400%", desc: "Time-stretch percentage applied across slices.", type: "knob", scope: "track", id: 110, min: 25, max: 400, def: 100, fmt: v => v + "%" },
+          { key: "sl_mode", knob: "K2", name: "MODE", range: "ONE, LOOP, GATE", desc: "Trigger mode: one-shot, looping, or gate hold.", type: "enum", scope: "track", id: 111, min: 0, max: 2, options: ["ONE-SHOT", "LOOP", "GATE"] },
+          { key: "sl_dir", knob: "K3", name: "DIR", range: "FWD, REV, ALT", desc: "Playback direction per slice pad.", type: "enum", scope: "track", id: 112, min: 0, max: 2, options: ["FORWARD", "REVERSE", "ALTERNATE"] },
+          { key: "sl_sync", knob: "K4", name: "SYNC", range: "OFF, 1/1..1/16", desc: "Tempo-sync slice gate timing to project BPM.", type: "enum", scope: "track", id: 113, min: 0, max: 7, options: ["OFF", "1/1", "1/2", "1/4", "1/8", "1/16", "2BAR", "4BAR"] }
+        ]
+      }
+    ]
+  },
+  wavetable: {
+    category: "ENGINE",
+    title: "WAVETABLE — 3D Morphing Wavetable Synth",
+    color: "#00b0ff",
+    desc: "Multi-frame wavetable engine with bandlimited morphing, wavetable position sweep, recursive wavefolding, analog drive, and sub-oscillator.",
+    tip: "Assign an LFO or envelope to Knob 2 (POS) to create dynamic sweeps through complex harmonic wavetables.",
+    pages: [
+      {
+        name: "Page 1: Wavetable Morph (WAVE)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "wt_src", knob: "K1", name: "SRC", range: "BASIC..USR4", desc: "Selects active wavetable sound bank.", type: "enum", scope: "track", id: 106, min: 0, max: 15, options: ["BASIC", "ANALOG", "DIGITAL", "FM", "VOCAL", "METALLIC", "CHORD", "BELL", "ORGAN", "NOISE", "DRONE", "EP", "USER1", "USER2", "USER3", "USER4"] },
+          { key: "wt_pos", knob: "K2", name: "POS", range: "0–127", desc: "Current wavetable frame interpolation position.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 32, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_warp", knob: "K3", name: "WARP", range: "-64..+63", desc: "Spectral wave morphing / formant smoothing curve.", type: "knob", scope: "track", id: 108, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "wt_detn", knob: "K4", name: "DETN", range: "0–127", desc: "Stereo unison detune spread between wavetable voices.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 20, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Drive & Lo-Fi (DRIVE)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "wt_bits", knob: "K1", name: "BITS", range: "4..16 bit", desc: "Bit-depth quantizer for vintage digital crunch.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 127, fmt: v => (4 + Math.round(v * 12 / 127)) + " bit" },
+          { key: "wt_srat", knob: "K2", name: "SRAT", range: "0–127", desc: "Sample rate reduction decimation.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Pushed analog drive preamp saturation.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 16, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_glid", knob: "K4", name: "GLID", range: "0–127", desc: "Portamento glide time between notes.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  drum: {
+    category: "ENGINE",
+    title: "DRUM — 8-Lane Dedicated Percussion Kit",
+    color: "#ff5252",
+    desc: "8-lane synthesis drum kit powering Track 5 (DRUM). Features independent lanes for Kick, Snare, Clap, Closed Hat, Open Hat, Tom, Rim, and Bell.",
+    tip: "Track 5 (DRUM) is the master sidechain trigger! The kick and snare automatically duck the synth tracks when ducking is active.",
+    pages: [
+      {
+        name: "Page 1: Lanes 1–4 (LEVELS 1-4)",
+        sub: "EDIT P1/2",
+        params: [
+          { key: "drm_kick", knob: "K1", name: "KICK", range: "0–100%", desc: "Bass drum punch, body level, and sidechain trigger gain.", type: "knob", scope: "track", trackIdx: 4, id: 83, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_snare", knob: "K2", name: "SNARE", range: "0–100%", desc: "Snare drum body level, crack, and noise snare snap.", type: "knob", scope: "track", trackIdx: 4, id: 84, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_clap", knob: "K3", name: "CLAP", range: "0–100%", desc: "Handclap level and multi-burst stereo spread.", type: "knob", scope: "track", trackIdx: 4, id: 85, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_hatcl", knob: "K4", name: "HATCL", range: "0–100%", desc: "Closed hi-hat metallic transient level.", type: "knob", scope: "track", trackIdx: 4, id: 86, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Lanes 5–8 (LEVELS 5-8)",
+        sub: "EDIT P2/2",
+        params: [
+          { key: "drm_hatop", knob: "K1", name: "HATOP", range: "0–100%", desc: "Open hi-hat sizzle level and decay time.", type: "knob", scope: "track", trackIdx: 4, id: 87, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_tom", knob: "K2", name: "TOM", range: "0–100%", desc: "Low/mid acoustic tom pitch and resonant level.", type: "knob", scope: "track", trackIdx: 4, id: 88, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_rim", knob: "K3", name: "RIM", range: "0–100%", desc: "Rimshot woodblock transient strike level.", type: "knob", scope: "track", trackIdx: 4, id: 89, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_bell", knob: "K4", name: "BELL", range: "0–100%", desc: "Ride cymbal metallic bell ping level.", type: "knob", scope: "track", trackIdx: 4, id: 90, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  seq: {
+    category: "SEQUENCER",
+    title: "SEQUENCER — 64-Step Dual-View Sequencer",
+    color: "#5fe08a",
+    desc: "Dual-view 64-step sequencer featuring 4x4 (16-step) and 8x8 (64-step) views, trigger modifiers, ratchets, parameter locks, swing, and humanization.",
+    tip: "Hold any active step button and turn any knob to lock custom cutoff, pitch, or effect values to that individual step.",
+    pages: [
+      {
+        name: "Pattern Loop & Division",
+        sub: "SEQ P1",
+        params: [
+          { key: "sq_len", knob: "K1", name: "LEN", range: "1..64 steps", desc: "Pattern loop length. Allows polyrhythms (e.g. 5, 7, 11 steps).", type: "knob", scope: "track", id: 29, min: 1, max: 64, def: 16, fmt: v => v + " steps" },
+          { key: "sq_div", knob: "K2", name: "DIV", range: "1/4..4BAR", desc: "Clock divider (whole notes down to 32nd notes and triplets).", type: "enum", scope: "track", id: 30, min: 0, max: 9, options: ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"] },
+          { key: "sq_swing", knob: "K3", name: "SWING", range: "0–100%", desc: "Groove shuffle swing timing (0% = straight).", type: "knob", scope: "track", id: 31, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sq_gate", knob: "K4", name: "GATE", range: "1%–127%", desc: "Default step note gate length (staccato to legato).", type: "knob", scope: "track", id: 32, min: 1, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Groove & Sequencer Flags",
+        sub: "SEQ P2",
+        params: [
+          { key: "sq_human", knob: "K1", name: "HUMAN", range: "0–100%", desc: "Micro-timing and velocity humanization for a live feel.", type: "knob", scope: "track", id: 79, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sq_qntz", knob: "K2", name: "QUANTIZE", range: "OFF, ON", desc: "Hardware step quantization: aligns recorded notes strictly to grid.", type: "toggle", scope: "track", id: 94, min: 0, max: 1, options: ["OFF", "ON"] },
+          { key: "sq_mute", knob: "K3", name: "MUTE", range: "OFF, ON", desc: "Mutes active track audio while sequencer continues playback.", type: "toggle", scope: "track", id: 40, min: 0, max: 1, options: ["PLAY", "MUTE"] },
+          { key: "sq_esync", knob: "K4", name: "ENV SYNC", range: "OFF, ON", desc: "Locks ADSR envelope stages to rhythmic note tempo divisions.", type: "toggle", scope: "track", id: 102, min: 0, max: 1, options: ["OFF", "SYNC"] }
+        ]
+      }
+    ]
+  },
+  arp: {
+    category: "ARPEGGIATOR",
+    title: "ARPEGGIATOR — Expressive Real-Time Arpeggiator",
+    color: "#ffd600",
+    desc: "12-mode arpeggiator with classic and generative algorithmic patterns, clock sync, octave spread, gate duration, swing, and probability chance.",
+    tip: "Try algorithmic modes like BACH, BROWNian walk, or DIVG with PROB < 100% for evolving generative arpeggios that never repeat.",
+    pages: [
+      {
+        name: "Page 1: Pattern & Timing",
+        sub: "ARP P1/2",
+        params: [
+          { key: "arp_mode", knob: "K1", name: "MODE", range: "UP, DOWN, BACH..", desc: "12 pattern modes including algorithmic and Brownian walks.", type: "enum", scope: "track", id: 17, min: 0, max: 11, options: ["OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG"] },
+          { key: "arp_rate", knob: "K2", name: "RATE", range: "1/4..4BAR", desc: "Tempo-synced clock speed division.", type: "enum", scope: "track", id: 18, min: 0, max: 9, options: ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"] },
+          { key: "arp_oct", knob: "K3", name: "OCT", range: "-3..+3 oct", desc: "Arpeggio octave range spread.", type: "knob", scope: "track", id: 19, min: -3, max: 3, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " oct" },
+          { key: "arp_gate", knob: "K4", name: "GATE", range: "1%–127%", desc: "Note gate length (staccato plucks to overlapping legato ties).", type: "knob", scope: "track", id: 20, min: 1, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      },
+      {
+        name: "Page 2: Feel & Latch Controls",
+        sub: "ARP P2/2",
+        params: [
+          { key: "arp_swg", knob: "K1", name: "SWG", range: "0–100%", desc: "Arpeggiator groove swing shuffle percentage.", type: "knob", scope: "track", id: 21, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "arp_prob", knob: "K2", name: "PROB", range: "0–100%", desc: "Step trigger probability chance for generative variations.", type: "knob", scope: "track", id: 22, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "arp_hold", knob: "K3", name: "HOLD", range: "OFF, ON", desc: "Latch hold: keeps arpeggio playing endlessly when keys are released.", type: "toggle", scope: "track", id: 23, min: 0, max: 1, options: ["OFF", "HOLD"] },
+          { key: "arp_ord", knob: "K4", name: "ORD", range: "NOTE, PLAY", desc: "Note order: chromatic pitch order vs chronological played order.", type: "toggle", scope: "track", id: 24, min: 0, max: 1, options: ["NOTE", "PLAY"] }
+        ]
+      }
+    ]
+  },
+  scale: {
+    category: "THEORY",
+    title: "SCALES & CHORDS — Scale Quantizer & Progression Engine",
+    color: "#00e5ff",
+    desc: "Musical scale quantization across 16 scales, root transposition, and 8-chord progression generator with direct and strummed performance keys.",
+    tip: "Hold the Scale button (SCL) and press White Keys 1–8 to trigger full 8-chord progressions as chords; press White Keys 9–16 for a 1/2-step strum!",
+    pages: [
+      {
+        name: "Scale & Key Quantization",
+        sub: "SCL P1/2",
+        params: [
+          { key: "scl_root", knob: "K1", name: "ROOT", range: "C..B", desc: "Musical root key center note.", type: "enum", scope: "track", id: 25, min: 0, max: 11, options: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] },
+          { key: "scl_scl", knob: "K2", name: "SCL", range: "CHR, MAJ, MIN..", desc: "16 selectable scales (Major, Minor, Dorian, Pentatonic, Blues..).", type: "enum", scope: "track", id: 26, min: 0, max: 15, options: ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"] },
+          { key: "scl_qnt", knob: "K3", name: "QNT", range: "OFF, SNAP, WHITE..", desc: "Quantize mode: snap notes to scale or remap white keys.", type: "enum", scope: "track", id: 27, min: 0, max: 3, options: ["OFF", "SNAP", "WHITE", "SEQ"] },
+          { key: "scl_trn", knob: "K4", name: "TRN", range: "-24..+24 ST", desc: "Chromatic master transpose in semitones.", type: "knob", scope: "track", id: 28, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
+        ]
+      },
+      {
+        name: "8-Chord Progression Generator",
+        sub: "SCL P2/2",
+        params: [
+          { key: "ch_mood", knob: "K1", name: "MOOD", range: "CALM, HAPPY, SAD..", desc: "Progression mood: CALM, HAPPY, SAD, SPOOK, ANGRY, EXCITE, GRAND, TENSE.", type: "enum", scope: "track", id: 103, min: 0, max: 7, options: ["CALM", "HAPPY", "SAD", "SPOOK", "ANGRY", "EXCITE", "GRAND", "TENSE"] },
+          { key: "ch_cmpx", knob: "K2", name: "CMPX", range: "SMPL, CMPX, COLTRN", desc: "Harmonic complexity: Simple triads, 7th/9th extensions, or Coltrane changes.", type: "enum", scope: "track", id: 104, min: 0, max: 2, options: ["SMPL", "CMPX", "COLTRN"] },
+          { key: "ch_rate", knob: "K3", name: "RATE", range: "8, 16, 32, 1BAR..", desc: "Harmonic rhythm rate per chord change.", type: "enum", scope: "track", id: 8, min: 0, max: 5, options: ["8", "16", "32", "64", "1BAR", "2BAR"] },
+          { key: "ch_hold", knob: "K4", name: "HOLD", range: "AUTO, KEY1-8, HOLD", desc: "Chord playback latch behavior.", type: "enum", scope: "track", id: 78, min: 0, max: 2, options: ["AUTO", "KEY1-8", "HOLD"] }
+        ]
+      },
+      {
+        name: "Chord Voicing & Quick-Keys",
+        sub: "SCL CHORD KEYS",
+        params: [
+          { key: "ch_type", knob: "K1", name: "CHRD", range: "OFF, PROG, DIA..", desc: "Keyboard chord trigger mode: PROG (8 chords), diatonic or fixed intervals.", type: "enum", scope: "track", id: 81, min: 0, max: 10, options: ["OFF", "PROG", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"] },
+          { key: "ch_voic", knob: "K2", name: "VOIC", range: "CLOSE, OPEN, INV..", desc: "Chord inversion and voice spreading.", type: "enum", scope: "track", id: 82, min: 0, max: 4, options: ["CLOSE", "OPEN", "INV1", "INV2", "+OCT"] },
+          { key: "ch_strum", knob: "K3", name: "STRUM", range: "0–100%", desc: "1/2-step (32nd note) strum timing curve for White Keys 9–16.", type: "knob", scope: "track", id: 38, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ch_poly", knob: "K4", name: "POLY", range: "POLY, MONO, LEG..", desc: "Voice allocation: independent polyphonic chord voice playback.", type: "enum", scope: "track", id: 37, min: 0, max: 3, options: ["POLY", "MONO", "LEGATO", "UNISON"] }
+        ]
+      }
+    ]
+  },
+  wobble: {
+    category: "INSERT FX",
+    title: "WOBBLE — Vintage Tape Transport Modulation",
+    color: "#ff007f",
+    desc: "Simulates mechanical capstan motor drift, physical tape wear, and analog tape saturation. Adds organic movement and pitch drift.",
+    tip: "Use on electric pianos or pads for a warm, nostalgic lo-fi tape flutter.",
+    pages: [
+      {
+        name: "Tape Wobble Parameters",
+        sub: "INS: WOBBL (TYPE 9)",
+        params: [
+          { key: "wob_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Wobble insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 9 ? 1 : 0, customSet: v => v ? 9 : 0 },
+          { key: "wob_rate", knob: "K1", name: "RATE", range: "0.1Hz–15Hz", desc: "LFO motor wow and flutter cycle frequency.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 50, fmt: v => (0.1 + v * 0.12).toFixed(1) + " Hz" },
+          { key: "wob_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation deviation width.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 70, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wob_sat", knob: "K3", name: "SAT", range: "0–100%", desc: "Tape saturation drive adding warm even harmonics.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wob_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry effect balance on the active track.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  octaver: {
+    category: "INSERT FX",
+    title: "OCTAVER — Polyphonic Sub & Harmony Generator",
+    color: "#76ff03",
+    desc: "Generates octave-shifted and musical harmony voices beneath or above your notes with unison detune and dedicated tone damping.",
+    tip: "Set MODE to -1OCT with DUAL unison for massive stadium-filling synth leads and basslines.",
+    pages: [
+      {
+        name: "Octaver Parameters",
+        sub: "INS: OCTAV (TYPE 10)",
+        params: [
+          { key: "oct_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Octaver insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 10 ? 1 : 0, customSet: v => v ? 10 : 0 },
+          { key: "oct_mode", knob: "K1", name: "MODE", range: "+1OCT, -1OCT..", desc: "Selects generated harmony interval or dual-octave mode.", type: "enum", scope: "track", id: 97, min: 0, max: 9, options: ["+1OCT", "+2OCT", "-1OCT", "-2OCT", "DUAL", "MAJOR", "DOM7", "MAJ7", "MIN7", "DIM"] },
+          { key: "oct_unis", knob: "K2", name: "UNIS", range: "0–100%", desc: "Unison detune thickness between generated voices.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "oct_tone", knob: "K3", name: "TONE", range: "20Hz–20kHz", desc: "High-cut filter damping on harmony voices.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 100, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "oct_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Direct wet/dry blend of harmony voices.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  overdrive: {
+    category: "INSERT FX",
+    title: "OVERDRIVE — Tube Drive & Asymmetric Clipping",
+    color: "#ff3d00",
+    desc: "Warm vacuum tube saturation that transitions into aggressive asymmetric clipping, featuring an interactive tilt EQ tone control.",
+    tip: "Increase GRIT for cutting bite on FM synths or 303-style acid basslines.",
+    pages: [
+      {
+        name: "Overdrive Parameters",
+        sub: "INS: OVDRI (TYPE 11)",
+        params: [
+          { key: "ovd_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Overdrive insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 11 ? 1 : 0, customSet: v => v ? 11 : 0 },
+          { key: "ovd_drv", knob: "K1", name: "DRIVE", range: "0–100%", desc: "Preamp input gain and harmonic saturation.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_tone", knob: "K2", name: "TONE", range: "-64..+63", desc: "Tilt tone EQ: boosts bass/damps highs or vice versa.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_grit", knob: "K3", name: "GRIT", range: "0–100%", desc: "Asymmetric diode clipping edge and bias distortion.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry parallel saturation mix.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  panner: {
+    category: "INSERT FX",
+    title: "PANNER — Tempo-Synced Auto-Panner",
+    color: "#d500f9",
+    desc: "Stereo auto-panner modulating track spatial position with selectable LFO wave shapes and tempo-synced or free-running speeds.",
+    tip: "Use SQR shape on hi-hats or arpeggios for instant stereo ping-pong bouncing.",
+    pages: [
+      {
+        name: "Auto-Panner Parameters",
+        sub: "INS: PANNR (TYPE 12)",
+        params: [
+          { key: "pan_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Auto-Panner insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 12 ? 1 : 0, customSet: v => v ? 12 : 0 },
+          { key: "pan_rate", knob: "K1", name: "RATE", range: "0.1Hz–20Hz", desc: "Panning modulation speed.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 60, fmt: v => (0.1 + v * 0.15).toFixed(1) + " Hz" },
+          { key: "pan_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Stereo panning width from center to extreme wide left/right.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "pan_shape", knob: "K3", name: "SHAPE", range: "SINE, TRI, SQR", desc: "Panning LFO waveform shape: Sine, Tri, or hard Square.", type: "enum", scope: "track", id: 99, min: 0, max: 2, options: ["SINE", "TRI", "SQR"] },
+          { key: "pan_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Effect wet/dry mix balance.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  delay: {
+    category: "SEND FX",
+    title: "TAPE ECHO — Continuous Analog Tape Delay",
+    color: "#ffab00",
+    desc: "Master Send Delay with pitch-shifting capstan motor modeling, continuous delay time, runaway analog feedback, and wow & flutter.",
+    tip: "Twist Knob 1 (TIME) while delay repeats are playing for authentic tape-speed pitch warping. Crank FDBK for infinite dub self-oscillation.",
+    pages: [
+      {
+        name: "Tape Echo Parameters",
+        sub: "FX SEND: DELAY",
+        params: [
+          { key: "dly_time", knob: "K1", name: "TIME", range: "5ms–720ms", desc: "Delay time with smooth capstan motor pitch-drift modeling.", type: "knob", scope: "global", id: 4, min: 0, max: 102, def: 64, fmt: v => (5 + v * 7) + " ms" },
+          { key: "dly_fdbk", knob: "K2", name: "FDBK", range: "0–120%", desc: "Echo feedback repeats (> 100% creates runaway dub oscillation).", type: "knob", scope: "global", id: 5, min: 0, max: 120, def: 48, fmt: v => v + "%" },
+          { key: "dly_tape", knob: "K3", name: "TAPE", range: "0–100%", desc: "Tape wow & flutter motor drift and warm tape head saturation.", type: "knob", scope: "global", id: 6, min: 0, max: 127, def: 32, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "dly_cross", knob: "K4", name: "CROSS", range: "0–100%", desc: "Stereo cross-feedback ping-pong mix between left and right.", type: "knob", scope: "global", id: 7, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "dly_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Tape Delay.", type: "knob", scope: "track", id: 35, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  reverb: {
+    category: "SEND FX",
+    title: "REVERB — Stereo Reverb Tank",
+    color: "#ff1744",
+    desc: "Master Send Reverb offering Room, Spring, Hall, and Space algorithms with acoustic chamber sizing, absorption damping, and tone shaping.",
+    tip: "HALL reverb features a distinct red color visualizer and expansive decay, perfect for cinematic pads and strings.",
+    pages: [
+      {
+        name: "Reverb Parameters",
+        sub: "FX SEND: REVERB",
+        params: [
+          { key: "rev_size", knob: "K1", name: "SIZE", range: "0–100%", desc: "Acoustic chamber dimensions and decay tail length.", type: "knob", scope: "global", id: 8, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "rev_damp", knob: "K2", name: "DAMP", range: "0–100%", desc: "High-frequency surface absorption damping.", type: "knob", scope: "global", id: 9, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "rev_tone", knob: "K3", name: "TONE", range: "-64..+63", desc: "Tone tilt: warm dark chamber (-64) to shimmering bright hall (+63).", type: "knob", scope: "global", id: 21, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "rev_type", knob: "K4", name: "TYPE", range: "ROOM, SPRING, HALL..", desc: "Selects physical reverb tank architecture.", type: "enum", scope: "global", id: 24, min: 0, max: 3, options: ["ROOM", "SPRING", "HALL", "SPACE"] },
+          { key: "rev_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Reverb Tank.", type: "knob", scope: "track", id: 36, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  chorus: {
+    category: "SEND FX",
+    title: "CHORUS — Multi-Voice Ensemble Chorus",
+    color: "#2979ff",
+    desc: "Master Send Chorus featuring 1 to 4 delay voices, BBD warm tone shaping, and animated multi-wave stereo diffusion.",
+    tip: "Set VOIC to 4 and TONE toward BBD warm for lush 80s Roland Juno-style dimensional chorus.",
+    pages: [
+      {
+        name: "Chorus Parameters",
+        sub: "FX SEND: CHORUS",
+        params: [
+          { key: "cho_rate", knob: "K1", name: "RATE", range: "0.1Hz–10Hz", desc: "LFO modulation speed.", type: "knob", scope: "global", id: 10, min: 0, max: 127, def: 40, fmt: v => (0.1 + v * 0.08).toFixed(1) + " Hz" },
+          { key: "cho_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation width and chorus detune spread.", type: "knob", scope: "global", id: 11, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "cho_tone", knob: "K3", name: "TONE", range: "-64..+63", desc: "Color spectrum: warm analog BBD (-64) to crystal shimmer (+63).", type: "knob", scope: "global", id: 13, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "cho_voic", knob: "K4", name: "VOIC", range: "1, 2, 3, 4", desc: "Number of independent stereo chorus delay lines.", type: "enum", scope: "global", id: 15, min: 0, max: 3, options: ["1 VOICE", "2 VOICES", "3 VOICES", "4 VOICES"] },
+          { key: "cho_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Chorus.", type: "knob", scope: "track", id: 34, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  },
+  sidechain: {
+    category: "SEND FX",
+    title: "SIDECHAIN — Master Bus Sidechain Ducking",
+    color: "#00e676",
+    desc: "Mix bus ducking compressor keyed to Track 5 (DRUM). Ducks synth tracks and send FX returns under kick and snare hits for pumping EDM rhythm.",
+    tip: "Turn on DUCK on Track 1–3 and Send FX so the synths and delay/reverb tails automatically breathe around the kick drum.",
+    pages: [
+      {
+        name: "Sidechain Ducking Parameters",
+        sub: "FX SEND: DUCK",
+        params: [
+          { key: "sc_depth", knob: "K1", name: "DEPTH", range: "0–100%", desc: "Ducking gain reduction depth for active track.", type: "knob", scope: "track", id: 33, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sc_trig", knob: "K2", name: "TRIG", range: "KICK, K+SN, ALL", desc: "Drum trigger source: Kick, Kick+Snare, Kick+Tom, or All drums.", type: "enum", scope: "sidechain", scId: 3, min: 0, max: 3, options: ["KICK", "K+SNR", "K+TOM", "ALL"] },
+          { key: "sc_atk", knob: "K3", name: "ATTACK", range: "0.5ms–25ms", desc: "Fast attack compression response time.", type: "knob", scope: "sidechain", scId: 1, min: 0, max: 50, def: 1, fmt: v => (0.5 + v * 0.5).toFixed(1) + " ms" },
+          { key: "sc_rels", knob: "K4", name: "RELEASE", range: "20ms–600ms", desc: "Ducker recovery release time (sets musical pumping groove).", type: "knob", scope: "sidechain", scId: 0, min: 10, max: 100, def: 48, fmt: v => (v * 6) + " ms" },
+          { key: "sc_fxdk", knob: "FXDK", name: "FX DUCK", range: "0–100%", desc: "Master Reverb, Delay & Chorus return ducking depth.", type: "knob", scope: "sidechain", scId: 2, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
+        ]
+      }
+    ]
+  }
+};
+
+// Flattened param map for fast lookup
+const PARAM_MAP = {};
+Object.values(PARAM_DATA).forEach(group => {
+  group.pages.forEach(pg => {
+    pg.params.forEach(p => {
+      PARAM_MAP[p.key] = p;
+    });
+  });
+});
+
+function getParamValue(p) {
+  if (!p) return 0;
+  if (!currentParams) return p.def !== undefined ? p.def : (p.min || 0);
+
+  if (p.scope === "global") {
+    const val = currentParams.globalParams?.[p.id];
+    return val !== undefined ? val : (p.def || 0);
+  }
+  if (p.scope === "sidechain") {
+    const val = currentParams.sidechain?.[p.scId];
+    return val !== undefined ? val : (p.def || 0);
+  }
+  if (p.scope === "sub_osc") {
+    if (!currentParams.sub) return p.def || 0;
+    const oscIdx = p.osc !== undefined ? p.osc : (currentParams.sub.selOsc || 0);
+    const osc = currentParams.sub.oscs?.[oscIdx];
+    if (!osc) return p.def || 0;
+    if (p.field === 0) return currentParams.sub.selOsc || 0;
+    if (p.field === 1) return osc.wave;
+    if (p.field === 2) return osc.fold;
+    if (p.field === 3) return osc.mix;
+    if (p.field === 4) return osc.pitch;
+    if (p.field === 5) return osc.drive;
+    if (p.field === 6) return osc.glide;
+    return p.def || 0;
+  }
+  // Track scope
+  let raw = 0;
+  if (p.trackIdx !== undefined) {
+    if (currentParams.sel === p.trackIdx) {
+      raw = currentParams.trackParams?.[p.id] ?? (p.def || 0);
+    } else {
+      raw = p.def || 0;
+    }
+  } else {
+    raw = currentParams.trackParams?.[p.id] ?? (p.def || 0);
+  }
+  if (typeof p.customVal === "function") {
+    return p.customVal(raw);
+  }
+  return raw;
+}
+
+function setParamValue(p, val) {
+  if (!p) return;
+  val = Math.max(p.min !== undefined ? p.min : 0, Math.min(p.max !== undefined ? p.max : 127, val));
+  if (p.scope === "global") {
+    if (currentParams?.globalParams) currentParams.globalParams[p.id] = val;
+    send({ type: "set_global_param", id: p.id, val });
+  } else if (p.scope === "sidechain") {
+    if (currentParams?.sidechain) currentParams.sidechain[p.scId] = val;
+    send({ type: "set_sidechain_param", id: p.scId, val });
+  } else if (p.scope === "sub_osc") {
+    const t = currentParams ? currentParams.sel : 0;
+    const oscIdx = p.osc !== undefined ? p.osc : (currentParams?.sub?.selOsc || 0);
+    if (currentParams?.sub) {
+      if (p.field === 0) {
+        currentParams.sub.selOsc = val;
+      } else if (currentParams.sub.oscs?.[oscIdx]) {
+        const o = currentParams.sub.oscs[oscIdx];
+        if (p.field === 1) o.wave = val;
+        else if (p.field === 2) o.fold = val;
+        else if (p.field === 3) o.mix = val;
+        else if (p.field === 4) o.pitch = val;
+        else if (p.field === 5) o.drive = val;
+        else if (p.field === 6) o.glide = val;
+      }
+    }
+    send({ type: "set_sub_osc", track: t, osc: oscIdx, field: p.field, val });
+  } else {
+    const t = p.trackIdx !== undefined ? p.trackIdx : (currentParams ? currentParams.sel : 0);
+    const rawVal = typeof p.customSet === "function" ? p.customSet(val) : val;
+    if (currentParams?.trackParams && (p.trackIdx === undefined || currentParams.sel === p.trackIdx)) {
+      currentParams.trackParams[p.id] = rawVal;
+    }
+    send({ type: "set_track_param", track: t, id: p.id, val: rawVal });
+  }
+  updateParamVisual(p, val);
+}
+
+function formatParamVal(p, val) {
+  if (p.options && p.options[val] !== undefined) {
+    return p.options[val];
+  }
+  if (typeof p.fmt === "function") {
+    return p.fmt(val);
+  }
+  return String(val);
+}
+
+function renderKnobSvg(p, val, color) {
+  const min = p.min !== undefined ? p.min : 0;
+  const max = p.max !== undefined ? p.max : 127;
+  const frac = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+  const arcLen = (frac * 70.69).toFixed(2);
+  const angle = (-135 + frac * 270).toFixed(1);
+  return `
+    <div class="param-knob" data-param-key="${p.key}" tabindex="0" role="slider" aria-valuenow="${val}" aria-valuemin="${min}" aria-valuemax="${max}" title="Drag vertically or scroll wheel to adjust" style="--active-color:${color};">
+      <svg viewBox="0 0 46 46">
+        <circle class="knob-rim" cx="23" cy="23" r="20" fill="#18181b" stroke="#323238" stroke-width="1.5"/>
+        <circle cx="23" cy="23" r="15" fill="none" stroke="#2a2a30" stroke-width="3" stroke-dasharray="70.69 94.25" stroke-dashoffset="-11.78" stroke-linecap="round" transform="rotate(135 23 23)"/>
+        <circle class="knob-value-arc" cx="23" cy="23" r="15" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="${arcLen} 94.25" stroke-dashoffset="-11.78" stroke-linecap="round" transform="rotate(135 23 23)"/>
+        <circle cx="23" cy="23" r="11" fill="#242428" stroke="#3a3a42" stroke-width="1"/>
+        <line class="knob-tick" x1="23" y1="23" x2="23" y2="13" stroke="#ffffff" stroke-width="2" stroke-linecap="round" transform="rotate(${angle} 23 23)"/>
+      </svg>
+    </div>
+  `;
+}
+
+function renderToggle(p, val, color) {
+  const isOn = !!val;
+  return `
+    <div class="param-toggle-wrap" style="--active-color:${color};">
+      <div class="param-toggle ${isOn ? 'active' : ''}" data-param-key="${p.key}" role="switch" aria-checked="${isOn}" tabindex="0" title="Click to toggle ON / OFF">
+        <span class="param-toggle-thumb"></span>
+      </div>
+    </div>
+  `;
+}
+
+function updateParamVisual(p, val) {
+  const row = document.querySelector(`.param-ctrl-row[data-param-key="${p.key}"]`);
+  if (!row) return;
+  const color = row.dataset.color || "#5fe08a";
+
+  const valEl = row.querySelector(".param-live-val");
+  if (valEl) {
+    valEl.textContent = formatParamVal(p, val);
+  }
+
+  if (p.type === "toggle") {
+    const tog = row.querySelector(".param-toggle");
+    if (tog) {
+      const isOn = !!val;
+      tog.classList.toggle("active", isOn);
+      tog.setAttribute("aria-checked", isOn);
+    }
+  } else {
+    const knob = row.querySelector(".param-knob");
+    if (knob) {
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const frac = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+      const arcLen = (frac * 70.69).toFixed(2);
+      const angle = (-135 + frac * 270).toFixed(1);
+      const arc = knob.querySelector(".knob-value-arc");
+      const tick = knob.querySelector(".knob-tick");
+      if (arc) arc.setAttribute("stroke-dasharray", `${arcLen} 94.25`);
+      if (tick) tick.setAttribute("transform", `rotate(${angle} 23 23)`);
+      knob.setAttribute("aria-valuenow", val);
+    }
+  }
+}
+
+function updateAllInspectorControls() {
+  const rows = document.querySelectorAll(".param-ctrl-row");
+  rows.forEach(row => {
+    const key = row.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (p) {
+      const val = getParamValue(p);
+      updateParamVisual(p, val);
+    }
+  });
+}
+
+function updateInspectorTrackHeader() {
+  const selTrk = currentParams ? currentParams.sel : 0;
+  const curEng = currentParams ? currentParams.eng : 0;
+
+  // Track button active state
+  document.querySelectorAll(".param-trk-btn").forEach(btn => {
+    const trk = parseInt(btn.dataset.trk, 10);
+    btn.classList.toggle("active", trk === selTrk);
+  });
+
+  const trkTarget = document.getElementById("param-track-target");
+  const assignBtn = document.getElementById("param-eng-assign-btn");
+
+  const isEngine = activeInspectKey in ENGINE_MAP;
+  if (isEngine) {
+    const targetEng = ENGINE_MAP[activeInspectKey];
+    if (trkTarget) {
+      trkTarget.style.display = "inline-block";
+      if (selTrk === 4) {
+        trkTarget.textContent = "Track 5 (Fixed: DRUM Kit)";
+      } else {
+        trkTarget.textContent = `Track ${selTrk + 1}: ${ENGINE_NAMES[curEng] || "ANALOG"}`;
+      }
+    }
+    if (assignBtn) {
+      if (selTrk === 4) {
+        assignBtn.style.display = "none";
+      } else if (targetEng === curEng) {
+        assignBtn.style.display = "inline-flex";
+        assignBtn.textContent = `✓ Active on T${selTrk + 1}`;
+        assignBtn.disabled = true;
+        assignBtn.style.opacity = "0.75";
+      } else {
+        assignBtn.style.display = "inline-flex";
+        assignBtn.textContent = `➕ Set T${selTrk + 1} to ${ENGINE_NAMES[targetEng]}`;
+        assignBtn.disabled = false;
+        assignBtn.style.opacity = "1";
+        assignBtn.onclick = () => {
+          send({ type: "set_engine", track: selTrk, eng: targetEng });
+          if (currentParams) currentParams.eng = targetEng;
+          updateInspectorTrackHeader();
+          updateAllInspectorControls();
+        };
+      }
+    }
+  } else {
+    if (trkTarget) {
+      trkTarget.style.display = "inline-block";
+      trkTarget.textContent = selTrk === 4 ? "T5: DRUM" : `T${selTrk + 1}: ${ENGINE_NAMES[curEng] || "ANALOG"}`;
+    }
+    if (assignBtn) {
+      assignBtn.style.display = "none";
+    }
+  }
+}
+
+function showParamInspector(key) {
+  const data = PARAM_DATA[key];
+  if (!data) return;
+  activeInspectKey = key;
+
+  document.querySelectorAll(".wb-inspect-pill").forEach(p => {
+    const isTarget = p.dataset.inspect === key;
+    p.classList.toggle("active", isTarget);
+    if (isTarget && p.dataset.color) {
+      p.style.setProperty("--p-col", p.dataset.color);
+    }
+  });
+
+  const badge = document.getElementById("param-badge");
+  const title = document.getElementById("param-title");
+  const desc = document.getElementById("param-desc-main");
+  const tip = document.getElementById("param-tip");
+  const container = document.getElementById("param-pages-container");
+
+  if (badge) {
+    badge.textContent = data.category;
+    badge.style.background = data.color;
+    badge.style.color = (data.color === "#b0bec5" || data.color === "#ffd600" || data.color === "#76ff03" || data.color === "#00e5ff" || data.color === "#5fe08a" || data.color === "#00e676") ? "#111" : "#fff";
+  }
+  if (title) title.textContent = data.title;
+  if (desc) desc.textContent = data.desc;
+  if (tip) tip.innerHTML = `<strong>💡 Pro Tip:</strong> ${data.tip}`;
+
+  updateInspectorTrackHeader();
+
+  if (container) {
+    container.innerHTML = data.pages.map(page => `
+      <div class="param-page-box">
+        <div class="param-page-title">
+          <span>${page.name}</span>
+          <span style="font-size:10px; opacity:0.75; font-family:ui-monospace,Menlo,monospace;">${page.sub}</span>
+        </div>
+        ${page.params.map(p => {
+          const val = getParamValue(p);
+          const formatted = formatParamVal(p, val);
+          const controlHtml = p.type === "toggle" ? renderToggle(p, val, data.color) : renderKnobSvg(p, val, data.color);
+          return `
+            <div class="param-ctrl-row" data-param-key="${p.key}" data-color="${data.color}">
+              <div class="param-ctrl-widget">
+                ${controlHtml}
+              </div>
+              <div class="param-ctrl-info">
+                <div class="param-name-line">
+                  <div class="param-knob-label">
+                    <span class="param-knob-badge">${p.knob}</span> ${p.name}
+                  </div>
+                  <span class="param-live-val">${formatted}</span>
+                </div>
+                <div class="param-range-sub">${p.range}</div>
+                <div class="param-desc">${p.desc}</div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `).join("");
+
+    attachControlEventListeners(container);
+  }
+}
+
+function attachControlEventListeners(container) {
+  // Toggle switches
+  container.querySelectorAll(".param-toggle").forEach(tog => {
+    const key = tog.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (!p) return;
+    tog.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const cur = getParamValue(p);
+      setParamValue(p, cur ? 0 : 1);
+    });
+    tog.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        const cur = getParamValue(p);
+        setParamValue(p, cur ? 0 : 1);
+      }
+    });
+  });
+
+  // Rotary Knobs
+  container.querySelectorAll(".param-knob").forEach(knob => {
+    const key = knob.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (!p) return;
+
+    knob.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      activeDrag = {
+        p,
+        knob,
+        startY: e.clientY,
+        startVal: getParamValue(p),
+        min: p.min !== undefined ? p.min : 0,
+        max: p.max !== undefined ? p.max : 127,
+        step: p.step || 1
+      };
+      knob.classList.add("dragging");
+      knob.setPointerCapture(e.pointerId);
+    });
+
+    knob.addEventListener("pointermove", (e) => {
+      if (!activeDrag || activeDrag.knob !== knob) return;
+      const deltaY = activeDrag.startY - e.clientY;
+      const range = activeDrag.max - activeDrag.min;
+      const speed = e.shiftKey ? 500 : 120;
+      let newVal = activeDrag.startVal + Math.round((deltaY * range) / speed);
+      newVal = Math.max(activeDrag.min, Math.min(activeDrag.max, newVal));
+      if (activeDrag.step > 1) {
+        newVal = Math.round(newVal / activeDrag.step) * activeDrag.step;
+      }
+      setParamValue(activeDrag.p, newVal);
+    });
+
+    const endDrag = (e) => {
+      if (activeDrag && activeDrag.knob === knob) {
+        try { knob.releasePointerCapture(e.pointerId); } catch (_) {}
+        knob.classList.remove("dragging");
+        activeDrag = null;
+      }
+    };
+    knob.addEventListener("pointerup", endDrag);
+    knob.addEventListener("pointercancel", endDrag);
+
+    // Mouse wheel on knob
+    knob.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const step = p.step || ((max - min > 40) ? 2 : 1);
+      const delta = e.deltaY < 0 ? step : -step;
+      const cur = getParamValue(p);
+      setParamValue(p, cur + delta);
+    }, { passive: false });
+
+    // Arrow keys
+    knob.addEventListener("keydown", (e) => {
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const step = p.step || 1;
+      let handled = false;
+      if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+        setParamValue(p, getParamValue(p) + step);
+        handled = true;
+      } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+        setParamValue(p, getParamValue(p) - step);
+        handled = true;
+      }
+      if (handled) e.preventDefault();
+    });
+  });
+}
+
+// Track buttons in inspector header
+document.querySelectorAll(".param-trk-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const trk = parseInt(btn.dataset.trk, 10);
+    if (currentParams) currentParams.sel = trk;
+    send({ type: "select_track", track: trk });
+    updateInspectorTrackHeader();
+    updateAllInspectorControls();
+  });
+});
+
+function onParamsUpdate(m) {
+  currentParams = m;
+  updateInspectorTrackHeader();
+  updateAllInspectorControls();
+}
+
+document.querySelectorAll(".wb-inspect-pill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.inspect;
+    if (key) {
+      showParamInspector(key);
+      const inspector = document.getElementById("param-inspector");
+      if (inspector) {
+        inspector.classList.remove("highlight");
+        void inspector.offsetWidth;
+        inspector.classList.add("highlight");
+      }
+    }
+  });
+});
+
+showParamInspector("subtract");
+
+// ------------------------------------------------------------------ Integrated OTA Firmware Updater
+async function initFirmwareUpdater() {
+  const pkgInfo = document.getElementById("ota-pkg-info");
+  const stockInfo = document.getElementById("ota-stock-info");
+  const installBtn = document.getElementById("ota-install-btn");
+  const stockBtn = document.getElementById("ota-stock-btn");
+  const customFile = document.getElementById("ota-custom-file");
+  const stockFile = document.getElementById("ota-stock-file");
+  const otaBar = document.getElementById("ota-bar");
+  const otaStatus = document.getElementById("ota-status");
+  const otaLog = document.getElementById("ota-log");
+
+  const logMsg = (t) => { otaLog.textContent += t + "\n"; otaLog.scrollTop = otaLog.scrollHeight; };
+  const setStatus = (t) => { otaStatus.textContent = t; };
+
+  let pkgMod, otaMod, backupMod;
+  try {
+    [pkgMod, otaMod, backupMod] = await Promise.all([
+      import("./fm1pkg.js"),
+      import("./fm1ota.js"),
+      import("./fm1backup.js"),
+    ]);
+  } catch (err) {
+    setStatus("OTA modules (fm1pkg.js / fm1ota.js) not found in this directory.");
+    return;
+  }
+
+  let loomImage = null, loomProduct = null, stockVerified = null, writing = false;
+  const syncBtns = () => {
+    installBtn.disabled = writing || !loomImage;
+    stockBtn.disabled = writing || !stockVerified;
+  };
+
+  // Auto-load bundled loom-groovebox.fswc
+  try {
+    let r = await fetch("loom-groovebox.fswc", { cache: "no-store" });
+    if (!r.ok) r = await fetch("loom-groovebox.fwsc", { cache: "no-store" });
+    if (r.ok) {
+      const raw = new Uint8Array(await r.arrayBuffer());
+      loomProduct = pkgMod.productOf(raw);
+      loomImage = pkgMod.logicalImage(raw);
+      pkgInfo.textContent = `✓ Ready: bundled loom-groovebox.fswc (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+    } else {
+      pkgInfo.textContent = "No bundled loom-groovebox.fswc found — use Load Custom .fswc or run ./build.sh.";
+    }
+  } catch {
+    pkgInfo.textContent = "Select a .fswc / .fwsc file to install.";
+  }
+
+  // Auto-load bundled FM-1_015.fwsc
+  try {
+    const r = await fetch("FM-1_015.fwsc", { cache: "no-store" });
+    if (r.ok) {
+      const raw = new Uint8Array(await r.arrayBuffer());
+      stockVerified = await pkgMod.validateStockPackage(raw);
+      stockInfo.textContent = `✓ Ready: Official Stock V15 bundled (FM-1_015.fwsc verified)`;
+    } else {
+      stockInfo.textContent = "Select official FM-1_015.fwsc to restore factory firmware.";
+    }
+  } catch (e) {
+    stockInfo.textContent = "Select official FM-1_015.fwsc (" + (e.message || e) + ")";
+  }
+  syncBtns();
+
+  customFile.addEventListener("change", async () => {
+    const f = customFile.files[0];
+    if (!f) return;
+    try {
+      const raw = new Uint8Array(await f.arrayBuffer());
+      loomProduct = pkgMod.productOf(raw);
+      loomImage = pkgMod.logicalImage(raw);
+      pkgInfo.textContent = `✓ Loaded ${f.name} (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+    } catch (e) {
+      loomImage = null;
+      pkgInfo.textContent = `Invalid .fwsc package: ${e.message || e}`;
+    }
+    syncBtns();
+  });
+
+  stockFile.addEventListener("change", async () => {
+    const f = stockFile.files[0];
+    if (!f) return;
+    try {
+      const raw = new Uint8Array(await f.arrayBuffer());
+      stockVerified = await pkgMod.validateStockPackage(raw);
+      stockInfo.textContent = `✓ Verified official V15 package (${f.name})`;
+    } catch (e) {
+      stockVerified = null;
+      stockInfo.textContent = `Cannot validate V15 firmware: ${e.message || e}`;
+    }
+    syncBtns();
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (writing || !loomImage) return;
+    writing = true; syncBtns();
+    try {
+      const midi = await navigator.requestMIDIAccess({ sysex: true });
+      const up = new otaMod.Updater(midi, logMsg);
+      const total = 74 + 1167;
+      const step = (k, a) => {
+        logMsg(`${k} ${a ?? ""}`);
+        if (k === "verify") { setStatus("Verifying bootloader…"); otaBar.value = (a / total) * 100; }
+        else if (k === "loader") setStatus("Switching FM-1 to OTA update mode…");
+        else if (k === "write") { setStatus(`Writing firmware (${Math.round(((74 + a) / total) * 100)}%)…`); otaBar.value = ((74 + a) / total) * 100; }
+        else if (k === "reboot") setStatus("Rebooting FM-1…");
+        else if (k === "done") { otaBar.value = 100; setStatus("✓ Firmware update complete!"); }
+      };
+      const ota = await up.find((id) => /^ota-/i.test(id.model));
+      if (ota) {
+        ota.link.close();
+        const ok = await up.resume(loomImage, step, loomProduct);
+        setStatus(ok ? "✓ Firmware update complete!" : "Interrupted — reconnect USB and click Install again.");
+      } else {
+        await up.install(loomImage, loomProduct, step);
+      }
+    } catch (e) {
+      setStatus(`Update error: ${e.code || e.message || e}`);
+      logMsg(String(e.stack || e));
+    } finally {
+      writing = false; syncBtns();
+    }
+  });
+
+  stockBtn.addEventListener("click", async () => {
+    if (writing || !stockVerified) return;
+    writing = true; syncBtns();
+    let link = null;
+    try {
+      const midi = await navigator.requestMIDIAccess({ sysex: true });
+      const up = new otaMod.Updater(midi, logMsg);
+      const step = (k, n) => {
+        logMsg(`${k} ${n ?? ""}`);
+        setStatus(`Stock V15 restore: ${k} ${n ?? ""}`);
+        if (k === "done") { otaBar.value = 100; setStatus("✓ Restored official M-VAVE Stock V15 firmware!"); }
+      };
+      const loader = await up.find((id) => id.model === "ota-FM-1");
+      if (loader) {
+        loader.link.close();
+        if (!document.getElementById("ota-stock-resume").checked) {
+          setStatus("Device is in ota-FM-1 loader mode. Check 'Resume interrupted restore' if backup is already saved.");
+          return;
+        }
+        await up.resume(stockVerified.image, step, stockVerified.product);
+      } else {
+        const device = await up.find((id) => id.model === "FM-1");
+        if (!device) { setStatus("FM-1 not found over USB MIDI."); return; }
+        if (!document.getElementById("ota-stock-resume").checked) {
+          setStatus("Backing up Loom data before restoring Stock V15…");
+          const input = device.link.input, output = device.link.output;
+          device.link.close();
+          link = new backupMod.BackupConnection(input, output);
+          const infoResp = await link.request([1, []]);
+          const pos = infoResp.indexOf(0);
+          const ver = pos > 0 ? String.fromCharCode(...infoResp.slice(0, pos)) : "FELUCCA";
+          const archive = await backupMod.captureBackup((r, o) => link.request(r, o), ver,
+            (done, tot) => setStatus(`Saving backup (${Math.round((done / Math.max(1, tot)) * 100)}%)…`));
+          const url = URL.createObjectURL(new Blob([JSON.stringify(archive)], { type: "application/json" }));
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `Loom-FM1-backup-${new Date().toISOString().slice(0, 10)}.json`;
+          document.body.append(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          link.close(); link = null;
+        } else {
+          device.link.close();
+        }
+        await up.install(stockVerified.image, stockVerified.product, step);
+      }
+    } catch (e) {
+      setStatus(`Restore error: ${e.code || e.message || e}`);
+      logMsg(String(e.stack || e));
+    } finally {
+      if (link) link.close();
+      writing = false; syncBtns();
+    }
+  });
+}
+</script>
+</body>
+</html>
