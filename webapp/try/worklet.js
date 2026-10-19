@@ -71,6 +71,96 @@ if (typeof registerProcessor === "function") {
       else if (m.type === "master") ex.web_master(m.value | 0);
       else if (m.type === "midi") ex.web_midi(m.data[0] | 0, m.data[1] | 0, m.data[2] | 0);
       else if (m.type === "visible") this.period = m.on ? 1 / 30 : 1 / 4;
+      else if (m.type === "smp_slot") {
+        const k = m.slot | 0;
+        if (k >= 0 && k < 3) {
+          const base = 0xA0000 + k * 0x14000;
+          const nor = new Uint8Array(ex.memory.buffer, ex.web_nor(), ex.web_nor_size());
+          nor.fill(0xFF, base, base + 0x14000);
+          if (m.hdr && m.data) {
+            nor.set(new Uint8Array(m.hdr), base);
+            nor.set(new Uint8Array(m.data), base + 512);
+          }
+          if (ex.web_smp_reload) ex.web_smp_reload(k);
+          if (m.hdr && m.select && ex.web_smp_select_slot) ex.web_smp_select_slot(k);
+          this.publish();
+        }
+      } else if (m.type === "midi_seq_import") {
+        if (m.bpm && ex.web_set_bpm) ex.web_set_bpm(m.bpm | 0);
+        for (const tr of (m.tracks || [])) {
+          const ti = tr.track | 0;
+          if (ex.web_seq_clear_track) ex.web_seq_clear_track(ti, tr.len | 0, tr.poly ? 1 : 0);
+          for (const s of (tr.steps || [])) {
+            if (ex.web_seq_set_step) {
+              ex.web_seq_set_step(ti, s.step | 0, s.n | 0,
+                s.notes?.[0] | 0, s.notes?.[1] | 0, s.notes?.[2] | 0, s.notes?.[3] | 0,
+                s.time | 0, s.flags | 0, s.vel | 0, s.hit | 0, s.acc | 0);
+            }
+          }
+        }
+        this.publish();
+      } else if (m.type === "set_track_param") {
+        if (ex.web_set_track_param) ex.web_set_track_param(m.track, m.id, m.val);
+        this.publishParams();
+      } else if (m.type === "set_global_param") {
+        if (ex.web_set_global_param) ex.web_set_global_param(m.id, m.val);
+        this.publishParams();
+      } else if (m.type === "set_sidechain_param") {
+        if (ex.web_set_sidechain_param) ex.web_set_sidechain_param(m.id, m.val);
+        this.publishParams();
+      } else if (m.type === "set_engine") {
+        if (ex.web_set_engine) ex.web_set_engine(m.track, m.eng);
+        this.publishParams();
+      } else if (m.type === "select_track") {
+        if (ex.web_select_track) ex.web_select_track(m.track);
+        this.publishParams();
+      } else if (m.type === "set_sub_osc") {
+        if (ex.web_set_sub_osc) ex.web_set_sub_osc(m.track, m.osc, m.field, m.val);
+        this.publishParams();
+      } else if (m.type === "get_params") {
+        this.publishParams();
+      }
+    }
+
+    publishParams() {
+      const ex = this.ex;
+      if (!ex) return;
+      const mem = ex.memory.buffer;
+      const sel = ex.web_sel_track ? ex.web_sel_track() : 0;
+      const eng = ex.web_track_engine ? ex.web_track_engine(sel) : 0;
+      const tpPtr = ex.web_track_params ? ex.web_track_params(sel) : 0;
+      const trackParams = tpPtr ? Array.from(new Int16Array(mem, tpPtr, 114)) : [];
+      const gpPtr = ex.web_global_params ? ex.web_global_params() : 0;
+      const globalParams = gpPtr ? Array.from(new Int16Array(mem, gpPtr, 30)) : [];
+      const scPtr = ex.web_sidechain_params ? ex.web_sidechain_params() : 0;
+      const sidechain = scPtr ? Array.from(new Int16Array(mem, scPtr, 4)) : [0, 0, 0, 0];
+
+      let sub = null;
+      if (ex.web_get_sub_osc) {
+        const selOsc = ex.web_get_sub_osc(sel, 0, 0);
+        const oscs = [];
+        for (let o = 0; o < 4; o++) {
+          oscs.push({
+            wave: ex.web_get_sub_osc(sel, o, 1),
+            fold: ex.web_get_sub_osc(sel, o, 2),
+            mix: ex.web_get_sub_osc(sel, o, 3),
+            pitch: ex.web_get_sub_osc(sel, o, 4),
+            drive: ex.web_get_sub_osc(sel, o, 5),
+            glide: ex.web_get_sub_osc(sel, o, 6),
+          });
+        }
+        sub = { selOsc, oscs };
+      }
+
+      this.port.postMessage({
+        type: "params",
+        sel,
+        eng,
+        trackParams,
+        globalParams,
+        sidechain,
+        sub
+      });
     }
 
     publish() {
@@ -96,6 +186,7 @@ if (typeof registerProcessor === "function") {
         this.sentDraws = draws;
         msg.fb = new Uint16Array(mem, ex.web_screen(), 240 * 240).slice();
         transfer.push(msg.fb.buffer);
+        this.publishParams();
       }
       const writes = ex.web_flash_writes_count();
       if (writes !== this.sentWrites) {               // a save is done within one main-loop pass: whole here
