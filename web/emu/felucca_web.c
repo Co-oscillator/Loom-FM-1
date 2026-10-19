@@ -562,3 +562,101 @@ EXPORT void web_set_bpm(uint32_t bpm)
     song.g[G_BPM] = (int16_t)clamp((int32_t)bpm, 40, 240);
     ui.force = 1;
 }
+
+/* Parameter inspection & real-time control exports for Loom Web Workbench */
+EXPORT int16_t *web_track_params(uint32_t t)
+{
+    return trk[t < NTRK ? t : song.sel].p;
+}
+
+EXPORT int16_t *web_global_params(void)
+{
+    return song.g;
+}
+
+EXPORT int16_t *web_sidechain_params(void)
+{
+    return song.sc;
+}
+
+EXPORT uint32_t web_track_engine(uint32_t t)
+{
+    return trk[t < NTRK ? t : song.sel].eng_req;
+}
+
+EXPORT void web_set_track_param(uint32_t t, uint32_t id, int32_t val)
+{
+    if (t >= NTRK) t = song.sel;
+    track_t *tk = &trk[t];
+    if (id < P_COUNT) {
+        tk->p[id] = (int16_t)val;
+        (void)motion_capture(tk, id, tk->p[id]);
+        load_extend(tk);
+        ui.force = 1;
+    }
+}
+
+EXPORT void web_set_global_param(uint32_t id, int32_t val)
+{
+    if (id < G_COUNT) {
+        song.g[id] = (int16_t)val;
+        ui.force = 1;
+    }
+}
+
+EXPORT void web_set_sidechain_param(uint32_t id, int32_t val)
+{
+    if (id < 4) {
+        song.sc[id] = (int16_t)clamp(val, 0, 127);
+        ui.force = 1;
+    }
+}
+
+EXPORT void web_set_engine(uint32_t t, uint32_t eng)
+{
+    if (t >= NTRK) t = song.sel;
+    if (eng < NENGINES) {
+        trk[t].eng_req = (uint8_t)eng;
+        ui.force = 1;
+    }
+}
+
+EXPORT void web_select_track(uint32_t t)
+{
+    if (t < NTRK) {
+        song.sel = (uint8_t)t;
+        ui.force = 1;
+    }
+}
+
+EXPORT int32_t web_get_sub_osc(uint32_t t, uint32_t osc, uint32_t field)
+{
+    if (t >= NTRK) t = song.sel;
+    sub_part_t *sp = sub_of(&trk[t]);
+    if (field == 0) return sp->sel_osc;
+    if (osc >= 4) return 0;
+    if (field == 1) return sp->osc[osc].wave;
+    if (field == 2) return sp->osc[osc].fold;
+    if (field == 3) return sp->osc[osc].mix;
+    if (field == 4) return sp->osc[osc].pitch;
+    if (field == 5) return sp->osc[osc].drive;
+    if (field == 6) return sp->osc[osc].glide;
+    return 0;
+}
+
+EXPORT void web_set_sub_osc(uint32_t t, uint32_t osc, uint32_t field, int32_t val)
+{
+    if (t >= NTRK) t = song.sel;
+    sub_part_t *sp = sub_of(&trk[t]);
+    if (field == 0) {
+        sp->sel_osc = (uint8_t)clamp(val, 0, 3);
+    } else if (osc < 4) {
+        if (field == 1) sp->osc[osc].wave = (uint8_t)clamp(val, 0, 127);
+        else if (field == 2) sp->osc[osc].fold = (uint8_t)clamp(val, 0, 127);
+        else if (field == 3) sp->osc[osc].mix = (uint8_t)clamp(val, 0, 127);
+        else if (field == 4) sp->osc[osc].pitch = (int8_t)clamp(val, -24, 24);
+        else if (field == 5) sp->osc[osc].drive = (uint8_t)clamp(val, 0, 127);
+        else if (field == 6) sp->osc[osc].glide = (uint8_t)clamp(val, 0, 127);
+    }
+    ui.force = 1;
+}

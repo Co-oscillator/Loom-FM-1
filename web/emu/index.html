@@ -264,26 +264,33 @@ footer small { font-size: 11px; opacity: .8; }
   }
 }
 
-/* Bottom Parameter Inspector Panel */
+/* Parameter Inspector Panel & Quick-Inspect Bar */
+.wb-nav-inspect {
+  margin: 18px 0 0;
+}
+
 .param-inspector-panel {
   display: block;
   background: #1d1d1f;
   color: #ececee;
   border: 1px solid #343438;
   border-radius: 16px;
-  padding: 22px 24px;
-  margin: 26px 0 20px;
+  padding: 20px 22px;
+  margin: 14px 0 24px;
   box-shadow: 0 8px 28px rgba(0,0,0,0.32);
   scroll-margin-top: 18px;
 }
+
 @keyframes inspect-pulse {
   0% { box-shadow: 0 0 0 2px #5fe08a, 0 8px 28px rgba(0,0,0,0.32); }
   50% { box-shadow: 0 0 0 4px #5fe08a, 0 8px 32px rgba(95, 224, 138, 0.4); }
   100% { box-shadow: 0 0 0 1px #343438, 0 8px 28px rgba(0,0,0,0.32); }
 }
+
 .param-inspector-panel.highlight {
   animation: inspect-pulse 0.9s ease;
 }
+
 .param-header {
   display: flex;
   align-items: center;
@@ -294,19 +301,22 @@ footer small { font-size: 11px; opacity: .8; }
   border-bottom: 1px solid #2c2c30;
   margin-bottom: 16px;
 }
+
 .param-title-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
+
 .param-title-wrap h3 {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.3px;
 }
+
 .param-badge {
   font-size: 11px;
   font-weight: 700;
@@ -315,23 +325,98 @@ footer small { font-size: 11px; opacity: .8; }
   letter-spacing: 0.6px;
   text-transform: uppercase;
 }
+
+.param-track-target {
+  font-size: 11px;
+  font-weight: 700;
+  background: #27272b;
+  color: #a1a1a6;
+  border: 1px solid #383840;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.param-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.param-trk-bar {
+  display: flex;
+  align-items: center;
+  background: #141416;
+  border: 1px solid #303036;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.param-trk-btn {
+  background: transparent;
+  color: #8e8e93;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.param-trk-btn:hover {
+  color: #fff;
+  background: #242429;
+}
+
+.param-trk-btn.active {
+  background: #2c2c34;
+  color: #5fe08a;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.param-eng-assign-btn {
+  background: #2a2a30;
+  color: #5fe08a;
+  border: 1px solid #3e3e48;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.param-eng-assign-btn:hover {
+  background: #383842;
+  border-color: #5fe08a;
+}
+
 .param-desc-main {
   margin: 0 0 16px;
   font-size: 13.5px;
   color: #c7c7cc;
   line-height: 1.5;
 }
+
 .param-pages-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 14px;
 }
+
 .param-page-box {
   background: #232327;
   border: 1px solid #323236;
   border-radius: 12px;
   padding: 14px;
 }
+
 .param-page-title {
   font-size: 12px;
   font-weight: 700;
@@ -345,21 +430,43 @@ footer small { font-size: 11px; opacity: .8; }
   border-bottom: 1px solid #2a2a2e;
   padding-bottom: 6px;
 }
-.param-row {
+
+/* Interactive Parameter Row */
+.param-ctrl-row {
   display: flex;
-  flex-direction: column;
-  padding: 6px 0;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
   border-bottom: 1px solid #2a2a2e;
 }
-.param-row:last-child {
+
+.param-ctrl-row:last-child {
   border-bottom: none;
 }
+
+.param-ctrl-widget {
+  flex: 0 0 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.param-ctrl-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .param-name-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
+
 .param-knob-label {
   font-size: 12px;
   font-weight: 700;
@@ -367,7 +474,9 @@ footer small { font-size: 11px; opacity: .8; }
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
+
 .param-knob-badge {
   font-size: 9.5px;
   font-weight: 700;
@@ -376,18 +485,113 @@ footer small { font-size: 11px; opacity: .8; }
   padding: 1px 5px;
   border-radius: 4px;
 }
-.param-val-range {
+
+.param-live-val {
   font-size: 11px;
-  color: #5fe08a;
+  color: var(--active-color, #5fe08a);
+  background: #18181b;
+  border: 1px solid #2f2f36;
+  padding: 2px 7px;
+  border-radius: 5px;
   font-family: ui-monospace, Menlo, monospace;
-  font-weight: 600;
+  font-weight: 700;
+  text-align: right;
+  min-width: 44px;
+  white-space: nowrap;
 }
+
+.param-range-sub {
+  font-size: 10px;
+  color: #71717a;
+  font-family: ui-monospace, Menlo, monospace;
+  margin-top: 1px;
+}
+
 .param-desc {
   font-size: 11.5px;
   color: #a1a1a6;
   margin-top: 3px;
-  line-height: 1.4;
+  line-height: 1.35;
 }
+
+/* Rotary Knob Component */
+.param-knob {
+  width: 44px;
+  height: 44px;
+  cursor: ns-resize;
+  position: relative;
+  touch-action: none;
+}
+
+.param-knob svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.45));
+  transition: filter 0.12s ease;
+}
+
+.param-knob:hover svg, .param-knob.dragging svg {
+  filter: drop-shadow(0 2px 8px var(--active-color, rgba(95, 224, 138, 0.45)));
+}
+
+.param-knob:focus-visible {
+  outline: none;
+}
+
+.param-knob:focus-visible svg circle.knob-rim {
+  stroke: var(--active-color, #5fe08a);
+}
+
+/* Hardware Toggle Switch Component */
+.param-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.param-toggle {
+  width: 42px;
+  height: 24px;
+  border-radius: 12px;
+  background: #26262a;
+  border: 1px solid #3c3c44;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  touch-action: none;
+}
+
+.param-toggle:hover {
+  border-color: #52525c;
+}
+
+.param-toggle.active {
+  background: var(--active-color, #5fe08a);
+  border-color: var(--active-color, #5fe08a);
+  box-shadow: 0 0 10px var(--active-color, rgba(95, 224, 138, 0.5));
+}
+
+.param-toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ececee;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  position: absolute;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), background-color 0.2s ease;
+}
+
+.param-toggle.active .param-toggle-thumb {
+  transform: translateX(18px);
+  background: #0d2414;
+}
+
 .param-tip {
   margin-top: 14px;
   padding: 10px 14px;
@@ -417,6 +621,28 @@ footer small { font-size: 11px; opacity: .8; }
   </div>
 </nav>
 
+<!-- TAB 1: PLAY & EMULATOR -->
+<section id="tab-play" class="wb-panel active" role="tabpanel">
+<div class="device" id="device">
+  <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
+  <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
+  <div class="start" id="start">
+    <button id="go" type="button">Switch on</button>
+    <div style="color: #5fe08a; font-size: 13px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">LOOM FM-1 · Multi-Engine Groovebox, Tape Scrub, Wavetable &amp; Ducking FX</div>
+    <p id="status" hidden></p>
+  </div>
+</div>
+
+<p class="keys">
+  <span><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd> keys</span>
+  <span><kbd>1</kbd>–<kbd>=</kbd> FX … REC</span>
+  <span><kbd>[</kbd> <kbd>]</kbd> OCT</span>
+  <span><kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
+  <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
+  <span><kbd>Shift</kbd>-click holds a button</span>
+</p>
+
+<!-- PARAMETER QUICK-INSPECT BAR (UNDERNEATH EMULATED FM-1) -->
 <nav class="wb-nav wb-nav-inspect" aria-label="Loom Parameter Quick-Inspect Bar">
   <!-- SECTION 1: ENGINES -->
   <div class="wb-inspect-col wb-inspect-col-engines">
@@ -471,26 +697,31 @@ footer small { font-size: 11px; opacity: .8; }
   </div>
 </nav>
 
-<!-- TAB 1: PLAY & EMULATOR -->
-<section id="tab-play" class="wb-panel active" role="tabpanel">
-<div class="device" id="device">
-  <svg id="panel" viewBox="0 0 1000 624" aria-hidden="true"></svg>
-  <canvas id="screen" width="240" height="240" role="img" aria-label="The screen"></canvas>
-  <div class="start" id="start">
-    <button id="go" type="button">Switch on</button>
-    <div style="color: #5fe08a; font-size: 13px; font-weight: 600; text-align: center; letter-spacing: 0.5px;">LOOM FM-1 · Multi-Engine Groovebox, Tape Scrub, Wavetable &amp; Ducking FX</div>
-    <p id="status" hidden></p>
+<!-- PARAMETER INSPECTOR PANEL (LIVE REAL-TIME VALUES & CONTROLS) -->
+<section id="param-inspector" class="param-inspector-panel" aria-label="Parameter Inspector">
+  <div class="param-header">
+    <div class="param-title-wrap">
+      <span class="param-badge" id="param-badge" style="background:#ff7300; color:#111;">ENGINE</span>
+      <h3 id="param-title">SUBTRACT (4-Osc Subtractive Synth)</h3>
+      <span id="param-track-target" class="param-track-target"></span>
+    </div>
+    <div class="param-header-actions" id="param-header-actions">
+      <div class="param-trk-bar" id="param-trk-bar" title="Select active track">
+        <button class="param-trk-btn active" data-trk="0">T1</button>
+        <button class="param-trk-btn" data-trk="1">T2</button>
+        <button class="param-trk-btn" data-trk="2">T3</button>
+        <button class="param-trk-btn" data-trk="3">T4</button>
+        <button class="param-trk-btn" data-trk="4">DRUM</button>
+      </div>
+      <button id="param-eng-assign-btn" class="param-eng-assign-btn" style="display:none;"></button>
+    </div>
   </div>
-</div>
-
-<p class="keys">
-  <span><kbd>Z</kbd>–<kbd>'</kbd> <kbd>Q</kbd>–<kbd>O</kbd> keys</span>
-  <span><kbd>1</kbd>–<kbd>=</kbd> FX … REC</span>
-  <span><kbd>[</kbd> <kbd>]</kbd> OCT</span>
-  <span><kbd>↑</kbd> <kbd>↓</kbd> SELECT</span>
-  <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
-  <span><kbd>Shift</kbd>-click holds a button</span>
-</p>
+  <p class="param-desc-main" id="param-desc-main">Four rich morphing oscillators with hard sync, wavefolder, resonant 24dB/12dB LP/BP/HP filters, sub-oscillator, and dedicated envelopes.</p>
+  <div class="param-pages-grid" id="param-pages-container"></div>
+  <div class="param-tip" id="param-tip">
+    <strong>💡 Sound Design Tip:</strong> Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).
+  </div>
+</section>
 </section>
 
 <!-- TAB 2: EDITOR & SAMPLES -->
@@ -937,21 +1168,6 @@ footer small { font-size: 11px; opacity: .8; }
   </div>
 </section>
 
-<!-- PARAMETER INSPECTOR PANEL (EXPOSED AT BOTTOM OF PAGE) -->
-<section id="param-inspector" class="param-inspector-panel" aria-label="Parameter Inspector">
-  <div class="param-header">
-    <div class="param-title-wrap">
-      <span class="param-badge" id="param-badge" style="background:#ff7300; color:#111;">ENGINE</span>
-      <h3 id="param-title">SUBTRACT (4-Osc Subtractive Synth)</h3>
-    </div>
-    <div style="font-size:12px; color:#8e8e93;" id="param-hint">Click any pill in the header bar above to view complete parameters</div>
-  </div>
-  <p class="param-desc-main" id="param-desc-main">Four rich morphing oscillators with hard sync, wavefolder, resonant 24dB/12dB LP/BP/HP filters, sub-oscillator, and dedicated envelopes.</p>
-  <div class="param-pages-grid" id="param-pages-container"></div>
-  <div class="param-tip" id="param-tip">
-    <strong>💡 Sound Design Tip:</strong> Turn Knob 3 (FOLD) on Osc 1..3 for rich metallic harmonics, or use Osc 4 (SUB) for heavy sub bass anchored 1 octave down (-12 ST).
-  </div>
-</section>
 
 <footer>
   <small class="version">@VERSION@@PREVIEW@</small><br>
@@ -1411,6 +1627,8 @@ async function switchOn() {
             warned = true;
             console.warn("Felucca: this browser does not keep the saves; they last until the page closes.");
           }
+        } else if (m.type === "params") {
+          onParamsUpdate(m);
         }
       };
       node.port.postMessage({ type: "load", wasm, sectors: loadFlash(), master: masterValue }, [wasm]);
@@ -1422,6 +1640,7 @@ async function switchOn() {
     if (ac.sampleRate !== 44100) console.warn(`Felucca: the browser plays at ${ac.sampleRate} Hz, the pitch is off by ${(1200 * Math.log2(ac.sampleRate / 44100)).toFixed(0)} cents.`);
     syncButtons();
     syncKeys();
+    send({ type: "get_params" });
     send({ type: "visible", on: !document.hidden });
     if (pendingMidiImport) {
       send(pendingMidiImport);
@@ -1527,6 +1746,31 @@ document.getElementById("manual-search").addEventListener("input", (e) => {
 });
 
 // ------------------------------------------------------------------ Parameter Quick-Inspect Bar & Panel
+let currentParams = null;
+let activeInspectKey = "subtract";
+let activeDrag = null;
+
+const ENGINE_MAP = {
+  subtract: 0,
+  phase: 2,
+  lofi: 3,
+  sample: 4,
+  voice: 5,
+  scrub: 6,
+  wheel: 7,
+  grain: 8,
+  phys: 9,
+  drum: 10,
+  noise: 11,
+  fm6: 12,
+  slice: 13,
+  wavetable: 14
+};
+
+const ENGINE_NAMES = [
+  "SUBTRACT", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "SCRUB", "WHEEL", "GRAIN", "PHYS", "DRUM", "NOISE", "FM6", "SLICE", "WAVETABLE"
+];
+
 const PARAM_DATA = {
   subtract: {
     category: "ENGINE",
@@ -1539,30 +1783,30 @@ const PARAM_DATA = {
         name: "Page 1: Oscillators (OSC)",
         sub: "EDIT P1/3",
         params: [
-          { knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects active oscillator for waveform shaping and mixing." },
-          { knob: "K2", name: "WAVE", range: "0–127", desc: "Smooth continuous morph: Sine (0) → Triangle (42) → Saw (85) → Square (127)." },
-          { knob: "K3", name: "FOLD", range: "0–127", desc: "Recursive analog wave folder adding complex high-frequency harmonics." },
-          { knob: "K4", name: "MIX", range: "0–127", desc: "Oscillator output level. Set to 0 (OFF) to completely bypass and save CPU." }
+          { key: "sub_osc_sel", knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects active oscillator for waveform shaping and mixing.", type: "enum", scope: "sub_osc", field: 0, min: 0, max: 3, options: ["OSC 1", "OSC 2", "OSC 3", "SUB (4)"] },
+          { key: "sub_wave", knob: "K2", name: "WAVE", range: "0–127", desc: "Smooth continuous morph: Sine (0) → Triangle (42) → Saw (85) → Square (127).", type: "knob", scope: "sub_osc", field: 1, min: 0, max: 127, def: 85, fmt: v => v < 22 ? "SINE" : v < 64 ? "TRI" : v < 106 ? "SAW" : "SQR" },
+          { key: "sub_fold", knob: "K3", name: "FOLD", range: "0–127", desc: "Recursive analog wave folder adding complex high-frequency harmonics.", type: "knob", scope: "sub_osc", field: 2, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_mix", knob: "K4", name: "MIX", range: "0–127", desc: "Oscillator output level. Set to 0 (OFF) to completely bypass and save CPU.", type: "knob", scope: "sub_osc", field: 3, min: 0, max: 127, def: 127, fmt: v => v === 0 ? "OFF" : Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 2: Pitch & Drive (TUNE)",
         sub: "EDIT P2/3",
         params: [
-          { knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects oscillator (mirrors Page 1 selection)." },
-          { knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Coarse semitone pitch offset. SUB defaults to -12 ST (-1 octave)." },
-          { knob: "K3", name: "DRV", range: "0–127", desc: "Per-oscillator asymmetric saturation and warm drive." },
-          { knob: "K4", name: "GLID", range: "0–127", desc: "Independent per-oscillator portamento glide speed." }
+          { key: "sub_osc_sel2", knob: "K1", name: "OSC", range: "1, 2, 3, SUB", desc: "Selects oscillator (mirrors Page 1 selection).", type: "enum", scope: "sub_osc", field: 0, min: 0, max: 3, options: ["OSC 1", "OSC 2", "OSC 3", "SUB (4)"] },
+          { key: "sub_pitch", knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Coarse semitone pitch offset. SUB defaults to -12 ST (-1 octave).", type: "knob", scope: "sub_osc", field: 4, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "sub_drive", knob: "K3", name: "DRV", range: "0–127", desc: "Per-oscillator asymmetric saturation and warm drive.", type: "knob", scope: "sub_osc", field: 5, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_glide", knob: "K4", name: "GLID", range: "0–127", desc: "Independent per-oscillator portamento glide speed.", type: "knob", scope: "sub_osc", field: 6, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 3: Filter (FILTER)",
         sub: "EDIT P3/3",
         params: [
-          { knob: "K1", name: "TYPE", range: "LP, BP, HP", desc: "State-variable resonant filter response mode." },
-          { knob: "K2", name: "CUT", range: "20Hz–20kHz", desc: "Master filter cutoff frequency with smooth exponential response." },
-          { knob: "K3", name: "RES", range: "0–127", desc: "Filter resonance peak; self-oscillates at high values." },
-          { knob: "K4", name: "KTR", range: "0–100%", desc: "Keyboard pitch tracking amount for uniform brightness across octaves." }
+          { key: "sub_ftype", knob: "K1", name: "TYPE", range: "LP, BP, HP", desc: "State-variable resonant filter response mode.", type: "enum", scope: "track", id: 101, min: 0, max: 2, options: ["LP", "BP", "HP"] },
+          { key: "sub_cut", knob: "K2", name: "CUT", range: "20Hz–20kHz", desc: "Master filter cutoff frequency with smooth exponential response.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 90, fmt: v => v === 127 ? "20 kHz" : Math.round(20 * Math.pow(1000, v / 127)) + " Hz" },
+          { key: "sub_res", knob: "K3", name: "RES", range: "0–127", desc: "Filter resonance peak; self-oscillates at high values.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sub_ktr", knob: "K4", name: "KTR", range: "0–100%", desc: "Keyboard pitch tracking amount for uniform brightness across octaves.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1578,20 +1822,20 @@ const PARAM_DATA = {
         name: "Page 1: Phase Angle (PHS)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "WAVE", range: "SAW..RTRP", desc: "Primary phase waveform: SAW, SQR, PLS, DSIN, SPLS, RSAW, RTRI, RTRP." },
-          { knob: "K2", name: "WAVE2", range: "-, SAW..RTRP", desc: "Secondary waveform alternating every other cycle (or '-' for single wave)." },
-          { knob: "K3", name: "DCW", range: "0–127", desc: "Distorted phase bend depth (equivalent to filter cutoff in subtractive)." },
-          { knob: "K4", name: "ENV", range: "0–127", desc: "Dedicated ADSR envelope modulation depth routed to DCW." }
+          { key: "phs_wave", knob: "K1", name: "WAVE", range: "SAW..RTRP", desc: "Primary phase waveform: SAW, SQR, PLS, DSIN, SPLS, RSAW, RTRI, RTRP.", type: "enum", scope: "track", id: 106, min: 0, max: 7, options: ["SAW", "SQR", "PLS", "DSIN", "SPLS", "RSAW", "RTRI", "RTRP"] },
+          { key: "phs_wave2", knob: "K2", name: "WAVE2", range: "-, SAW..RTRP", desc: "Secondary waveform alternating every other cycle (or '-' for single wave).", type: "enum", scope: "track", id: 107, min: 0, max: 8, options: ["-", "SAW", "SQR", "PLS", "DSIN", "SPLS", "RSAW", "RTRI", "RTRP"] },
+          { key: "phs_dcw", knob: "K3", name: "DCW", range: "0–127", desc: "Distorted phase bend depth (equivalent to filter cutoff in subtractive).", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "phs_env", knob: "K4", name: "ENV", range: "0–127", desc: "Dedicated ADSR envelope modulation depth routed to DCW.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 2: Secondary Line (LINE)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "DTN", range: "0–127 ct", desc: "Detune between primary and secondary phase lines in cents." },
-          { knob: "K2", name: "LINE", range: "MIX, RING", desc: "Routing mode: additive MIX or aggressive RING modulation." },
-          { knob: "K3", name: "SUB", range: "0–127", desc: "Clean sine sub-oscillator level anchored 1 octave down." },
-          { knob: "K4", name: "—", range: "—", desc: "Reserved slot." }
+          { key: "phs_dtn", knob: "K1", name: "DTN", range: "0–127 ct", desc: "Detune between primary and secondary phase lines in cents.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 0, fmt: v => v + " ct" },
+          { key: "phs_line", knob: "K2", name: "LINE", range: "MIX, RING", desc: "Routing mode: additive MIX or aggressive RING modulation.", type: "toggle", scope: "track", id: 111, min: 0, max: 1, options: ["MIX", "RING"] },
+          { key: "phs_sub", knob: "K3", name: "SUB", range: "0–127", desc: "Clean sine sub-oscillator level anchored 1 octave down.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "phs_esync", knob: "K4", name: "ESYNC", range: "OFF, ON", desc: "Envelope sync to project tempo divisions.", type: "toggle", scope: "track", id: 102, min: 0, max: 1, options: ["OFF", "SYNC"] }
         ]
       }
     ]
@@ -1607,20 +1851,20 @@ const PARAM_DATA = {
         name: "Page 1: Sound Chip (CHIP)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "CHIP", range: "GB, NES, SID, WRAM, STEP", desc: "Emulated sound chip hardware architecture." },
-          { knob: "K2", name: "WAVE", range: "Pulse, Tri, Noise, Tables", desc: "Available waveforms or Wave RAM table slots." },
-          { knob: "K3", name: "DUTY", range: "12.5%–87.5% / 0–15", desc: "Pulse duty cycle width, or Wave RAM table selector." },
-          { knob: "K4", name: "CRSH", range: "0–127", desc: "Hardware bit-crush and staircase envelope decay step speed." }
+          { key: "lofi_chip", knob: "K1", name: "CHIP", range: "GB, NES, SID, WRAM, STEP", desc: "Emulated sound chip hardware architecture.", type: "enum", scope: "track", id: 106, min: 0, max: 4, options: ["GB", "NES", "SID", "WRAM", "STEP"] },
+          { key: "lofi_wave", knob: "K2", name: "WAVE", range: "Pulse, Tri, Noise, Tables", desc: "Available waveforms or Wave RAM table slots.", type: "enum", scope: "track", id: 107, min: 0, max: 4, options: ["PULSE", "TRI", "NOISE", "TABLE", "CUST"] },
+          { key: "lofi_duty", knob: "K3", name: "DUTY", range: "12.5%–87.5% / 0–15", desc: "Pulse duty cycle width, or Wave RAM table selector.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_crsh", knob: "K4", name: "CRSH", range: "0–127", desc: "Hardware bit-crush and staircase envelope decay step speed.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 2: Motion & Tone (MOTN)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "SWP", range: "0–127", desc: "Fast pitch sweep speed for arcade laser zaps and kick transients." },
-          { knob: "K2", name: "VIB", range: "0–127", desc: "Vintage pitch vibrato depth and speed." },
-          { knob: "K3", name: "ARP", range: "OFF, FAST, MED, SLOW", desc: "Automated hardware chiptune arpeggio speed." },
-          { knob: "K4", name: "TONE", range: "0–127", desc: "High-frequency tone filtering and DAC reconstruction smoothing." }
+          { key: "lofi_swp", knob: "K1", name: "SWP", range: "0–127", desc: "Fast pitch sweep speed for arcade laser zaps and kick transients.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_vib", knob: "K2", name: "VIB", range: "0–127", desc: "Vintage pitch vibrato depth and speed.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "lofi_arp", knob: "K3", name: "ARP", range: "OFF, FAST, MED, SLOW", desc: "Automated hardware chiptune arpeggio speed.", type: "enum", scope: "track", id: 112, min: 0, max: 3, options: ["OFF", "FAST", "MED", "SLOW"] },
+          { key: "lofi_tone", knob: "K4", name: "TONE", range: "0–127", desc: "High-frequency tone filtering and DAC reconstruction smoothing.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1636,20 +1880,20 @@ const PARAM_DATA = {
         name: "Page 1: Sample & Pitch (SAMP)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "BANK", range: "PIANO..U01-16", desc: "Selects onboard multisamples or custom user sample banks." },
-          { knob: "K2", name: "ROOT", range: "C-1..G9", desc: "Original sample root key note mapping." },
-          { knob: "K3", name: "TUNE", range: "-50..+50 ct", desc: "Fine pitch tuning in cents." },
-          { knob: "K4", name: "LOOP", range: "OFF, FWD, REV, PING", desc: "Sample playback loop direction mode." }
+          { key: "smp_bank", knob: "K1", name: "BANK", range: "PIANO..U01-16", desc: "Selects onboard multisamples or custom user sample banks.", type: "enum", scope: "track", id: 106, min: 0, max: 18, options: ["PIANO", "EP", "ORGAN", "STRINGS", "BRASS", "CHOIR", "BASS", "GUITAR", "BELL", "LEAD", "PAD", "PLUCK", "PERC", "HIT", "SFX", "CUSTOM", "USR1", "USR2", "USR3"] },
+          { key: "smp_mode", knob: "K2", name: "MODE", range: "ONE, LOOP, PING..", desc: "Sample playback loop direction mode.", type: "enum", scope: "track", id: 107, min: 0, max: 4, options: ["ONE-SHOT", "FORWARD", "REVERSE", "PING-PONG", "GATE"] },
+          { key: "smp_pitch", knob: "K3", name: "PTCH", range: "-24..+24 ST", desc: "Semitone transposition pitch shift.", type: "knob", scope: "track", id: 108, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "smp_spd", knob: "K4", name: "SPEED", range: "10%–400%", desc: "Continuous sample playback speed.", type: "knob", scope: "track", id: 109, min: 10, max: 400, def: 100, fmt: v => v + "%" }
         ]
       },
       {
         name: "Page 2: Time & Boundary (TIME)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "START", range: "0–100%", desc: "Sample playback start point offset." },
-          { knob: "K2", name: "LEN", range: "0–100%", desc: "Sample playback length window." },
-          { knob: "K3", name: "SYNC", range: "OFF, 1/1..1/32", desc: "Tempo-sync sample duration to current project BPM." },
-          { knob: "K4", name: "GLID", range: "0–127", desc: "Polyphonic portamento glide time between notes." }
+          { key: "smp_strch", knob: "K1", name: "STRCH", range: "25%–400%", desc: "Granular time-stretch speed without changing pitch.", type: "knob", scope: "track", id: 110, min: 25, max: 400, def: 100, fmt: v => v + "%" },
+          { key: "smp_start", knob: "K2", name: "START", range: "0–100%", desc: "Sample playback start point offset.", type: "knob", scope: "track", id: 111, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "smp_end", knob: "K3", name: "END", range: "0–100%", desc: "Sample playback end point window boundary.", type: "knob", scope: "track", id: 112, min: 0, max: 100, def: 100, fmt: v => v + "%" },
+          { key: "smp_sync", knob: "K4", name: "SYNC", range: "OFF, 1/1..1/16", desc: "Tempo-sync sample duration to current project BPM.", type: "enum", scope: "track", id: 113, min: 0, max: 7, options: ["OFF", "1/1", "1/2", "1/4", "1/8", "1/16", "2BAR", "4BAR"] }
         ]
       }
     ]
@@ -1665,20 +1909,20 @@ const PARAM_DATA = {
         name: "Page 1: Formant Model (VOWEL)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "FORM", range: "A, E, I, O, U, NASAL", desc: "Continuous formant vowel throat model morphing." },
-          { knob: "K2", name: "GLOT", range: "0–127", desc: "Glottal pulse wave shape (clean vocal cord to buzzy reed)." },
-          { knob: "K3", name: "JITT", range: "0–127", desc: "Vocal pitch jitter and vocal fry instability." },
-          { knob: "K4", name: "TILT", range: "0–127", desc: "Spectral tilt brightness and high-frequency harmonic emphasis." }
+          { key: "vox_vowl", knob: "K1", name: "VOWL", range: "A, E, I, O, U", desc: "Continuous formant vowel throat model morphing.", type: "knob", scope: "track", id: 106, min: 0, max: 127, def: 0, fmt: v => v < 25 ? "A (ah)" : v < 50 ? "E (eh)" : v < 75 ? "I (ee)" : v < 100 ? "O (oh)" : "U (oo)" },
+          { key: "vox_vowl2", knob: "K2", name: "VOWL2", range: "A, E, I, O, U", desc: "Secondary vowel target morphed into over time.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => v < 25 ? "A (ah)" : v < 50 ? "E (eh)" : v < 75 ? "I (ee)" : v < 100 ? "O (oh)" : "U (oo)" },
+          { key: "vox_talk", knob: "K3", name: "TALK", range: "0–127", desc: "Formant transition glide time between vowels.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 0, fmt: v => (v * 15) + " ms" },
+          { key: "vox_shift", knob: "K4", name: "SHIFT", range: "-12..+12 ST", desc: "Formant frequency shift (gender throat scaling).", type: "knob", scope: "track", id: 109, min: -12, max: 12, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
         ]
       },
       {
         name: "Page 2: Articulation (VOX)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "VIB", range: "0–127", desc: "Operatic vocal vibrato speed and depth." },
-          { knob: "K2", name: "RESO", range: "0–127", desc: "Vocal tract formant resonance bandwidth sharpness." },
-          { knob: "K3", name: "NOIS", range: "0–127", desc: "Whisper breath noise injection into the vocal tract." },
-          { knob: "K4", name: "GEND", range: "-64..+63", desc: "Gender pitch shift (deep bass throat to soprano child)." }
+          { key: "vox_buzz", knob: "K1", name: "BUZZ", range: "0–127", desc: "Glottal pulse wave shape buzzy vocal cord harmonics.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_brth", knob: "K2", name: "BRTH", range: "0–127", desc: "Aspiration breath noise injected into the vocal tract.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 10, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_q", knob: "K3", name: "Q", range: "0–127", desc: "Vocal tract formant resonance bandwidth sharpness.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "vox_rnd", knob: "K4", name: "RAND", range: "0–127", desc: "Micro-pitch jitter and organic vocal instability.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1688,26 +1932,26 @@ const PARAM_DATA = {
     title: "SCRUB — Turntable Platter & Tape Scrub",
     color: "#ff2d78",
     desc: "Physical reel-to-reel tape and vinyl turntable scrub engine. Playback speed, continuous scrubbing, motor brake friction, and wow & flutter.",
-    tip: "Turn Knob 1 (POS) while holding a note for live vinyl scratch performance, or use Knob 3 (BRAKE) for turntable motor power-down drops.",
+    tip: "Turn Knob 1 (POS) while holding a note for live vinyl scratch performance, or use Knob 3 (FRIC) for turntable motor power-down drops.",
     pages: [
       {
         name: "Page 1: Transport & Motor (PLAY)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "POS", range: "0–100%", desc: "Scrub head position across the loaded tape audio buffer." },
-          { knob: "K2", name: "SPEED", range: "-200%..+200%", desc: "Tape transport speed (bipolar: negative plays in reverse)." },
-          { knob: "K3", name: "BRAKE", range: "0–127", desc: "Turntable motor stop friction curve and inertia deceleration." },
-          { knob: "K4", name: "TAPE", range: "0–127", desc: "Tape capstan wow, flutter, and warm analog magnetic saturation." }
+          { key: "sc_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Scrub head position across the loaded tape audio buffer.", type: "knob", scope: "track", id: 106, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sc_spd", knob: "K2", name: "MOTOR", range: "-3.0x..+3.0x", desc: "Tape transport speed (bipolar: negative plays in reverse).", type: "knob", scope: "track", id: 107, min: -30, max: 30, def: 10, fmt: v => (v / 10).toFixed(1) + "x" },
+          { key: "sc_inert", knob: "K3", name: "INERT", range: "0–100%", desc: "Turntable motor flywheel weight and inertia deceleration.", type: "knob", scope: "track", id: 108, min: 0, max: 100, def: 50, fmt: v => v + "%" },
+          { key: "sc_fric", knob: "K4", name: "FRIC", range: "0–100%", desc: "Platter brake friction and tape capstan drag.", type: "knob", scope: "track", id: 109, min: 0, max: 100, def: 50, fmt: v => v + "%" }
         ]
       },
       {
-        name: "Page 2: Loop & Sensitivity (LOOP)",
+        name: "Page 2: Loop & Preamp (LOOP)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "LOOP", range: "OFF, LOOP, PING", desc: "Scrub buffer looping behavior." },
-          { knob: "K2", name: "START", range: "0–100%", desc: "Scrub loop start boundary mark." },
-          { knob: "K3", name: "END", range: "0–100%", desc: "Scrub loop end boundary mark." },
-          { knob: "K4", name: "SENS", range: "1x..8x", desc: "Encoder scrub jog wheel rotational sensitivity." }
+          { key: "sc_src", knob: "K1", name: "SRC", range: "USR1..3, MIC", desc: "Selected tape buffer audio source.", type: "enum", scope: "track", id: 110, min: 0, max: 3, options: ["USR1", "USR2", "USR3", "MIC/IN"] },
+          { key: "sc_loop", knob: "K2", name: "LOOP", range: "OFF, LOOP, PING..", desc: "Scrub buffer looping behavior.", type: "enum", scope: "track", id: 111, min: 0, max: 3, options: ["OFF", "LOOP", "PING", "GATE"] },
+          { key: "sc_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Analog preamp drive and magnetic tape head saturation.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sc_wow", knob: "K4", name: "WOW", range: "0–100%", desc: "Capstan motor wow, flutter, and warm tape drift.", type: "knob", scope: "track", id: 113, min: 0, max: 100, def: 10, fmt: v => v + "%" }
         ]
       }
     ]
@@ -1717,26 +1961,26 @@ const PARAM_DATA = {
     title: "WHEEL — Dual Tonewheel Drawbar Organ",
     color: "#76ff03",
     desc: "Classic electromagnetic tonewheel organ emulation with 4 primary drawbar footages, rotary Leslie speaker cabinet, tube drive, and key click.",
-    tip: "Toggle K1 (ROTOR) from SLOW to FAST on musical chord changes for dramatic Leslie rotary speaker acceleration.",
+    tip: "Toggle K4 (ROTR) from SLOW to FAST on musical chord changes for dramatic Leslie rotary speaker acceleration.",
     pages: [
       {
         name: "Page 1: Drawbars (WHEEL)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "16'", range: "0–8", desc: "Sub-bass 16-foot fundamental drawbar footage level." },
-          { knob: "K2", name: "8'", range: "0–8", desc: "Primary 8-foot unison drawbar footage level." },
-          { knob: "K3", name: "4'", range: "0–8", desc: "Octave 4-foot harmonic drawbar footage level." },
-          { knob: "K4", name: "2'", range: "0–8", desc: "Super-octave 2-foot harmonic drawbar footage level." }
+          { key: "wh_reg", knob: "K1", name: "REG", range: "1..16", desc: "Drawbar registration preset curve.", type: "knob", scope: "track", id: 106, min: 0, max: 15, def: 4, fmt: v => "REG " + (v + 1) },
+          { key: "wh_sub", knob: "K2", name: "16'", range: "-8..+8", desc: "Sub-bass 16-foot fundamental drawbar footage level.", type: "knob", scope: "track", id: 107, min: -8, max: 8, def: 0, fmt: v => v },
+          { key: "wh_body", knob: "K3", name: "8'", range: "-8..+8", desc: "Primary 8-foot unison drawbar footage level.", type: "knob", scope: "track", id: 108, min: -8, max: 8, def: 0, fmt: v => v },
+          { key: "wh_top", knob: "K4", name: "4'", range: "-8..+8", desc: "Octave 4-foot harmonic drawbar footage level.", type: "knob", scope: "track", id: 109, min: -8, max: 8, def: 0, fmt: v => v }
         ]
       },
       {
         name: "Page 2: Rotor & Preamp (ROTOR)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "ROTOR", range: "STOP, SLOW, FAST", desc: "Leslie rotary horn and drum speaker speed." },
-          { knob: "K2", name: "DRIVE", range: "0–127", desc: "Vintage 12AX7 tube preamp saturation and grit." },
-          { knob: "K3", name: "CLICK", range: "0–127", desc: "Mechanical key contact percussion transient click." },
-          { knob: "K4", name: "LEAK", range: "0–127", desc: "Magnetic crosstalk leakage hum between tonewheel pickups." }
+          { key: "wh_perc", knob: "K1", name: "PERC", range: "OFF, 2ND, 3RD..", desc: "Mechanical harmonic percussion transient key contact.", type: "enum", scope: "track", id: 110, min: 0, max: 6, options: ["OFF", "2ND SOFT", "2ND HARD", "3RD SOFT", "3RD HARD", "FAST", "SLOW"] },
+          { key: "wh_clk", knob: "K2", name: "CLICK", range: "0–127", desc: "Key contact vintage percussion click intensity.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wh_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Vintage 12AX7 tube preamp saturation and grit.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wh_rotr", knob: "K4", name: "ROTR", range: "STOP, SLOW, FAST", desc: "Leslie rotary horn and drum speaker speed.", type: "enum", scope: "track", id: 113, min: 0, max: 2, options: ["STOP", "SLOW", "FAST"] }
         ]
       }
     ]
@@ -1746,26 +1990,26 @@ const PARAM_DATA = {
     title: "GRAIN — Granular Cloud Synthesizer",
     color: "#ff6d00",
     desc: "Asynchronous granular synthesizer extracting overlapping micro-sound grains with variable window size, density, positional spray, and pitch randomization.",
-    tip: "Increase SPRAY and PAN.R to expand mono samples into a lush, sprawling three-dimensional stereo cloud.",
+    tip: "Increase SPRY and SPREAD to expand mono samples into a lush, sprawling three-dimensional stereo cloud.",
     pages: [
       {
         name: "Page 1: Granular Cloud (CLOUD)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "POS", range: "0–100%", desc: "Audio buffer grain scan center position." },
-          { knob: "K2", name: "SIZE", range: "10ms–500ms", desc: "Individual grain window duration." },
-          { knob: "K3", name: "DENS", range: "1..32 grains/s", desc: "Grain spawn rate and polyphonic cloud density." },
-          { knob: "K4", name: "SPRAY", range: "0–100%", desc: "Random positional jitter around the scan center." }
+          { key: "gr_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Audio buffer grain scan center position.", type: "knob", scope: "track", id: 106, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_size", knob: "K2", name: "SIZE", range: "10ms–500ms", desc: "Individual grain window duration.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => (10 + v * 4) + " ms" },
+          { key: "gr_dens", knob: "K3", name: "DENS", range: "1..32 gr/s", desc: "Grain spawn rate and polyphonic cloud density.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 64, fmt: v => Math.round(1 + v * 31 / 127) + " gr/s" },
+          { key: "gr_pitch", knob: "K4", name: "PTCH", range: "-24..+24 ST", desc: "Transposition of grain playback in semitones.", type: "knob", scope: "track", id: 109, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
         ]
       },
       {
         name: "Page 2: Pitch & Space (PITCH)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "PITCH", range: "-24..+24 ST", desc: "Transposition of grain playback in semitones." },
-          { knob: "K2", name: "P.RND", range: "0–100%", desc: "Random pitch deviation spread per grain." },
-          { knob: "K3", name: "PAN.R", range: "0–100%", desc: "Stereo spatial cloud diffusion and panning spread." },
-          { knob: "K4", name: "REVR", range: "0–100%", desc: "Probability of individual grains playing in reverse." }
+          { key: "gr_spry", knob: "K1", name: "SPRY", range: "0–100%", desc: "Random positional jitter around the scan center.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_rev", knob: "K2", name: "REV", range: "0–100%", desc: "Probability of individual grains playing in reverse.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_tone", knob: "K3", name: "TONE", range: "0–100%", desc: "High-frequency tone damping across the cloud.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "gr_sprd", knob: "K4", name: "SPRD", range: "0–100%", desc: "Stereo spatial cloud diffusion and panning spread.", type: "knob", scope: "track", id: 78, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1775,26 +2019,26 @@ const PARAM_DATA = {
     title: "PHYS — Physical Modeling Synthesizer",
     color: "#00e676",
     desc: "DaisySP physical modeling engine simulating acoustic instruments: plucked strings (Karplus-Strong), struck modal bars, vibrating tubes, and bells.",
-    tip: "Automate STRUCT and DAMP to smoothly transition between metallic chime hits and warm acoustic upright bass plucks.",
+    tip: "Automate STRC and DAMP to smoothly transition between metallic chime hits and warm acoustic upright bass plucks.",
     pages: [
       {
         name: "Page 1: Physical Model (PHYS)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "MODEL", range: "STRG, BAR, TUBE, BELL", desc: "Acoustic physical resonator model selection." },
-          { knob: "K2", name: "STRUCT", range: "0–127", desc: "Material stiffness and harmonic non-linearity." },
-          { knob: "K3", name: "BRIGHT", range: "0–127", desc: "High-frequency surface friction damping." },
-          { knob: "K4", name: "DAMP", range: "0–127", desc: "Decay damping dissipation rate." }
+          { key: "ph_model", knob: "K1", name: "MODEL", range: "STRG, BAR, TUBE, BELL", desc: "Acoustic physical resonator model selection.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["STRING", "MODAL BAR", "TUBE", "BELL"] },
+          { key: "ph_strc", knob: "K2", name: "STRC", range: "0–127", desc: "Material stiffness and harmonic non-linearity.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_brit", knob: "K3", name: "BRIT", range: "0–127", desc: "High-frequency surface friction damping brightness.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_damp", knob: "K4", name: "DAMP", range: "0–127", desc: "Decay damping dissipation rate.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 2: Resonator Body (BODY)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "POS", range: "0–100%", desc: "Excitation strike or pluck position along the physical body." },
-          { knob: "K2", name: "LOSS", range: "0–127", desc: "Acoustic body loss and energy radiation." },
-          { knob: "K3", name: "RESO", range: "0–127", desc: "Internal body cavity acoustic resonance." },
-          { knob: "K4", name: "LVL", range: "0–127", desc: "Physical model master output gain." }
+          { key: "ph_pos", knob: "K1", name: "POS", range: "0–100%", desc: "Excitation strike or pluck position along the physical body.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 20, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_acc", knob: "K2", name: "ACC", range: "0–127", desc: "Strike accent force and transient impact punch.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_bow", knob: "K3", name: "BOW", range: "0–127", desc: "Continuous bowing friction excitation amount.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ph_exc", knob: "K4", name: "EXC", range: "0–127", desc: "Exciter noise injection balance.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1804,26 +2048,26 @@ const PARAM_DATA = {
     title: "NOISE — Colored Noise & Percussion Engine",
     color: "#b0bec5",
     desc: "Multi-spectrum noise generator with White, Pink, Brown, Red, Blue, and Metallic cymbal ring colors, particle bursts, and resonant band-pass filtering.",
-    tip: "Use the Metallic color with high RESO and short DECAY for realistic vintage 808/909 hats and metallic ride cymbals.",
+    tip: "Use the Metallic color with high RES and short DECAY for realistic vintage 808/909 hats and metallic ride cymbals.",
     pages: [
       {
         name: "Page 1: Noise Generator (NOISE)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "COLOR", range: "WHT, PNK, BRN, MET", desc: "Spectral noise distribution color curve." },
-          { knob: "K2", name: "DECAY", range: "1ms–5000ms", desc: "Noise burst envelope release decay time." },
-          { knob: "K3", name: "DENS", range: "0–127", desc: "Particle strike rate and granular noise grain density." },
-          { knob: "K4", name: "FILT", range: "20Hz–20kHz", desc: "Resonant bandpass tracking filter frequency." }
+          { key: "ns_mode", knob: "K1", name: "MODE", range: "WHT, PNK, BRN, MET", desc: "Spectral noise distribution color curve.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["WHITE", "PINK", "BROWN", "METALLIC"] },
+          { key: "ns_colr", knob: "K2", name: "COLR", range: "0–127", desc: "Spectral tilt brightness and high-frequency harmonic slope.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_freq", knob: "K3", name: "FREQ", range: "20Hz–20kHz", desc: "Resonant tracking filter center frequency.", type: "knob", scope: "track", id: 108, min: 0, max: 127, def: 80, fmt: v => Math.round(20 * Math.pow(1000, v / 127)) + " Hz" },
+          { key: "ns_res", knob: "K4", name: "RES", range: "0–127", desc: "Filter resonance peak sharpness.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 30, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
-        name: "Page 2: Metallic Resonator (METAL)",
+        name: "Page 2: Texture & Granularity (GRAIN)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "RESO", range: "0–127", desc: "Metallic modal resonance peak sharpness." },
-          { knob: "K2", name: "SPREAD", range: "0–100%", desc: "Stereo decorrelation width across the frequency spectrum." },
-          { knob: "K3", name: "CRUSH", range: "0–127", desc: "Sample rate decimation for raw crunchy texture." },
-          { knob: "K4", name: "MIX", range: "0–127", desc: "Direct dry vs filtered noise balance." }
+          { key: "ns_trk", knob: "K1", name: "TRK", range: "0–100%", desc: "Keyboard pitch tracking amount for tuned noise plucks.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_dens", knob: "K2", name: "DENS", range: "0–127", desc: "Particle strike rate and granular noise grain density.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_drft", knob: "K3", name: "DRFT", range: "0–127", desc: "Random drift and flutter fluctuation across frequencies.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ns_crsh", knob: "K4", name: "CRSH", range: "0–127", desc: "Sample rate decimation for raw crunchy vintage digital textures.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1833,26 +2077,26 @@ const PARAM_DATA = {
     title: "FM6 — 6-Operator DX7 FM Synth",
     color: "#ff1744",
     desc: "Authentic 6-operator FM synthesis engine with all 32 classic algorithms, fractional frequency ratios, operator feedback, and full .syx voice import.",
-    tip: "Turn Knob 1 (ALGO) to explore different carrier/modulator arrangements, or adjust OP 6 FEEDBACK for rich brass and saw waveforms.",
+    tip: "Turn Knob 1 (ALGO) to explore different carrier/modulator arrangements, or adjust OP FEEDBACK for rich brass and saw waveforms.",
     pages: [
       {
-        name: "Page 1: Algorithm & Operators (FM)",
+        name: "Page 1: Algorithm & Feedback (FM)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "ALGO", range: "1..32", desc: "Selects 6-operator FM routing algorithm." },
-          { knob: "K2", name: "OP", range: "OP 1..6", desc: "Selects active operator for parameter editing." },
-          { knob: "K3", name: "LEVEL", range: "0–127", desc: "Selected operator output volume / modulation index." },
-          { knob: "K4", name: "COARSE", range: "0.5x..31x", desc: "Operator frequency coarse ratio multiplier." }
+          { key: "fm_alg", knob: "K1", name: "ALG", range: "1..32", desc: "Selects 6-operator FM routing algorithm.", type: "knob", scope: "track", id: 106, min: 0, max: 32, def: 0, fmt: v => "ALGO " + (v || 1) },
+          { key: "fm_fdbk", knob: "K2", name: "FDBK", range: "-7..+7", desc: "Operator feedback loop intensity.", type: "knob", scope: "track", id: 107, min: -7, max: 7, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_brit", knob: "K3", name: "BRIT", range: "-64..+63", desc: "Global FM brightness / carrier-modulator balance.", type: "knob", scope: "track", id: 108, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_harm", knob: "K4", name: "HARM", range: "-16..+16", desc: "Operator harmonic multiplier ratio offset.", type: "knob", scope: "track", id: 109, min: -16, max: 16, def: 0, fmt: v => (v > 0 ? "+" + v : v) }
         ]
       },
       {
-        name: "Page 2: Tuning & Feedback (FINE)",
+        name: "Page 2: Decay & Detune (DECAY)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "FINE", range: "0–99", desc: "Fine operator frequency ratio fractional tuning." },
-          { knob: "K2", name: "DTN", range: "-7..+7", desc: "Micro-detune offset in cents." },
-          { knob: "K3", name: "FDBK", range: "0–7", desc: "Operator feedback loop intensity." },
-          { knob: "K4", name: "KTR", range: "0–7", desc: "Keyboard level rate scaling curve." }
+          { key: "fm_decy", knob: "K1", name: "DECY", range: "-64..+63", desc: "Envelope decay scaling across all operators.", type: "knob", scope: "track", id: 110, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_sens", knob: "K2", name: "SENS", range: "-7..+7", desc: "Key velocity sensitivity depth.", type: "knob", scope: "track", id: 111, min: -7, max: 7, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "fm_dtun", knob: "K3", name: "DTUN", range: "0–127", desc: "Operator phase detune spread in cents.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 0, fmt: v => v + " ct" },
+          { key: "fm_slot", knob: "K4", name: "SLOT", range: "1..48", desc: "Selects active preset patch voice slot.", type: "knob", scope: "track", id: 113, min: 0, max: 48, def: 0, fmt: v => "PATCH " + (v + 1) }
         ]
       }
     ]
@@ -1865,23 +2109,23 @@ const PARAM_DATA = {
     tip: "Use the SLICES page to fine-tune slice start/end points, or assign multiple slices to the same CUT GROUP for realistic open/closed hat chokes.",
     pages: [
       {
-        name: "Page 1: Slice Parameters (SLICE)",
+        name: "Page 1: Sample & Slices (SLICE)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "SLICE", range: "SLC 1..16", desc: "Selects active slice pad for editing or preview." },
-          { knob: "K2", name: "PTCH", range: "-24..+24 ST", desc: "Per-slice independent pitch transposition." },
-          { knob: "K3", name: "ATK", range: "0–127", desc: "Attack smoothing to eliminate audio clicks at transient start." },
-          { knob: "K4", name: "DEC", range: "0–127", desc: "Slice choke release decay duration." }
+          { key: "sl_src", knob: "K1", name: "SRC", range: "USR1..3, MIC", desc: "Audio buffer source for beat slicing.", type: "enum", scope: "track", id: 106, min: 0, max: 3, options: ["USR1", "USR2", "USR3", "MIC/IN"] },
+          { key: "sl_slcs", knob: "K2", name: "SLCS", range: "1..16", desc: "Number of chop subdivisions across the loop.", type: "knob", scope: "track", id: 107, min: 1, max: 16, def: 16, fmt: v => v + " slices" },
+          { key: "sl_pitch", knob: "K3", name: "PTCH", range: "-24..+24 ST", desc: "Per-slice independent pitch transposition.", type: "knob", scope: "track", id: 108, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" },
+          { key: "sl_speed", knob: "K4", name: "SPEED", range: "10%–400%", desc: "Playback speed without changing slice length.", type: "knob", scope: "track", id: 109, min: 10, max: 400, def: 100, fmt: v => v + "%" }
         ]
       },
       {
-        name: "Page 2: Playback & Choke (LOOP)",
+        name: "Page 2: Mode & Sync (PLAY)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "PLAY", range: "ONE, LOOP, REV", desc: "Playback mode: one-shot, forward loop, or reverse." },
-          { knob: "K2", name: "LVL", range: "0–127", desc: "Per-slice independent gain level." },
-          { knob: "K3", name: "PAN", range: "-64..+63", desc: "Per-slice independent stereo panning." },
-          { knob: "K4", name: "CHOKE", range: "OFF, G1..G4", desc: "Exclusive choke group (cuts off previous slice in same group)." }
+          { key: "sl_strch", knob: "K1", name: "STRCH", range: "25%–400%", desc: "Time-stretch percentage applied across slices.", type: "knob", scope: "track", id: 110, min: 25, max: 400, def: 100, fmt: v => v + "%" },
+          { key: "sl_mode", knob: "K2", name: "MODE", range: "ONE, LOOP, GATE", desc: "Trigger mode: one-shot, looping, or gate hold.", type: "enum", scope: "track", id: 111, min: 0, max: 2, options: ["ONE-SHOT", "LOOP", "GATE"] },
+          { key: "sl_dir", knob: "K3", name: "DIR", range: "FWD, REV, ALT", desc: "Playback direction per slice pad.", type: "enum", scope: "track", id: 112, min: 0, max: 2, options: ["FORWARD", "REVERSE", "ALTERNATE"] },
+          { key: "sl_sync", knob: "K4", name: "SYNC", range: "OFF, 1/1..1/16", desc: "Tempo-sync slice gate timing to project BPM.", type: "enum", scope: "track", id: 113, min: 0, max: 7, options: ["OFF", "1/1", "1/2", "1/4", "1/8", "1/16", "2BAR", "4BAR"] }
         ]
       }
     ]
@@ -1897,20 +2141,20 @@ const PARAM_DATA = {
         name: "Page 1: Wavetable Morph (WAVE)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "BANK", range: "BASIC..USER", desc: "Selects active wavetable sound bank." },
-          { knob: "K2", name: "POS", range: "0–127", desc: "Current wavetable frame interpolation position." },
-          { knob: "K3", name: "MORPH", range: "0–127", desc: "Spectral wave morphing / formant smoothing curve." },
-          { knob: "K4", name: "FOLD", range: "0–127", desc: "Wavefolder adding rich upper-register overtone harmonics." }
+          { key: "wt_src", knob: "K1", name: "SRC", range: "BASIC..USR4", desc: "Selects active wavetable sound bank.", type: "enum", scope: "track", id: 106, min: 0, max: 15, options: ["BASIC", "ANALOG", "DIGITAL", "FM", "VOCAL", "METALLIC", "CHORD", "BELL", "ORGAN", "NOISE", "DRONE", "EP", "USER1", "USER2", "USER3", "USER4"] },
+          { key: "wt_pos", knob: "K2", name: "POS", range: "0–127", desc: "Current wavetable frame interpolation position.", type: "knob", scope: "track", id: 107, min: 0, max: 127, def: 32, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_warp", knob: "K3", name: "WARP", range: "-64..+63", desc: "Spectral wave morphing / formant smoothing curve.", type: "knob", scope: "track", id: 108, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "wt_detn", knob: "K4", name: "DETN", range: "0–127", desc: "Stereo unison detune spread between wavetable voices.", type: "knob", scope: "track", id: 109, min: 0, max: 127, def: 20, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
-        name: "Page 2: Modulation & Drive (MOD)",
+        name: "Page 2: Drive & Lo-Fi (DRIVE)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "WT.ENV", range: "-64..+63", desc: "Bipolar envelope modulation depth routed to wavetable POS." },
-          { knob: "K2", name: "WT.LFO", range: "-64..+63", desc: "Bipolar LFO modulation depth routed to wavetable POS." },
-          { knob: "K3", name: "DRIVE", range: "0–127", desc: "Pushed analog drive preamp saturation." },
-          { knob: "K4", name: "SUB", range: "0–127", desc: "Dedicated clean sub-oscillator volume (-1 octave)." }
+          { key: "wt_bits", knob: "K1", name: "BITS", range: "4..16 bit", desc: "Bit-depth quantizer for vintage digital crunch.", type: "knob", scope: "track", id: 110, min: 0, max: 127, def: 127, fmt: v => (4 + Math.round(v * 12 / 127)) + " bit" },
+          { key: "wt_srat", knob: "K2", name: "SRAT", range: "0–127", desc: "Sample rate reduction decimation.", type: "knob", scope: "track", id: 111, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_drv", knob: "K3", name: "DRV", range: "0–127", desc: "Pushed analog drive preamp saturation.", type: "knob", scope: "track", id: 112, min: 0, max: 127, def: 16, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wt_glid", knob: "K4", name: "GLID", range: "0–127", desc: "Portamento glide time between notes.", type: "knob", scope: "track", id: 113, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1926,20 +2170,20 @@ const PARAM_DATA = {
         name: "Page 1: Lanes 1–4 (LEVELS 1-4)",
         sub: "EDIT P1/2",
         params: [
-          { knob: "K1", name: "KICK", range: "0–100%", desc: "Bass drum punch, body level, and sidechain trigger gain." },
-          { knob: "K2", name: "SNARE", range: "0–100%", desc: "Snare drum body level, crack, and noise snare snap." },
-          { knob: "K3", name: "CLAP", range: "0–100%", desc: "Handclap level and multi-burst stereo spread." },
-          { knob: "K4", name: "HATCL", range: "0–100%", desc: "Closed hi-hat metallic transient level." }
+          { key: "drm_kick", knob: "K1", name: "KICK", range: "0–100%", desc: "Bass drum punch, body level, and sidechain trigger gain.", type: "knob", scope: "track", trackIdx: 4, id: 83, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_snare", knob: "K2", name: "SNARE", range: "0–100%", desc: "Snare drum body level, crack, and noise snare snap.", type: "knob", scope: "track", trackIdx: 4, id: 84, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_clap", knob: "K3", name: "CLAP", range: "0–100%", desc: "Handclap level and multi-burst stereo spread.", type: "knob", scope: "track", trackIdx: 4, id: 85, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_hatcl", knob: "K4", name: "HATCL", range: "0–100%", desc: "Closed hi-hat metallic transient level.", type: "knob", scope: "track", trackIdx: 4, id: 86, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
         name: "Page 2: Lanes 5–8 (LEVELS 5-8)",
         sub: "EDIT P2/2",
         params: [
-          { knob: "K1", name: "HATOP", range: "0–100%", desc: "Open hi-hat sizzle level and decay time." },
-          { knob: "K2", name: "TOM", range: "0–100%", desc: "Low/mid acoustic tom pitch and resonant level." },
-          { knob: "K3", name: "RIM", range: "0–100%", desc: "Rimshot woodblock transient strike level." },
-          { knob: "K4", name: "BELL", range: "0–100%", desc: "Ride cymbal metallic bell ping level." }
+          { key: "drm_hatop", knob: "K1", name: "HATOP", range: "0–100%", desc: "Open hi-hat sizzle level and decay time.", type: "knob", scope: "track", trackIdx: 4, id: 87, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_tom", knob: "K2", name: "TOM", range: "0–100%", desc: "Low/mid acoustic tom pitch and resonant level.", type: "knob", scope: "track", trackIdx: 4, id: 88, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_rim", knob: "K3", name: "RIM", range: "0–100%", desc: "Rimshot woodblock transient strike level.", type: "knob", scope: "track", trackIdx: 4, id: 89, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "drm_bell", knob: "K4", name: "BELL", range: "0–100%", desc: "Ride cymbal metallic bell ping level.", type: "knob", scope: "track", trackIdx: 4, id: 90, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -1952,23 +2196,23 @@ const PARAM_DATA = {
     tip: "Hold any active step button and turn any knob to lock custom cutoff, pitch, or effect values to that individual step.",
     pages: [
       {
-        name: "Step Trigger & Target",
-        sub: "SEQ P1 & P3",
+        name: "Pattern Loop & Division",
+        sub: "SEQ P1",
         params: [
-          { knob: "K1", name: "STEP", range: "1..64", desc: "Step cursor position. Scrubbing previews pitch and sound." },
-          { knob: "K2", name: "TARGET", range: "C-1..G9 / SLC / VOIC", desc: "Step note pitch, drum voice, or slice index (1..16)." },
-          { knob: "K3", name: "OPT", range: "PLAY, TIE, PUNCH, RATCH", desc: "Trigger option: PLAY, TIE (legato), PUNCH (accent), RATCH 2/3/4." },
-          { knob: "K4", name: "VEL", range: "1..127", desc: "Dynamic strike velocity. Recorded live or entered manually." }
+          { key: "sq_len", knob: "K1", name: "LEN", range: "1..64 steps", desc: "Pattern loop length. Allows polyrhythms (e.g. 5, 7, 11 steps).", type: "knob", scope: "track", id: 29, min: 1, max: 64, def: 16, fmt: v => v + " steps" },
+          { key: "sq_div", knob: "K2", name: "DIV", range: "1/4..4BAR", desc: "Clock divider (whole notes down to 32nd notes and triplets).", type: "enum", scope: "track", id: 30, min: 0, max: 9, options: ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"] },
+          { key: "sq_swing", knob: "K3", name: "SWING", range: "0–100%", desc: "Groove shuffle swing timing (0% = straight).", type: "knob", scope: "track", id: 31, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sq_gate", knob: "K4", name: "GATE", range: "1%–127%", desc: "Default step note gate length (staccato to legato).", type: "knob", scope: "track", id: 32, min: 1, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
-        name: "Timing & Groove",
-        sub: "SEQ P2 & P4",
+        name: "Groove & Sequencer Flags",
+        sub: "SEQ P2",
         params: [
-          { knob: "K1", name: "LEN", range: "1..64 steps", desc: "Pattern loop length. Allows polyrhythms (e.g. 5, 7, 11 steps)." },
-          { knob: "K2", name: "DIV", range: "1/1..1/32 + T", desc: "Clock divider (whole notes down to 32nd notes and triplets)." },
-          { knob: "K3", name: "SWING", range: "-50%..+50%", desc: "Bipolar groove shuffle swing timing (0% = straight)." },
-          { knob: "K4", name: "HUMAN", range: "0..100%", desc: "Micro-timing and velocity humanization for a live feel." }
+          { key: "sq_human", knob: "K1", name: "HUMAN", range: "0–100%", desc: "Micro-timing and velocity humanization for a live feel.", type: "knob", scope: "track", id: 79, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "sq_qntz", knob: "K2", name: "QUANTIZE", range: "OFF, ON", desc: "Hardware step quantization: aligns recorded notes strictly to grid.", type: "toggle", scope: "track", id: 94, min: 0, max: 1, options: ["OFF", "ON"] },
+          { key: "sq_mute", knob: "K3", name: "MUTE", range: "OFF, ON", desc: "Mutes active track audio while sequencer continues playback.", type: "toggle", scope: "track", id: 40, min: 0, max: 1, options: ["PLAY", "MUTE"] },
+          { key: "sq_esync", knob: "K4", name: "ENV SYNC", range: "OFF, ON", desc: "Locks ADSR envelope stages to rhythmic note tempo divisions.", type: "toggle", scope: "track", id: 102, min: 0, max: 1, options: ["OFF", "SYNC"] }
         ]
       }
     ]
@@ -1984,20 +2228,20 @@ const PARAM_DATA = {
         name: "Page 1: Pattern & Timing",
         sub: "ARP P1/2",
         params: [
-          { knob: "K1", name: "MODE", range: "UP, DOWN, BACH, BROWN..", desc: "12 pattern modes including algorithmic and Brownian walks." },
-          { knob: "K2", name: "RATE", range: "1/1..1/32 + T", desc: "Tempo-synced clock speed division." },
-          { knob: "K3", name: "OCT", range: "-3..+3 oct", desc: "Arpeggio octave range spread." },
-          { knob: "K4", name: "GATE", range: "1%–127%", desc: "Note gate length (staccato plucks to overlapping legato ties)." }
+          { key: "arp_mode", knob: "K1", name: "MODE", range: "UP, DOWN, BACH..", desc: "12 pattern modes including algorithmic and Brownian walks.", type: "enum", scope: "track", id: 17, min: 0, max: 11, options: ["OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG"] },
+          { key: "arp_rate", knob: "K2", name: "RATE", range: "1/4..4BAR", desc: "Tempo-synced clock speed division.", type: "enum", scope: "track", id: 18, min: 0, max: 9, options: ["1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"] },
+          { key: "arp_oct", knob: "K3", name: "OCT", range: "-3..+3 oct", desc: "Arpeggio octave range spread.", type: "knob", scope: "track", id: 19, min: -3, max: 3, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " oct" },
+          { key: "arp_gate", knob: "K4", name: "GATE", range: "1%–127%", desc: "Note gate length (staccato plucks to overlapping legato ties).", type: "knob", scope: "track", id: 20, min: 1, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       },
       {
-        name: "Page 2: Feel & Probability",
+        name: "Page 2: Feel & Latch Controls",
         sub: "ARP P2/2",
         params: [
-          { knob: "K1", name: "SWG", range: "0–100%", desc: "Arpeggiator groove swing shuffle percentage." },
-          { knob: "K2", name: "PROB", range: "0–100%", desc: "Step trigger probability chance for generative variations." },
-          { knob: "K3", name: "HOLD", range: "OFF, ON", desc: "Latch hold: keeps arpeggio playing when keys are released." },
-          { knob: "K4", name: "ORD", range: "NOTE, PLAY", desc: "Note order: chromatic note pitch order vs order keys were played." }
+          { key: "arp_swg", knob: "K1", name: "SWG", range: "0–100%", desc: "Arpeggiator groove swing shuffle percentage.", type: "knob", scope: "track", id: 21, min: 0, max: 100, def: 0, fmt: v => v + "%" },
+          { key: "arp_prob", knob: "K2", name: "PROB", range: "0–100%", desc: "Step trigger probability chance for generative variations.", type: "knob", scope: "track", id: 22, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "arp_hold", knob: "K3", name: "HOLD", range: "OFF, ON", desc: "Latch hold: keeps arpeggio playing endlessly when keys are released.", type: "toggle", scope: "track", id: 23, min: 0, max: 1, options: ["OFF", "HOLD"] },
+          { key: "arp_ord", knob: "K4", name: "ORD", range: "NOTE, PLAY", desc: "Note order: chromatic pitch order vs chronological played order.", type: "toggle", scope: "track", id: 24, min: 0, max: 1, options: ["NOTE", "PLAY"] }
         ]
       }
     ]
@@ -2013,30 +2257,30 @@ const PARAM_DATA = {
         name: "Scale & Key Quantization",
         sub: "SCL P1/2",
         params: [
-          { knob: "K1", name: "ROOT", range: "C..B", desc: "Musical root key center note." },
-          { knob: "K2", name: "SCL", range: "CHR, MAJ, MIN, DOR..", desc: "16 selectable scales (Major, Minor, Dorian, Pentatonic, Blues..)." },
-          { knob: "K3", name: "QNT", range: "OFF, SNAP, WHITE, SEQ", desc: "Quantize mode: snap notes to scale or remap white keys." },
-          { knob: "K4", name: "TRN", range: "-24..+24 ST", desc: "Chromatic master transpose in semitones." }
+          { key: "scl_root", knob: "K1", name: "ROOT", range: "C..B", desc: "Musical root key center note.", type: "enum", scope: "track", id: 25, min: 0, max: 11, options: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] },
+          { key: "scl_scl", knob: "K2", name: "SCL", range: "CHR, MAJ, MIN..", desc: "16 selectable scales (Major, Minor, Dorian, Pentatonic, Blues..).", type: "enum", scope: "track", id: 26, min: 0, max: 15, options: ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"] },
+          { key: "scl_qnt", knob: "K3", name: "QNT", range: "OFF, SNAP, WHITE..", desc: "Quantize mode: snap notes to scale or remap white keys.", type: "enum", scope: "track", id: 27, min: 0, max: 3, options: ["OFF", "SNAP", "WHITE", "SEQ"] },
+          { key: "scl_trn", knob: "K4", name: "TRN", range: "-24..+24 ST", desc: "Chromatic master transpose in semitones.", type: "knob", scope: "track", id: 28, min: -24, max: 24, def: 0, fmt: v => (v > 0 ? "+" + v : v) + " ST" }
         ]
       },
       {
         name: "8-Chord Progression Generator",
         sub: "SCL P2/2",
         params: [
-          { knob: "K1", name: "MOOD", range: "CALM, HAPPY, SAD..", desc: "Progression mood: CALM, HAPPY, SAD, SPOOK, ANGRY, EXCITE, GRAND, TENSE." },
-          { knob: "K2", name: "CMPX", range: "SMPL, CMPX, COLTRN", desc: "Harmonic complexity: Simple triads, 7th/9th extensions, or Coltrane changes." },
-          { knob: "K3", name: "RATE", range: "8, 16, 32, 1BAR, 2BAR", desc: "Harmonic rhythm rate per chord change." },
-          { knob: "K4", name: "HOLD", range: "AUTO, KEY1-8, HOLD", desc: "Chord playback latch behavior." }
+          { key: "ch_mood", knob: "K1", name: "MOOD", range: "CALM, HAPPY, SAD..", desc: "Progression mood: CALM, HAPPY, SAD, SPOOK, ANGRY, EXCITE, GRAND, TENSE.", type: "enum", scope: "track", id: 103, min: 0, max: 7, options: ["CALM", "HAPPY", "SAD", "SPOOK", "ANGRY", "EXCITE", "GRAND", "TENSE"] },
+          { key: "ch_cmpx", knob: "K2", name: "CMPX", range: "SMPL, CMPX, COLTRN", desc: "Harmonic complexity: Simple triads, 7th/9th extensions, or Coltrane changes.", type: "enum", scope: "track", id: 104, min: 0, max: 2, options: ["SMPL", "CMPX", "COLTRN"] },
+          { key: "ch_rate", knob: "K3", name: "RATE", range: "8, 16, 32, 1BAR..", desc: "Harmonic rhythm rate per chord change.", type: "enum", scope: "track", id: 8, min: 0, max: 5, options: ["8", "16", "32", "64", "1BAR", "2BAR"] },
+          { key: "ch_hold", knob: "K4", name: "HOLD", range: "AUTO, KEY1-8, HOLD", desc: "Chord playback latch behavior.", type: "enum", scope: "track", id: 78, min: 0, max: 2, options: ["AUTO", "KEY1-8", "HOLD"] }
         ]
       },
       {
-        name: "Live Performance Chord Keys",
-        sub: "SCL QUICK-KEYS",
+        name: "Chord Voicing & Quick-Keys",
+        sub: "SCL CHORD KEYS",
         params: [
-          { knob: "K1-8", name: "DIRECT CHORDS", range: "White Keys 1–8", desc: "Hold SCL + tap White Keys 1–8 to play chords 1–8 polyphonically with full ADSR envelopes." },
-          { knob: "K9-16", name: "STRUM CHORDS", range: "White Keys 9–16", desc: "Hold SCL + tap White Keys 9–16 to strum chords 1–8 across a 1/2-step (32nd note) interval." },
-          { knob: "HOLD", name: "SUSTAIN", range: "Touch / Release", desc: "Holding the key sustains the chord envelope; releasing releases voices naturally." },
-          { knob: "POLY", name: "VOICING", range: "Voice Allocation", desc: "Each chord note plays as an independent voice through the active engine." }
+          { key: "ch_type", knob: "K1", name: "CHRD", range: "OFF, PROG, DIA..", desc: "Keyboard chord trigger mode: PROG (8 chords), diatonic or fixed intervals.", type: "enum", scope: "track", id: 81, min: 0, max: 10, options: ["OFF", "PROG", "DIA3", "DIA7", "MAJ", "MIN", "DOM7", "MAJ7", "MIN7", "SUS4", "POW"] },
+          { key: "ch_voic", knob: "K2", name: "VOIC", range: "CLOSE, OPEN, INV..", desc: "Chord inversion and voice spreading.", type: "enum", scope: "track", id: 82, min: 0, max: 4, options: ["CLOSE", "OPEN", "INV1", "INV2", "+OCT"] },
+          { key: "ch_strum", knob: "K3", name: "STRUM", range: "0–100%", desc: "1/2-step (32nd note) strum timing curve for White Keys 9–16.", type: "knob", scope: "track", id: 38, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ch_poly", knob: "K4", name: "POLY", range: "POLY, MONO, LEG..", desc: "Voice allocation: independent polyphonic chord voice playback.", type: "enum", scope: "track", id: 37, min: 0, max: 3, options: ["POLY", "MONO", "LEGATO", "UNISON"] }
         ]
       }
     ]
@@ -2050,12 +2294,13 @@ const PARAM_DATA = {
     pages: [
       {
         name: "Tape Wobble Parameters",
-        sub: "INS: WOBBL",
+        sub: "INS: WOBBL (TYPE 9)",
         params: [
-          { knob: "K1", name: "RATE", range: "0.1Hz–15Hz", desc: "LFO motor wow and flutter cycle frequency." },
-          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation deviation width." },
-          { knob: "K3", name: "SAT", range: "0–100%", desc: "Tape saturation drive adding warm even harmonics." },
-          { knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry effect balance on the active track." }
+          { key: "wob_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Wobble insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 9 ? 1 : 0, customSet: v => v ? 9 : 0 },
+          { key: "wob_rate", knob: "K1", name: "RATE", range: "0.1Hz–15Hz", desc: "LFO motor wow and flutter cycle frequency.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 50, fmt: v => (0.1 + v * 0.12).toFixed(1) + " Hz" },
+          { key: "wob_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation deviation width.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 70, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wob_sat", knob: "K3", name: "SAT", range: "0–100%", desc: "Tape saturation drive adding warm even harmonics.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "wob_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry effect balance on the active track.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2069,12 +2314,13 @@ const PARAM_DATA = {
     pages: [
       {
         name: "Octaver Parameters",
-        sub: "INS: OCTAV",
+        sub: "INS: OCTAV (TYPE 10)",
         params: [
-          { knob: "K1", name: "MODE", range: "+1OCT, -1OCT, DUAL..", desc: "+1OCT, +2OCT, -1OCT, -2OCT, DUAL, MAJOR, DOM7, MAJ7, MIN7, DIM." },
-          { knob: "K2", name: "UNIS", range: "0–100%", desc: "Unison detune thickness between generated voices." },
-          { knob: "K3", name: "TONE", range: "20Hz–20kHz", desc: "High-cut filter damping on harmony voices." },
-          { knob: "K4", name: "MIX", range: "0–100%", desc: "Direct wet/dry blend of harmony voices." }
+          { key: "oct_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Octaver insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 10 ? 1 : 0, customSet: v => v ? 10 : 0 },
+          { key: "oct_mode", knob: "K1", name: "MODE", range: "+1OCT, -1OCT..", desc: "Selects generated harmony interval or dual-octave mode.", type: "enum", scope: "track", id: 97, min: 0, max: 9, options: ["+1OCT", "+2OCT", "-1OCT", "-2OCT", "DUAL", "MAJOR", "DOM7", "MAJ7", "MIN7", "DIM"] },
+          { key: "oct_unis", knob: "K2", name: "UNIS", range: "0–100%", desc: "Unison detune thickness between generated voices.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "oct_tone", knob: "K3", name: "TONE", range: "20Hz–20kHz", desc: "High-cut filter damping on harmony voices.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 100, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "oct_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Direct wet/dry blend of harmony voices.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2088,12 +2334,13 @@ const PARAM_DATA = {
     pages: [
       {
         name: "Overdrive Parameters",
-        sub: "INS: OVDRI",
+        sub: "INS: OVDRI (TYPE 11)",
         params: [
-          { knob: "K1", name: "DRIVE", range: "0–100%", desc: "Preamp input gain and harmonic saturation." },
-          { knob: "K2", name: "TONE", range: "-64..+63", desc: "Tilt tone EQ: boosts bass/damps highs or vice versa." },
-          { knob: "K3", name: "GRIT", range: "0–100%", desc: "Asymmetric diode clipping edge and bias distortion." },
-          { knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry parallel saturation mix." }
+          { key: "ovd_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Overdrive insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 11 ? 1 : 0, customSet: v => v ? 11 : 0 },
+          { key: "ovd_drv", knob: "K1", name: "DRIVE", range: "0–100%", desc: "Preamp input gain and harmonic saturation.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_tone", knob: "K2", name: "TONE", range: "-64..+63", desc: "Tilt tone EQ: boosts bass/damps highs or vice versa.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_grit", knob: "K3", name: "GRIT", range: "0–100%", desc: "Asymmetric diode clipping edge and bias distortion.", type: "knob", scope: "track", id: 99, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "ovd_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Wet/dry parallel saturation mix.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2107,12 +2354,13 @@ const PARAM_DATA = {
     pages: [
       {
         name: "Auto-Panner Parameters",
-        sub: "INS: PANNR",
+        sub: "INS: PANNR (TYPE 12)",
         params: [
-          { knob: "K1", name: "RATE", range: "0.1Hz–20Hz / Sync", desc: "Panning modulation speed." },
-          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Stereo panning width from narrow center to extreme wide left/right." },
-          { knob: "K3", name: "SHAPE", range: "SINE, TRI, SQR", desc: "Panning LFO waveform shape: smooth Sine, linear Tri, or hard Square." },
-          { knob: "K4", name: "MIX", range: "0–100%", desc: "Effect balance." }
+          { key: "pan_act", knob: "ACT", name: "ACTIVE", range: "BYPASS, ON", desc: "Toggles Auto-Panner insert effect on the current track.", type: "toggle", scope: "track", id: 96, min: 0, max: 1, options: ["BYPASS", "ACTIVE"], customVal: v => v === 12 ? 1 : 0, customSet: v => v ? 12 : 0 },
+          { key: "pan_rate", knob: "K1", name: "RATE", range: "0.1Hz–20Hz", desc: "Panning modulation speed.", type: "knob", scope: "track", id: 97, min: 0, max: 127, def: 60, fmt: v => (0.1 + v * 0.15).toFixed(1) + " Hz" },
+          { key: "pan_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Stereo panning width from center to extreme wide left/right.", type: "knob", scope: "track", id: 98, min: 0, max: 127, def: 80, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "pan_shape", knob: "K3", name: "SHAPE", range: "SINE, TRI, SQR", desc: "Panning LFO waveform shape: Sine, Tri, or hard Square.", type: "enum", scope: "track", id: 99, min: 0, max: 2, options: ["SINE", "TRI", "SQR"] },
+          { key: "pan_mix", knob: "K4", name: "MIX", range: "0–100%", desc: "Effect wet/dry mix balance.", type: "knob", scope: "track", id: 100, min: 0, max: 127, def: 127, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2128,10 +2376,11 @@ const PARAM_DATA = {
         name: "Tape Echo Parameters",
         sub: "FX SEND: DELAY",
         params: [
-          { knob: "K1", name: "TIME", range: "1/32..4BAR + Dotted", desc: "Delay time with smooth capstan motor pitch-drift modeling." },
-          { knob: "K2", name: "FDBK", range: "0–120%", desc: "Echo feedback repeats (values > 100% create runaway dub oscillation)." },
-          { knob: "K3", name: "TAPE", range: "0–100%", desc: "Tape wow & flutter motor drift and warm tape head saturation." },
-          { knob: "K4", name: "CROSS", range: "0–100%", desc: "Stereo cross-feedback ping-pong mix between left and right channels." }
+          { key: "dly_time", knob: "K1", name: "TIME", range: "5ms–720ms", desc: "Delay time with smooth capstan motor pitch-drift modeling.", type: "knob", scope: "global", id: 4, min: 0, max: 102, def: 64, fmt: v => (5 + v * 7) + " ms" },
+          { key: "dly_fdbk", knob: "K2", name: "FDBK", range: "0–120%", desc: "Echo feedback repeats (> 100% creates runaway dub oscillation).", type: "knob", scope: "global", id: 5, min: 0, max: 120, def: 48, fmt: v => v + "%" },
+          { key: "dly_tape", knob: "K3", name: "TAPE", range: "0–100%", desc: "Tape wow & flutter motor drift and warm tape head saturation.", type: "knob", scope: "global", id: 6, min: 0, max: 127, def: 32, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "dly_cross", knob: "K4", name: "CROSS", range: "0–100%", desc: "Stereo cross-feedback ping-pong mix between left and right.", type: "knob", scope: "global", id: 7, min: 0, max: 127, def: 40, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "dly_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Tape Delay.", type: "knob", scope: "track", id: 35, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2147,10 +2396,11 @@ const PARAM_DATA = {
         name: "Reverb Parameters",
         sub: "FX SEND: REVERB",
         params: [
-          { knob: "K1", name: "SIZE", range: "0–100%", desc: "Acoustic chamber dimensions and decay tail length." },
-          { knob: "K2", name: "DAMP", range: "0–100%", desc: "High-frequency surface absorption damping." },
-          { knob: "K3", name: "TONE", range: "-64..+63", desc: "Tone tilt: warm dark chamber (-64) to shimmering bright hall (+63)." },
-          { knob: "K4", name: "TYPE", range: "ROOM, SPRING, HALL, SPACE", desc: "Selects physical reverb tank architecture (Hall shown in distinct red)." }
+          { key: "rev_size", knob: "K1", name: "SIZE", range: "0–100%", desc: "Acoustic chamber dimensions and decay tail length.", type: "knob", scope: "global", id: 8, min: 0, max: 127, def: 90, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "rev_damp", knob: "K2", name: "DAMP", range: "0–100%", desc: "High-frequency surface absorption damping.", type: "knob", scope: "global", id: 9, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "rev_tone", knob: "K3", name: "TONE", range: "-64..+63", desc: "Tone tilt: warm dark chamber (-64) to shimmering bright hall (+63).", type: "knob", scope: "global", id: 21, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "rev_type", knob: "K4", name: "TYPE", range: "ROOM, SPRING, HALL..", desc: "Selects physical reverb tank architecture.", type: "enum", scope: "global", id: 24, min: 0, max: 3, options: ["ROOM", "SPRING", "HALL", "SPACE"] },
+          { key: "rev_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Reverb Tank.", type: "knob", scope: "track", id: 36, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2166,10 +2416,11 @@ const PARAM_DATA = {
         name: "Chorus Parameters",
         sub: "FX SEND: CHORUS",
         params: [
-          { knob: "K1", name: "RATE", range: "0.1Hz–10Hz", desc: "LFO modulation speed (visualized by denser animated waves)." },
-          { knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation width and chorus detune spread." },
-          { knob: "K3", name: "TONE", range: "-64..+63", desc: "Color spectrum: warm analog BBD (red) to crystal shimmer (blue)." },
-          { knob: "K4", name: "VOIC", range: "1, 2, 3, 4", desc: "Number of independent stereo chorus delay lines." }
+          { key: "cho_rate", knob: "K1", name: "RATE", range: "0.1Hz–10Hz", desc: "LFO modulation speed.", type: "knob", scope: "global", id: 10, min: 0, max: 127, def: 40, fmt: v => (0.1 + v * 0.08).toFixed(1) + " Hz" },
+          { key: "cho_depth", knob: "K2", name: "DEPTH", range: "0–100%", desc: "Pitch modulation width and chorus detune spread.", type: "knob", scope: "global", id: 11, min: 0, max: 127, def: 60, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "cho_tone", knob: "K3", name: "TONE", range: "-64..+63", desc: "Color spectrum: warm analog BBD (-64) to crystal shimmer (+63).", type: "knob", scope: "global", id: 13, min: -64, max: 63, def: 0, fmt: v => (v > 0 ? "+" + v : v) },
+          { key: "cho_voic", knob: "K4", name: "VOIC", range: "1, 2, 3, 4", desc: "Number of independent stereo chorus delay lines.", type: "enum", scope: "global", id: 15, min: 0, max: 3, options: ["1 VOICE", "2 VOICES", "3 VOICES", "4 VOICES"] },
+          { key: "cho_send", knob: "SEND", name: "TRK SEND", range: "0–100%", desc: "Active track send level routed into Chorus.", type: "knob", scope: "track", id: 34, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
@@ -2185,19 +2436,253 @@ const PARAM_DATA = {
         name: "Sidechain Ducking Parameters",
         sub: "FX SEND: DUCK",
         params: [
-          { knob: "K1", name: "DEPTH", range: "0–100%", desc: "Ducking gain reduction depth (up to complete silence)." },
-          { knob: "K2", name: "TRIG", range: "KICK, K+SN, K+TM, ALL", desc: "Drum trigger source: Kick only, Kick+Snare, Kick+Tom, or All drums." },
-          { knob: "K3", name: "ATTACK", range: "0.5ms–25ms", desc: "Fast attack compression response time (0 = instantaneous)." },
-          { knob: "K4", name: "RELEASE", range: "20ms–600ms", desc: "Ducker recovery release time (sets musical pumping groove)." }
+          { key: "sc_depth", knob: "K1", name: "DEPTH", range: "0–100%", desc: "Ducking gain reduction depth for active track.", type: "knob", scope: "track", id: 33, min: 0, max: 127, def: 0, fmt: v => Math.round(v * 100 / 127) + "%" },
+          { key: "sc_trig", knob: "K2", name: "TRIG", range: "KICK, K+SN, ALL", desc: "Drum trigger source: Kick, Kick+Snare, Kick+Tom, or All drums.", type: "enum", scope: "sidechain", scId: 3, min: 0, max: 3, options: ["KICK", "K+SNR", "K+TOM", "ALL"] },
+          { key: "sc_atk", knob: "K3", name: "ATTACK", range: "0.5ms–25ms", desc: "Fast attack compression response time.", type: "knob", scope: "sidechain", scId: 1, min: 0, max: 50, def: 1, fmt: v => (0.5 + v * 0.5).toFixed(1) + " ms" },
+          { key: "sc_rels", knob: "K4", name: "RELEASE", range: "20ms–600ms", desc: "Ducker recovery release time (sets musical pumping groove).", type: "knob", scope: "sidechain", scId: 0, min: 10, max: 100, def: 48, fmt: v => (v * 6) + " ms" },
+          { key: "sc_fxdk", knob: "FXDK", name: "FX DUCK", range: "0–100%", desc: "Master Reverb, Delay & Chorus return ducking depth.", type: "knob", scope: "sidechain", scId: 2, min: 0, max: 127, def: 64, fmt: v => Math.round(v * 100 / 127) + "%" }
         ]
       }
     ]
   }
 };
 
+// Flattened param map for fast lookup
+const PARAM_MAP = {};
+Object.values(PARAM_DATA).forEach(group => {
+  group.pages.forEach(pg => {
+    pg.params.forEach(p => {
+      PARAM_MAP[p.key] = p;
+    });
+  });
+});
+
+function getParamValue(p) {
+  if (!p) return 0;
+  if (!currentParams) return p.def !== undefined ? p.def : (p.min || 0);
+
+  if (p.scope === "global") {
+    const val = currentParams.globalParams?.[p.id];
+    return val !== undefined ? val : (p.def || 0);
+  }
+  if (p.scope === "sidechain") {
+    const val = currentParams.sidechain?.[p.scId];
+    return val !== undefined ? val : (p.def || 0);
+  }
+  if (p.scope === "sub_osc") {
+    if (!currentParams.sub) return p.def || 0;
+    const oscIdx = p.osc !== undefined ? p.osc : (currentParams.sub.selOsc || 0);
+    const osc = currentParams.sub.oscs?.[oscIdx];
+    if (!osc) return p.def || 0;
+    if (p.field === 0) return currentParams.sub.selOsc || 0;
+    if (p.field === 1) return osc.wave;
+    if (p.field === 2) return osc.fold;
+    if (p.field === 3) return osc.mix;
+    if (p.field === 4) return osc.pitch;
+    if (p.field === 5) return osc.drive;
+    if (p.field === 6) return osc.glide;
+    return p.def || 0;
+  }
+  // Track scope
+  let raw = 0;
+  if (p.trackIdx !== undefined) {
+    if (currentParams.sel === p.trackIdx) {
+      raw = currentParams.trackParams?.[p.id] ?? (p.def || 0);
+    } else {
+      raw = p.def || 0;
+    }
+  } else {
+    raw = currentParams.trackParams?.[p.id] ?? (p.def || 0);
+  }
+  if (typeof p.customVal === "function") {
+    return p.customVal(raw);
+  }
+  return raw;
+}
+
+function setParamValue(p, val) {
+  if (!p) return;
+  val = Math.max(p.min !== undefined ? p.min : 0, Math.min(p.max !== undefined ? p.max : 127, val));
+  if (p.scope === "global") {
+    if (currentParams?.globalParams) currentParams.globalParams[p.id] = val;
+    send({ type: "set_global_param", id: p.id, val });
+  } else if (p.scope === "sidechain") {
+    if (currentParams?.sidechain) currentParams.sidechain[p.scId] = val;
+    send({ type: "set_sidechain_param", id: p.scId, val });
+  } else if (p.scope === "sub_osc") {
+    const t = currentParams ? currentParams.sel : 0;
+    const oscIdx = p.osc !== undefined ? p.osc : (currentParams?.sub?.selOsc || 0);
+    if (currentParams?.sub) {
+      if (p.field === 0) {
+        currentParams.sub.selOsc = val;
+      } else if (currentParams.sub.oscs?.[oscIdx]) {
+        const o = currentParams.sub.oscs[oscIdx];
+        if (p.field === 1) o.wave = val;
+        else if (p.field === 2) o.fold = val;
+        else if (p.field === 3) o.mix = val;
+        else if (p.field === 4) o.pitch = val;
+        else if (p.field === 5) o.drive = val;
+        else if (p.field === 6) o.glide = val;
+      }
+    }
+    send({ type: "set_sub_osc", track: t, osc: oscIdx, field: p.field, val });
+  } else {
+    const t = p.trackIdx !== undefined ? p.trackIdx : (currentParams ? currentParams.sel : 0);
+    const rawVal = typeof p.customSet === "function" ? p.customSet(val) : val;
+    if (currentParams?.trackParams && (p.trackIdx === undefined || currentParams.sel === p.trackIdx)) {
+      currentParams.trackParams[p.id] = rawVal;
+    }
+    send({ type: "set_track_param", track: t, id: p.id, val: rawVal });
+  }
+  updateParamVisual(p, val);
+}
+
+function formatParamVal(p, val) {
+  if (p.options && p.options[val] !== undefined) {
+    return p.options[val];
+  }
+  if (typeof p.fmt === "function") {
+    return p.fmt(val);
+  }
+  return String(val);
+}
+
+function renderKnobSvg(p, val, color) {
+  const min = p.min !== undefined ? p.min : 0;
+  const max = p.max !== undefined ? p.max : 127;
+  const frac = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+  const arcLen = (frac * 70.69).toFixed(2);
+  const angle = (-135 + frac * 270).toFixed(1);
+  return `
+    <div class="param-knob" data-param-key="${p.key}" tabindex="0" role="slider" aria-valuenow="${val}" aria-valuemin="${min}" aria-valuemax="${max}" title="Drag vertically or scroll wheel to adjust" style="--active-color:${color};">
+      <svg viewBox="0 0 46 46">
+        <circle class="knob-rim" cx="23" cy="23" r="20" fill="#18181b" stroke="#323238" stroke-width="1.5"/>
+        <circle cx="23" cy="23" r="15" fill="none" stroke="#2a2a30" stroke-width="3" stroke-dasharray="70.69 94.25" stroke-dashoffset="-11.78" stroke-linecap="round" transform="rotate(135 23 23)"/>
+        <circle class="knob-value-arc" cx="23" cy="23" r="15" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="${arcLen} 94.25" stroke-dashoffset="-11.78" stroke-linecap="round" transform="rotate(135 23 23)"/>
+        <circle cx="23" cy="23" r="11" fill="#242428" stroke="#3a3a42" stroke-width="1"/>
+        <line class="knob-tick" x1="23" y1="23" x2="23" y2="13" stroke="#ffffff" stroke-width="2" stroke-linecap="round" transform="rotate(${angle} 23 23)"/>
+      </svg>
+    </div>
+  `;
+}
+
+function renderToggle(p, val, color) {
+  const isOn = !!val;
+  return `
+    <div class="param-toggle-wrap" style="--active-color:${color};">
+      <div class="param-toggle ${isOn ? 'active' : ''}" data-param-key="${p.key}" role="switch" aria-checked="${isOn}" tabindex="0" title="Click to toggle ON / OFF">
+        <span class="param-toggle-thumb"></span>
+      </div>
+    </div>
+  `;
+}
+
+function updateParamVisual(p, val) {
+  const row = document.querySelector(`.param-ctrl-row[data-param-key="${p.key}"]`);
+  if (!row) return;
+  const color = row.dataset.color || "#5fe08a";
+
+  const valEl = row.querySelector(".param-live-val");
+  if (valEl) {
+    valEl.textContent = formatParamVal(p, val);
+  }
+
+  if (p.type === "toggle") {
+    const tog = row.querySelector(".param-toggle");
+    if (tog) {
+      const isOn = !!val;
+      tog.classList.toggle("active", isOn);
+      tog.setAttribute("aria-checked", isOn);
+    }
+  } else {
+    const knob = row.querySelector(".param-knob");
+    if (knob) {
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const frac = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+      const arcLen = (frac * 70.69).toFixed(2);
+      const angle = (-135 + frac * 270).toFixed(1);
+      const arc = knob.querySelector(".knob-value-arc");
+      const tick = knob.querySelector(".knob-tick");
+      if (arc) arc.setAttribute("stroke-dasharray", `${arcLen} 94.25`);
+      if (tick) tick.setAttribute("transform", `rotate(${angle} 23 23)`);
+      knob.setAttribute("aria-valuenow", val);
+    }
+  }
+}
+
+function updateAllInspectorControls() {
+  const rows = document.querySelectorAll(".param-ctrl-row");
+  rows.forEach(row => {
+    const key = row.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (p) {
+      const val = getParamValue(p);
+      updateParamVisual(p, val);
+    }
+  });
+}
+
+function updateInspectorTrackHeader() {
+  const selTrk = currentParams ? currentParams.sel : 0;
+  const curEng = currentParams ? currentParams.eng : 0;
+
+  // Track button active state
+  document.querySelectorAll(".param-trk-btn").forEach(btn => {
+    const trk = parseInt(btn.dataset.trk, 10);
+    btn.classList.toggle("active", trk === selTrk);
+  });
+
+  const trkTarget = document.getElementById("param-track-target");
+  const assignBtn = document.getElementById("param-eng-assign-btn");
+
+  const isEngine = activeInspectKey in ENGINE_MAP;
+  if (isEngine) {
+    const targetEng = ENGINE_MAP[activeInspectKey];
+    if (trkTarget) {
+      trkTarget.style.display = "inline-block";
+      if (selTrk === 4) {
+        trkTarget.textContent = "Track 5 (Fixed: DRUM Kit)";
+      } else {
+        trkTarget.textContent = `Track ${selTrk + 1}: ${ENGINE_NAMES[curEng] || "ANALOG"}`;
+      }
+    }
+    if (assignBtn) {
+      if (selTrk === 4) {
+        assignBtn.style.display = "none";
+      } else if (targetEng === curEng) {
+        assignBtn.style.display = "inline-flex";
+        assignBtn.textContent = `✓ Active on T${selTrk + 1}`;
+        assignBtn.disabled = true;
+        assignBtn.style.opacity = "0.75";
+      } else {
+        assignBtn.style.display = "inline-flex";
+        assignBtn.textContent = `➕ Set T${selTrk + 1} to ${ENGINE_NAMES[targetEng]}`;
+        assignBtn.disabled = false;
+        assignBtn.style.opacity = "1";
+        assignBtn.onclick = () => {
+          send({ type: "set_engine", track: selTrk, eng: targetEng });
+          if (currentParams) currentParams.eng = targetEng;
+          updateInspectorTrackHeader();
+          updateAllInspectorControls();
+        };
+      }
+    }
+  } else {
+    if (trkTarget) {
+      trkTarget.style.display = "inline-block";
+      trkTarget.textContent = selTrk === 4 ? "T5: DRUM" : `T${selTrk + 1}: ${ENGINE_NAMES[curEng] || "ANALOG"}`;
+    }
+    if (assignBtn) {
+      assignBtn.style.display = "none";
+    }
+  }
+}
+
 function showParamInspector(key) {
   const data = PARAM_DATA[key];
   if (!data) return;
+  activeInspectKey = key;
 
   document.querySelectorAll(".wb-inspect-pill").forEach(p => {
     const isTarget = p.dataset.inspect === key;
@@ -2222,6 +2707,8 @@ function showParamInspector(key) {
   if (desc) desc.textContent = data.desc;
   if (tip) tip.innerHTML = `<strong>💡 Pro Tip:</strong> ${data.tip}`;
 
+  updateInspectorTrackHeader();
+
   if (container) {
     container.innerHTML = data.pages.map(page => `
       <div class="param-page-box">
@@ -2229,20 +2716,143 @@ function showParamInspector(key) {
           <span>${page.name}</span>
           <span style="font-size:10px; opacity:0.75; font-family:ui-monospace,Menlo,monospace;">${page.sub}</span>
         </div>
-        ${page.params.map(p => `
-          <div class="param-row">
-            <div class="param-name-line">
-              <div class="param-knob-label">
-                <span class="param-knob-badge">${p.knob}</span> ${p.name}
+        ${page.params.map(p => {
+          const val = getParamValue(p);
+          const formatted = formatParamVal(p, val);
+          const controlHtml = p.type === "toggle" ? renderToggle(p, val, data.color) : renderKnobSvg(p, val, data.color);
+          return `
+            <div class="param-ctrl-row" data-param-key="${p.key}" data-color="${data.color}">
+              <div class="param-ctrl-widget">
+                ${controlHtml}
               </div>
-              <span class="param-val-range">${p.range}</span>
+              <div class="param-ctrl-info">
+                <div class="param-name-line">
+                  <div class="param-knob-label">
+                    <span class="param-knob-badge">${p.knob}</span> ${p.name}
+                  </div>
+                  <span class="param-live-val">${formatted}</span>
+                </div>
+                <div class="param-range-sub">${p.range}</div>
+                <div class="param-desc">${p.desc}</div>
+              </div>
             </div>
-            <div class="param-desc">${p.desc}</div>
-          </div>
-        `).join("")}
+          `;
+        }).join("")}
       </div>
     `).join("");
+
+    attachControlEventListeners(container);
   }
+}
+
+function attachControlEventListeners(container) {
+  // Toggle switches
+  container.querySelectorAll(".param-toggle").forEach(tog => {
+    const key = tog.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (!p) return;
+    tog.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const cur = getParamValue(p);
+      setParamValue(p, cur ? 0 : 1);
+    });
+    tog.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        const cur = getParamValue(p);
+        setParamValue(p, cur ? 0 : 1);
+      }
+    });
+  });
+
+  // Rotary Knobs
+  container.querySelectorAll(".param-knob").forEach(knob => {
+    const key = knob.dataset.paramKey;
+    const p = PARAM_MAP[key];
+    if (!p) return;
+
+    knob.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      activeDrag = {
+        p,
+        knob,
+        startY: e.clientY,
+        startVal: getParamValue(p),
+        min: p.min !== undefined ? p.min : 0,
+        max: p.max !== undefined ? p.max : 127,
+        step: p.step || 1
+      };
+      knob.classList.add("dragging");
+      knob.setPointerCapture(e.pointerId);
+    });
+
+    knob.addEventListener("pointermove", (e) => {
+      if (!activeDrag || activeDrag.knob !== knob) return;
+      const deltaY = activeDrag.startY - e.clientY;
+      const range = activeDrag.max - activeDrag.min;
+      const speed = e.shiftKey ? 500 : 120;
+      let newVal = activeDrag.startVal + Math.round((deltaY * range) / speed);
+      newVal = Math.max(activeDrag.min, Math.min(activeDrag.max, newVal));
+      if (activeDrag.step > 1) {
+        newVal = Math.round(newVal / activeDrag.step) * activeDrag.step;
+      }
+      setParamValue(activeDrag.p, newVal);
+    });
+
+    const endDrag = (e) => {
+      if (activeDrag && activeDrag.knob === knob) {
+        try { knob.releasePointerCapture(e.pointerId); } catch (_) {}
+        knob.classList.remove("dragging");
+        activeDrag = null;
+      }
+    };
+    knob.addEventListener("pointerup", endDrag);
+    knob.addEventListener("pointercancel", endDrag);
+
+    // Mouse wheel on knob
+    knob.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const step = p.step || ((max - min > 40) ? 2 : 1);
+      const delta = e.deltaY < 0 ? step : -step;
+      const cur = getParamValue(p);
+      setParamValue(p, cur + delta);
+    }, { passive: false });
+
+    // Arrow keys
+    knob.addEventListener("keydown", (e) => {
+      const min = p.min !== undefined ? p.min : 0;
+      const max = p.max !== undefined ? p.max : 127;
+      const step = p.step || 1;
+      let handled = false;
+      if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+        setParamValue(p, getParamValue(p) + step);
+        handled = true;
+      } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+        setParamValue(p, getParamValue(p) - step);
+        handled = true;
+      }
+      if (handled) e.preventDefault();
+    });
+  });
+}
+
+// Track buttons in inspector header
+document.querySelectorAll(".param-trk-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const trk = parseInt(btn.dataset.trk, 10);
+    if (currentParams) currentParams.sel = trk;
+    send({ type: "select_track", track: trk });
+    updateInspectorTrackHeader();
+    updateAllInspectorControls();
+  });
+});
+
+function onParamsUpdate(m) {
+  currentParams = m;
+  updateInspectorTrackHeader();
+  updateAllInspectorControls();
 }
 
 document.querySelectorAll(".wb-inspect-pill").forEach(btn => {
@@ -2253,9 +2863,8 @@ document.querySelectorAll(".wb-inspect-pill").forEach(btn => {
       const inspector = document.getElementById("param-inspector");
       if (inspector) {
         inspector.classList.remove("highlight");
-        void inspector.offsetWidth; // force DOM reflow
+        void inspector.offsetWidth;
         inspector.classList.add("highlight");
-        inspector.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
   });
