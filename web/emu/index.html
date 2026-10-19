@@ -133,11 +133,11 @@ footer small { font-size: 11px; opacity: .8; }
   .mag-aside { max-width: 100%; width: 100%; }
 }
 
-/* Loom Parameter Quick-Inspect Bar (Matching Top Header Bar) */
+/* Loom Parameter Quick-Inspect Bar (3-Column Layout Matching User Diagram) */
 .wb-nav-inspect {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: stretch;
+  gap: 16px;
   background: #1d1d1f;
   color: #ececee;
   padding: 14px 18px;
@@ -145,60 +145,123 @@ footer small { font-size: 11px; opacity: .8; }
   margin-bottom: 18px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.22);
   border: 1px solid #2a2a2d;
+  box-sizing: border-box;
 }
-.wb-inspect-section {
+
+.wb-inspect-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wb-inspect-col + .wb-inspect-col {
+  border-left: 1px solid #323236;
+  padding-left: 16px;
+}
+
+.wb-inspect-col-engines {
+  flex: 5;
+}
+
+.wb-inspect-col-comp {
+  flex: 2;
+  min-width: 145px;
+}
+
+.wb-inspect-col-fx {
+  flex: 4;
+}
+
+.wb-inspect-col-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  justify-content: center;
 }
-.wb-inspect-section + .wb-inspect-section {
-  padding-top: 10px;
-  border-top: 1px solid #28282c;
-}
-.wb-inspect-header {
-  min-width: 140px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-.wb-inspect-header .wb-badge {
-  font-size: 10.5px;
-  letter-spacing: 0.6px;
-  padding: 4px 10px;
-  border-radius: 6px;
+
+.wb-inspect-col-title {
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: #262629;
+  border: 1px solid #3a3a40;
+  padding: 3px 12px;
+  border-radius: 6px;
+  text-align: center;
 }
-.wb-inspect-pills {
-  display: flex;
+
+.wb-inspect-grid {
+  display: grid;
   gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
   flex: 1;
 }
+
+/* 5 columns for 14 engines: 5 + 5 + 4 neatly balanced across 3 rows */
+.wb-grid-engines {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* 1 single column for Composition: 3 stacked pills matching the 3-row height */
+.wb-grid-comp {
+  grid-template-columns: 1fr;
+}
+
+/* 4 columns for 8 FX: 4 + 4 neatly balanced across 2 rows */
+.wb-grid-fx {
+  grid-template-columns: repeat(4, 1fr);
+  align-content: start;
+}
+
 .wb-inspect-pill {
   background: #2c2c2e;
   color: #d6d6d8;
   border: 1px solid #3a3a3e;
   border-radius: 8px;
-  padding: 6px 13px;
-  font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 6px 4px;
+  font: 600 11.5px -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
   transition: all 0.12s ease;
   white-space: nowrap;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
 }
+
 .wb-inspect-pill:hover {
   background: #3a3a3e;
   color: #fff;
   border-color: #505056;
 }
+
 .wb-inspect-pill.active {
   background: #5fe08a;
   color: #0d2414;
   border-color: #5fe08a;
   font-weight: 700;
   box-shadow: 0 0 12px rgba(95, 224, 138, 0.45);
+}
+
+@media (max-width: 900px) {
+  .wb-nav-inspect {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .wb-inspect-col + .wb-inspect-col {
+    border-left: none;
+    border-top: 1px solid #323236;
+    padding-left: 0;
+    padding-top: 14px;
+  }
+  .wb-grid-engines {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  .wb-grid-fx {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
 }
 
 /* Bottom Parameter Inspector Panel */
@@ -355,11 +418,12 @@ footer small { font-size: 11px; opacity: .8; }
 </nav>
 
 <nav class="wb-nav wb-nav-inspect" aria-label="Loom Parameter Quick-Inspect Bar">
-  <div class="wb-inspect-section">
-    <div class="wb-inspect-header">
-      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#5fe08a;">ENGINES</span>
+  <!-- SECTION 1: ENGINES -->
+  <div class="wb-inspect-col wb-inspect-col-engines">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#5fe08a;">Engines</span>
     </div>
-    <div class="wb-inspect-pills">
+    <div class="wb-inspect-grid wb-grid-engines">
       <button class="wb-inspect-pill" data-inspect="subtract" data-color="#ff7300">SUBTRACT</button>
       <button class="wb-inspect-pill" data-inspect="phase" data-color="#00e5ff">PHASE</button>
       <button class="wb-inspect-pill" data-inspect="lofi" data-color="#ffd600">LOFI</button>
@@ -376,21 +440,25 @@ footer small { font-size: 11px; opacity: .8; }
       <button class="wb-inspect-pill" data-inspect="drum" data-color="#ff5252">DRUM</button>
     </div>
   </div>
-  <div class="wb-inspect-section">
-    <div class="wb-inspect-header">
-      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#ffd600;">COMPOSITION</span>
+
+  <!-- SECTION 2: COMPOSITION -->
+  <div class="wb-inspect-col wb-inspect-col-comp">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#ffd600;">Composition</span>
     </div>
-    <div class="wb-inspect-pills">
+    <div class="wb-inspect-grid wb-grid-comp">
       <button class="wb-inspect-pill" data-inspect="seq" data-color="#5fe08a">SEQUENCER</button>
       <button class="wb-inspect-pill" data-inspect="arp" data-color="#ffd600">ARPEGGIATOR</button>
       <button class="wb-inspect-pill" data-inspect="scale" data-color="#00e5ff">SCALES &amp; CHORDS</button>
     </div>
   </div>
-  <div class="wb-inspect-section">
-    <div class="wb-inspect-header">
-      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#ff7300;">INSERT &amp; SEND FX</span>
+
+  <!-- SECTION 3: INSERT & SEND FX -->
+  <div class="wb-inspect-col wb-inspect-col-fx">
+    <div class="wb-inspect-col-header">
+      <span class="wb-inspect-col-title" style="color:#ff9f0a;">Insert &amp; Send FX</span>
     </div>
-    <div class="wb-inspect-pills">
+    <div class="wb-inspect-grid wb-grid-fx">
       <button class="wb-inspect-pill" data-inspect="wobble" data-color="#ff007f">WOBBLE</button>
       <button class="wb-inspect-pill" data-inspect="octaver" data-color="#76ff03">OCTAVER</button>
       <button class="wb-inspect-pill" data-inspect="overdrive" data-color="#ff3d00">OVERDRIVE</button>
