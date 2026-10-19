@@ -131,34 +131,209 @@ footer small { font-size: 11px; opacity: .8; }
 @media (max-width: 700px) {
   .mag-card { flex-direction: column; }
   .mag-aside { max-width: 100%; width: 100%; }
-/* Loom Parameter Quick-Inspect Bar (Second Header Row) */
-.wb-subnav { background: #161618; border: 1px solid #2e2e32; border-radius: 14px; padding: 10px 14px; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.22); display: flex; flex-direction: column; gap: 8px; }
-.wb-subnav-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.wb-subnav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #8e8e93; min-width: 105px; flex-shrink: 0; }
-.wb-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.wb-pill { background: #242428; color: #d6d6d8; border: 1px solid #38383e; border-radius: 99px; padding: 4px 11px; font: 600 11.5px -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer; transition: all 0.12s ease; white-space: nowrap; }
-.wb-pill:hover { background: #34343a; color: #fff; border-color: #585860; transform: translateY(-1px); }
-.wb-pill.active { background: #5fe08a; color: #0d2414; border-color: #5fe08a; font-weight: 700; box-shadow: 0 0 10px rgba(95, 224, 138, 0.4); }
-.wb-pill.active[data-color] { background: var(--p-col, #5fe08a); color: #111; border-color: var(--p-col, #5fe08a); box-shadow: 0 0 12px var(--p-col, rgba(95,224,138,0.4)); }
+}
+
+/* Loom Parameter Quick-Inspect Bar (Matching Top Header Bar) */
+.wb-nav-inspect {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #1d1d1f;
+  color: #ececee;
+  padding: 14px 18px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+  border: 1px solid #2a2a2d;
+}
+.wb-inspect-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wb-inspect-section + .wb-inspect-section {
+  padding-top: 10px;
+  border-top: 1px solid #28282c;
+}
+.wb-inspect-header {
+  min-width: 140px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.wb-inspect-header .wb-badge {
+  font-size: 10.5px;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.wb-inspect-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+}
+.wb-inspect-pill {
+  background: #2c2c2e;
+  color: #d6d6d8;
+  border: 1px solid #3a3a3e;
+  border-radius: 8px;
+  padding: 6px 13px;
+  font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+.wb-inspect-pill:hover {
+  background: #3a3a3e;
+  color: #fff;
+  border-color: #505056;
+}
+.wb-inspect-pill.active {
+  background: #5fe08a;
+  color: #0d2414;
+  border-color: #5fe08a;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(95, 224, 138, 0.45);
+}
 
 /* Bottom Parameter Inspector Panel */
-.param-inspector-panel { background: #1a1a1d; border: 1px solid #343438; border-radius: 16px; padding: 22px 24px; margin: 26px 0 20px; box-shadow: 0 8px 28px rgba(0,0,0,0.32); }
-.param-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #2c2c30; margin-bottom: 16px; }
-.param-title-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.param-title-wrap h3 { margin: 0; font-size: 19px; color: #fff; font-weight: 700; letter-spacing: 0.3px; }
-.param-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.6px; text-transform: uppercase; }
-.param-desc-main { margin: 0 0 16px; font-size: 13.5px; color: #c7c7cc; line-height: 1.5; }
-.param-pages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.param-page-box { background: #232327; border: 1px solid #323236; border-radius: 12px; padding: 14px; }
-.param-page-title { font-size: 12px; font-weight: 700; color: #5fe08a; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #2a2a2e; padding-bottom: 6px; }
-.param-row { display: flex; flex-direction: column; padding: 6px 0; border-bottom: 1px solid #2a2a2e; }
-.param-row:last-child { border-bottom: none; }
-.param-name-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.param-knob-label { font-size: 12px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
-.param-knob-badge { font-size: 9.5px; font-weight: 700; background: #323236; color: #ff9f0a; padding: 1px 5px; border-radius: 4px; }
-.param-val-range { font-size: 11px; color: #5fe08a; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
-.param-desc { font-size: 11.5px; color: #a1a1a6; margin-top: 3px; line-height: 1.4; }
-.param-tip { margin-top: 14px; padding: 10px 14px; background: #161618; border-left: 3px solid #5fe08a; border-radius: 0 8px 8px 0; font-size: 12px; color: #c7c7cc; }
+.param-inspector-panel {
+  display: block;
+  background: #1d1d1f;
+  color: #ececee;
+  border: 1px solid #343438;
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin: 26px 0 20px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.32);
+  scroll-margin-top: 18px;
+}
+@keyframes inspect-pulse {
+  0% { box-shadow: 0 0 0 2px #5fe08a, 0 8px 28px rgba(0,0,0,0.32); }
+  50% { box-shadow: 0 0 0 4px #5fe08a, 0 8px 32px rgba(95, 224, 138, 0.4); }
+  100% { box-shadow: 0 0 0 1px #343438, 0 8px 28px rgba(0,0,0,0.32); }
+}
+.param-inspector-panel.highlight {
+  animation: inspect-pulse 0.9s ease;
+}
+.param-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #2c2c30;
+  margin-bottom: 16px;
+}
+.param-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.param-title-wrap h3 {
+  margin: 0;
+  font-size: 19px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.param-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.param-desc-main {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: #c7c7cc;
+  line-height: 1.5;
+}
+.param-pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.param-page-box {
+  background: #232327;
+  border: 1px solid #323236;
+  border-radius: 12px;
+  padding: 14px;
+}
+.param-page-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5fe08a;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2a2a2e;
+  padding-bottom: 6px;
+}
+.param-row {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a2a2e;
+}
+.param-row:last-child {
+  border-bottom: none;
+}
+.param-name-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.param-knob-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.param-knob-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: #323236;
+  color: #ff9f0a;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.param-val-range {
+  font-size: 11px;
+  color: #5fe08a;
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 600;
+}
+.param-desc {
+  font-size: 11.5px;
+  color: #a1a1a6;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.param-tip {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #161618;
+  border-left: 3px solid #5fe08a;
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: #c7c7cc;
+}
 </style>
 </head>
 <body>
@@ -179,45 +354,51 @@ footer small { font-size: 11px; opacity: .8; }
   </div>
 </nav>
 
-<nav class="wb-subnav" aria-label="Loom Parameter Quick-Inspect Bar">
-  <div class="wb-subnav-row">
-    <span class="wb-subnav-label">Engines</span>
-    <div class="wb-pills">
-      <button class="wb-pill" data-inspect="subtract" data-color="#ff7300">SUBTRACT</button>
-      <button class="wb-pill" data-inspect="phase" data-color="#00e5ff">PHASE</button>
-      <button class="wb-pill" data-inspect="lofi" data-color="#ffd600">LOFI</button>
-      <button class="wb-pill" data-inspect="sample" data-color="#ff007f">SAMPLE</button>
-      <button class="wb-pill" data-inspect="voice" data-color="#d500f9">VOICE</button>
-      <button class="wb-pill" data-inspect="scrub" data-color="#ff2d78">SCRUB</button>
-      <button class="wb-pill" data-inspect="wheel" data-color="#76ff03">WHEEL</button>
-      <button class="wb-pill" data-inspect="grain" data-color="#ff6d00">GRAIN</button>
-      <button class="wb-pill" data-inspect="phys" data-color="#00e676">PHYS</button>
-      <button class="wb-pill" data-inspect="noise" data-color="#b0bec5">NOISE</button>
-      <button class="wb-pill" data-inspect="fm6" data-color="#ff1744">FM6</button>
-      <button class="wb-pill" data-inspect="slice" data-color="#00c853">SLICE</button>
-      <button class="wb-pill" data-inspect="wavetable" data-color="#00b0ff">WAVETABLE</button>
-      <button class="wb-pill" data-inspect="drum" data-color="#ff5252">DRUM</button>
+<nav class="wb-nav wb-nav-inspect" aria-label="Loom Parameter Quick-Inspect Bar">
+  <div class="wb-inspect-section">
+    <div class="wb-inspect-header">
+      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#5fe08a;">ENGINES</span>
+    </div>
+    <div class="wb-inspect-pills">
+      <button class="wb-inspect-pill" data-inspect="subtract" data-color="#ff7300">SUBTRACT</button>
+      <button class="wb-inspect-pill" data-inspect="phase" data-color="#00e5ff">PHASE</button>
+      <button class="wb-inspect-pill" data-inspect="lofi" data-color="#ffd600">LOFI</button>
+      <button class="wb-inspect-pill" data-inspect="sample" data-color="#ff007f">SAMPLE</button>
+      <button class="wb-inspect-pill" data-inspect="voice" data-color="#d500f9">VOICE</button>
+      <button class="wb-inspect-pill" data-inspect="scrub" data-color="#ff2d78">SCRUB</button>
+      <button class="wb-inspect-pill" data-inspect="wheel" data-color="#76ff03">WHEEL</button>
+      <button class="wb-inspect-pill" data-inspect="grain" data-color="#ff6d00">GRAIN</button>
+      <button class="wb-inspect-pill" data-inspect="phys" data-color="#00e676">PHYS</button>
+      <button class="wb-inspect-pill" data-inspect="noise" data-color="#b0bec5">NOISE</button>
+      <button class="wb-inspect-pill" data-inspect="fm6" data-color="#ff1744">FM6</button>
+      <button class="wb-inspect-pill" data-inspect="slice" data-color="#00c853">SLICE</button>
+      <button class="wb-inspect-pill" data-inspect="wavetable" data-color="#00b0ff">WAVETABLE</button>
+      <button class="wb-inspect-pill" data-inspect="drum" data-color="#ff5252">DRUM</button>
     </div>
   </div>
-  <div class="wb-subnav-row">
-    <span class="wb-subnav-label">Seq &amp; Scale</span>
-    <div class="wb-pills">
-      <button class="wb-pill" data-inspect="seq" data-color="#5fe08a">SEQUENCER</button>
-      <button class="wb-pill" data-inspect="arp" data-color="#ffd600">ARPEGGIATOR</button>
-      <button class="wb-pill" data-inspect="scale" data-color="#00e5ff">SCALES &amp; CHORDS</button>
+  <div class="wb-inspect-section">
+    <div class="wb-inspect-header">
+      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#ffd600;">COMPOSITION</span>
+    </div>
+    <div class="wb-inspect-pills">
+      <button class="wb-inspect-pill" data-inspect="seq" data-color="#5fe08a">SEQUENCER</button>
+      <button class="wb-inspect-pill" data-inspect="arp" data-color="#ffd600">ARPEGGIATOR</button>
+      <button class="wb-inspect-pill" data-inspect="scale" data-color="#00e5ff">SCALES &amp; CHORDS</button>
     </div>
   </div>
-  <div class="wb-subnav-row">
-    <span class="wb-subnav-label">Insert &amp; Send FX</span>
-    <div class="wb-pills">
-      <button class="wb-pill" data-inspect="wobble" data-color="#ff007f">WOBBLE</button>
-      <button class="wb-pill" data-inspect="octaver" data-color="#76ff03">OCTAVER</button>
-      <button class="wb-pill" data-inspect="overdrive" data-color="#ff3d00">OVERDRIVE</button>
-      <button class="wb-pill" data-inspect="panner" data-color="#d500f9">PANNER</button>
-      <button class="wb-pill" data-inspect="delay" data-color="#ffab00">TAPE ECHO</button>
-      <button class="wb-pill" data-inspect="reverb" data-color="#ff1744">REVERB</button>
-      <button class="wb-pill" data-inspect="chorus" data-color="#2979ff">CHORUS</button>
-      <button class="wb-pill" data-inspect="sidechain" data-color="#00e676">SIDECHAIN</button>
+  <div class="wb-inspect-section">
+    <div class="wb-inspect-header">
+      <span class="wb-badge" style="background:#2c2c2e; border:1px solid #3a3a3e; color:#ff7300;">INSERT &amp; SEND FX</span>
+    </div>
+    <div class="wb-inspect-pills">
+      <button class="wb-inspect-pill" data-inspect="wobble" data-color="#ff007f">WOBBLE</button>
+      <button class="wb-inspect-pill" data-inspect="octaver" data-color="#76ff03">OCTAVER</button>
+      <button class="wb-inspect-pill" data-inspect="overdrive" data-color="#ff3d00">OVERDRIVE</button>
+      <button class="wb-inspect-pill" data-inspect="panner" data-color="#d500f9">PANNER</button>
+      <button class="wb-inspect-pill" data-inspect="delay" data-color="#ffab00">TAPE ECHO</button>
+      <button class="wb-inspect-pill" data-inspect="reverb" data-color="#ff1744">REVERB</button>
+      <button class="wb-inspect-pill" data-inspect="chorus" data-color="#2979ff">CHORUS</button>
+      <button class="wb-inspect-pill" data-inspect="sidechain" data-color="#00e676">SIDECHAIN</button>
     </div>
   </div>
 </nav>
@@ -686,6 +867,8 @@ footer small { font-size: 11px; opacity: .8; }
       </div>
     </div>
   </div>
+</section>
+
 <!-- PARAMETER INSPECTOR PANEL (EXPOSED AT BOTTOM OF PAGE) -->
 <section id="param-inspector" class="param-inspector-panel" aria-label="Parameter Inspector">
   <div class="param-header">
@@ -1948,7 +2131,7 @@ function showParamInspector(key) {
   const data = PARAM_DATA[key];
   if (!data) return;
 
-  document.querySelectorAll(".wb-pill").forEach(p => {
+  document.querySelectorAll(".wb-inspect-pill").forEach(p => {
     const isTarget = p.dataset.inspect === key;
     p.classList.toggle("active", isTarget);
     if (isTarget && p.dataset.color) {
@@ -1994,14 +2177,17 @@ function showParamInspector(key) {
   }
 }
 
-document.querySelectorAll(".wb-pill").forEach(btn => {
+document.querySelectorAll(".wb-inspect-pill").forEach(btn => {
   btn.addEventListener("click", () => {
     const key = btn.dataset.inspect;
     if (key) {
       showParamInspector(key);
       const inspector = document.getElementById("param-inspector");
       if (inspector) {
-        inspector.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        inspector.classList.remove("highlight");
+        void inspector.offsetWidth; // force DOM reflow
+        inspector.classList.add("highlight");
+        inspector.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
   });
