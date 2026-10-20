@@ -362,10 +362,12 @@ const btnRecord = document.getElementById("btn-record");
 const btnFullscreen = document.getElementById("btn-fullscreen");
 const toastEl = document.getElementById("toast");
 
-function showToast(msg) {
+let toastTimeout = null;
+function showToast(msg, duration = 3000) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 2800);
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toastEl.classList.remove("show"), duration);
 }
 
 // ---------------------------------------------------------------------
@@ -3158,8 +3160,18 @@ function hexToRgba(hex, alpha) {
 // ---------------------------------------------------------------------
 // 5. Main Render Loop & Playback Controls
 // ---------------------------------------------------------------------
+let rafId = null;
+function queueNextFrame() {
+  if (!document.hidden) {
+    rafId = requestAnimationFrame(renderFrame);
+  }
+}
+
 function renderFrame(now) {
-  const delta = (now - lastFrameTimestamp) / 1000;
+  if (!lastFrameTimestamp) lastFrameTimestamp = now;
+  const rawDelta = (now - lastFrameTimestamp) / 1000;
+  // Clamp delta to max 100ms so tab switching/throttling never jumps to the end of the video
+  const delta = Math.min(Math.max(0, rawDelta), 0.1);
   lastFrameTimestamp = now;
 
   if (isPlaying) {
@@ -3188,9 +3200,27 @@ function renderFrame(now) {
   scrubberFill.style.width = `${(playhead / totalDuration) * 100}%`;
   selectSlide.value = index;
 
-  requestAnimationFrame(renderFrame);
+  if (isRecording) {
+    const pct = Math.round((playhead / totalDuration) * 100);
+    btnRecord.textContent = `⏹ REC ${formatTime(playhead)} / ${formatTime(totalDuration)} (${pct}%)`;
+  }
+
+  queueNextFrame();
 }
-requestAnimationFrame(renderFrame);
+queueNextFrame();
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    lastFrameTimestamp = performance.now();
+    cancelAnimationFrame(rafId);
+    queueNextFrame();
+    if (isRecording) {
+      requestWakeLock();
+    }
+  } else if (isRecording) {
+    console.warn("Tab hidden during active recording; worker ticker is maintaining frame clock.");
+  }
+});
 
 function play() {
   initAudio();
@@ -3215,6 +3245,7 @@ btnRestart.addEventListener("click", () => {
   playhead = 0.0;
   lastColdOpenTrigger = -1;
   barCounter = -1;
+  lastFrameTimestamp = performance.now();
   play();
 });
 
@@ -3224,6 +3255,7 @@ btnPrev.addEventListener("click", () => {
     playhead = SLIDES[index - 1].startTime;
     lastColdOpenTrigger = -1;
     barCounter = -1;
+    lastFrameTimestamp = performance.now();
   }
 });
 
@@ -3233,6 +3265,7 @@ btnNext.addEventListener("click", () => {
     playhead = SLIDES[index + 1].startTime;
     lastColdOpenTrigger = -1;
     barCounter = -1;
+    lastFrameTimestamp = performance.now();
   }
 });
 
@@ -3241,6 +3274,7 @@ selectSlide.addEventListener("change", (e) => {
   playhead = SLIDES[idx].startTime;
   lastColdOpenTrigger = -1;
   barCounter = -1;
+  lastFrameTimestamp = performance.now();
 });
 
 selectSpeed.addEventListener("change", (e) => {
@@ -3262,6 +3296,7 @@ function seekFromEvent(e) {
   playhead = frac * totalDuration;
   lastColdOpenTrigger = -1;
   barCounter = -1;
+  lastFrameTimestamp = performance.now();
 }
 
 scrubberTrack.addEventListener("pointerdown", (e) => {
@@ -3291,6 +3326,59 @@ btnFullscreen.addEventListener("click", () => {
 let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
+let wakeLock = null;
+let workerTicker = null;
+
+async function requestWakeLock() {
+  if ("wakeLock" in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+    } catch (err) {
+      console.warn("Screen wake lock request failed:", err);
+    }
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+}
+
+function startWorkerTicker() {
+  if (workerTicker) return;
+  try {
+    const workerBlob = new Blob([`
+      let timer = null;
+      self.onmessage = function(e) {
+        if (e.data === "start") {
+          clearInterval(timer);
+          timer = setInterval(() => self.postMessage("tick"), 1000 / 60);
+        } else if (e.data === "stop") {
+          clearInterval(timer);
+        }
+      };
+    `], { type: "application/javascript" });
+    workerTicker = new Worker(URL.createObjectURL(workerBlob));
+    workerTicker.onmessage = function() {
+      if (document.hidden && isPlaying) {
+        renderFrame(performance.now());
+      }
+    };
+    workerTicker.postMessage("start");
+  } catch (err) {
+    console.warn("Web Worker ticker initialization failed:", err);
+  }
+}
+
+function stopWorkerTicker() {
+  if (workerTicker) {
+    workerTicker.postMessage("stop");
+    workerTicker.terminate();
+    workerTicker = null;
+  }
+}
 
 function startRecording() {
   initAudio();
@@ -3301,6 +3389,7 @@ function startRecording() {
   barCounter = -1;
   playbackSpeed = 1.0;
   selectSpeed.value = "1";
+  lastFrameTimestamp = performance.now();
 
   const videoStream = canvas.captureStream(60);
   const combinedStream = new MediaStream();
@@ -3335,9 +3424,12 @@ function startRecording() {
 
   mediaRecorder.onstop = () => {
     isRecording = false;
+    releaseWakeLock();
+    stopWorkerTicker();
+
     btnRecord.textContent = "🎬 Record 1080p Video";
     btnRecord.classList.remove("recording-active");
-    showToast("Rendering Complete! Downloading video file...");
+    showToast("Rendering Complete! Downloading video file...", 4000);
 
     const blob = new Blob(recordedChunks, { type: chosenMime || "video/webm" });
     const url = URL.createObjectURL(blob);
@@ -3352,14 +3444,19 @@ function startRecording() {
 
   mediaRecorder.start(1000);
   isRecording = true;
-  btnRecord.textContent = "⏹ Stop & Save Video";
+  requestWakeLock();
+  startWorkerTicker();
+
+  btnRecord.textContent = "⏹ REC 00:00 / 03:00 (0%)";
   btnRecord.classList.add("recording-active");
-  showToast("Recording 1080p 60fps presentation video...");
+  showToast("Recording 1080p 60fps · Keep tab visible until complete (~3m 00s)", 5000);
 
   play();
 }
 
 function stopRecording() {
+  releaseWakeLock();
+  stopWorkerTicker();
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
   }
