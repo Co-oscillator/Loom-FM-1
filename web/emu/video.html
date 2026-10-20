@@ -91,9 +91,9 @@ html, body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.04em;
   color: #E2E2EA;
@@ -103,7 +103,7 @@ html, body {
 
 .hud-logo {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
   letter-spacing: 0.1em;
   background: linear-gradient(90deg, #00E5FF, #BD00FF, #FF007F);
@@ -139,10 +139,10 @@ html, body {
 
 .time-readout {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13.5px;
   color: #A0A0B2;
   white-space: nowrap;
-  min-width: 90px;
+  min-width: 95px;
 }
 
 #scrubber-track {
@@ -182,9 +182,9 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #FFFFFF;
-  padding: 6px 14px;
+  padding: 7px 15px;
   border-radius: 10px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -246,7 +246,7 @@ select.ctl-select {
   color: #FFFFFF;
   padding: 6px 12px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   outline: none;
 }
@@ -265,7 +265,7 @@ select.ctl-select option {
   border: 1px solid #00E5FF;
   padding: 10px 22px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: #00E5FF;
   box-shadow: 0 0 25px rgba(0, 229, 255, 0.35);
@@ -1399,11 +1399,11 @@ function renderColdOpen(t, slide) {
   ctx.restore();
 
   if (t < 9.0) {
-    ctx.font = "bold 22px DotGothic16, monospace";
+    ctx.font = "bold 23px DotGothic16, monospace";
     ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
     ctx.textAlign = "center";
     ctx.fillText("LOOM FM-1 · HARDWARE INITIALIZATION", 960, 960);
-    ctx.font = "14px -apple-system, sans-serif";
+    ctx.font = "16px -apple-system, sans-serif";
     ctx.fillStyle = "#00E5FF";
     ctx.fillText("5-TRACK TEXTILE SYNTHESIZER & GROOVEBOX", 960, 990);
     ctx.textAlign = "left";
@@ -1540,6 +1540,30 @@ function renderBootscreenContent(ox, oy, size, curTime) {
   ctx.restore();
 }
 
+// Helper: Wrap text onto multiple lines fitting strictly within maxWidth
+function wrapText(context, text, maxWidth) {
+  if (!text) return [];
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const testLine = currentLine ? currentLine + " " + word : word;
+    const testWidth = context.measureText(testLine).width;
+    if (testWidth <= maxWidth || !currentLine) {
+      currentLine = testLine;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines;
+}
+
 // ---------------- Standard Slide Renderer ----------------
 function renderStandardSlide(slide, elapsedInSlide, index) {
   const theme = slide.themeColor || "#00E5FF";
@@ -1567,19 +1591,22 @@ function renderStandardSlide(slide, elapsedInSlide, index) {
   // Top Category Badge & Header Bar
   ctx.save();
   const badgeX = 90, badgeY = 70;
+  ctx.font = "bold 14px DotGothic16, monospace";
+  const chapterTxtW = ctx.measureText(slide.chapter).width;
+  const badgeW = Math.max(340, chapterTxtW + 44);
+
   ctx.fillStyle = hexToRgba(theme, 0.15);
   ctx.strokeStyle = hexToRgba(theme, 0.6);
   ctx.lineWidth = 1.5;
-  roundRect(ctx, badgeX, badgeY, 340, 36, 18, true, true);
+  roundRect(ctx, badgeX, badgeY, badgeW, 38, 19, true, true);
 
-  ctx.font = "bold 12.5px DotGothic16, monospace";
   ctx.fillStyle = theme;
-  ctx.fillText(slide.chapter, badgeX + 22, badgeY + 23);
+  ctx.fillText(slide.chapter, badgeX + 22, badgeY + 24);
 
-  ctx.font = "14px DotGothic16, monospace";
+  ctx.font = "bold 15px DotGothic16, monospace";
   ctx.fillStyle = "#707085";
   ctx.textAlign = "right";
-  ctx.fillText(`SCENE ${String(index + 1).padStart(2, "0")} / ${SLIDES.length}  ·  ${formatTime(playhead)}`, 1830, badgeY + 23);
+  ctx.fillText(`SCENE ${String(index + 1).padStart(2, "0")} / ${SLIDES.length}  ·  ${formatTime(playhead)}`, 1830, badgeY + 24);
   ctx.textAlign = "left";
 
   // Slide Title (Neon Glow)
@@ -1590,62 +1617,97 @@ function renderStandardSlide(slide, elapsedInSlide, index) {
   ctx.fillText(slide.title, 90, 175);
   ctx.shadowBlur = 0;
 
-  // Subtitle
-  ctx.font = "500 20px -apple-system, BlinkMacSystemFont, sans-serif";
+  // Left Content Column Layout Bounds (Stops strictly before right frame starts at 970)
+  const colX = 90;
+  const maxContentX = 930;
+  const contentWidth = maxContentX - colX; // 840px
+
+  // Subtitle (Wrapped if necessary to stay inside maxContentX)
+  ctx.font = "500 22px -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillStyle = "#C2C2D4";
-  ctx.fillText(slide.subtitle, 92, 218);
+  const subLines = wrapText(ctx, slide.subtitle, contentWidth);
+  let curSubY = 216;
+  subLines.forEach((sLine) => {
+    ctx.fillText(sLine, colX + 2, curSubY);
+    curSubY += 28;
+  });
 
-  // Left Content Column (Bullets & Parameters)
-  const colX = 90, startY = 275;
+  // Left Content Column (Wrapped Bullets & Badges)
+  let bulletY = Math.max(275, curSubY + 14);
   if (slide.bullets) {
-    slide.bullets.forEach((bullet, bIdx) => {
-      const by = startY + bIdx * 62;
+    ctx.font = "400 21.5px -apple-system, BlinkMacSystemFont, sans-serif";
+    const bulletTextX = colX + 32;
+    const bulletMaxW = maxContentX - bulletTextX; // 808px
 
-      ctx.fillStyle = theme;
-      ctx.shadowColor = theme;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.moveTo(colX + 8, by - 6);
-      ctx.lineTo(colX + 16, by);
-      ctx.lineTo(colX + 8, by + 6);
-      ctx.lineTo(colX, by);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
+    slide.bullets.forEach((bullet) => {
+      const lines = wrapText(ctx, bullet, bulletMaxW);
+      lines.forEach((line, lIdx) => {
+        if (lIdx === 0) {
+          ctx.fillStyle = theme;
+          ctx.shadowColor = theme;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(colX + 8, bulletY - 7);
+          ctx.lineTo(colX + 16, bulletY - 1);
+          ctx.lineTo(colX + 8, bulletY + 5);
+          ctx.lineTo(colX, bulletY - 1);
+          ctx.closePath();
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
 
-      ctx.font = "400 19px -apple-system, BlinkMacSystemFont, sans-serif";
-      ctx.fillStyle = "#EAEAEA";
-      ctx.fillText(bullet, colX + 32, by + 6);
+        ctx.fillStyle = "#EAEAEA";
+        ctx.fillText(line, bulletTextX, bulletY + 5);
+        bulletY += 31;
+      });
+      bulletY += 14;
     });
   }
 
-  // Key Parameters / Live Controls Badges
-  if (slide.params) {
-    const paramY = 560;
-    ctx.font = "bold 13px DotGothic16, monospace";
-    ctx.fillStyle = "#888899";
-    ctx.fillText("KEY PARAMETERS & LIVE CONTROLS:", colX, paramY);
+  // Key Parameters / Live Controls Badges (Wrapped rows to never overflow into right image frame)
+  let paramEndY = bulletY;
+  if (slide.params && slide.params.length > 0) {
+    const paramHeaderY = Math.max(bulletY + 8, 555);
+    ctx.font = "bold 14.5px DotGothic16, monospace";
+    ctx.fillStyle = "#9595AA";
+    ctx.fillText("KEY PARAMETERS & LIVE CONTROLS:", colX, paramHeaderY);
 
     let px = colX;
-    slide.params.forEach((param, pIdx) => {
-      ctx.font = "bold 13px DotGothic16, monospace";
-      const txtWidth = ctx.measureText(param).width;
-      const pw = txtWidth + 24;
+    let py = paramHeaderY + 16;
+    const badgeH = 36;
+    const badgeGapX = 12;
+    const badgeGapY = 10;
 
-      ctx.fillStyle = "rgba(22, 22, 34, 0.85)";
-      ctx.strokeStyle = hexToRgba(pIdx % 2 === 0 ? theme : accent, 0.55);
+    slide.params.forEach((param, pIdx) => {
+      ctx.font = "bold 14px DotGothic16, monospace";
+      const txtWidth = ctx.measureText(param).width;
+      const pw = Math.round(txtWidth + 24);
+
+      if (px + pw > maxContentX && px > colX) {
+        px = colX;
+        py += badgeH + badgeGapY;
+      }
+
+      ctx.fillStyle = "rgba(22, 22, 34, 0.88)";
+      ctx.strokeStyle = hexToRgba(pIdx % 2 === 0 ? theme : accent, 0.6);
       ctx.lineWidth = 1.5;
-      roundRect(ctx, px, paramY + 14, pw, 34, 10, true, true);
+      roundRect(ctx, px, py, pw, badgeH, 10, true, true);
 
       ctx.fillStyle = pIdx % 2 === 0 ? theme : accent;
-      ctx.fillText(param, px + 12, paramY + 36);
+      ctx.fillText(param, px + 12, py + 23);
 
-      px += pw + 12;
+      px += pw + badgeGapX;
     });
+
+    paramEndY = py + badgeH;
   }
 
-  // Audio Waveform Reactive Visualizer Bar
-  renderWaveformVisualizer(colX, 660, 780, 110, theme, accent);
+  // Audio Waveform Reactive Visualizer Bar (Safely anchored in lower area, matching content width)
+  const visY = Math.max(paramEndY + 28, 770);
+  const visH = Math.min(105, 1040 - visY);
+  if (visH >= 60) {
+    renderWaveformVisualizer(colX, visY, contentWidth, visH, theme, accent);
+  }
 
   // Right Column: Graphic Display Frame (Width ~860px, Height ~620px)
   const frameX = 970, frameY = 160, frameW = 860, frameH = 620;
@@ -1824,7 +1886,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "sample") {
     // PCM Sample Engine Waveform Preview with Start/End Trim & Loop
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("SAMPLE ENGINE · STEREO WAVEFORM & TRIM DISPLAY", x + 30, y + 40);
 
@@ -1877,7 +1939,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     ctx.beginPath();
     ctx.moveTo(trimStart, waveY); ctx.lineTo(trimStart + 16, waveY + 10); ctx.lineTo(trimStart, waveY + 20); ctx.closePath();
     ctx.fill();
-    ctx.font = "bold 11px DotGothic16, monospace";
+    ctx.font = "bold 13px DotGothic16, monospace";
     ctx.fillText("START TRIM", trimStart + 6, waveY + 36);
 
     // Red End Trim Marker
@@ -1890,7 +1952,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     ctx.beginPath();
     ctx.moveTo(trimEnd, waveY); ctx.lineTo(trimEnd - 16, waveY + 10); ctx.lineTo(trimEnd, waveY + 20); ctx.closePath();
     ctx.fill();
-    ctx.fillText("END TRIM", trimEnd - 72, waveY + 36);
+    ctx.fillText("END TRIM", trimEnd - 78, waveY + 36);
 
     // Active Voice Playhead
     const loopLen = trimEnd - trimStart;
@@ -1909,7 +1971,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "scrub") {
     // Physical Tape Reels & Magnetic Scrub Head (UI Animation from graph_scrub)
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("PHYSICAL TAPE REELS & MOTOR INERTIA (GRAPH_SCRUB)", x + 30, y + 40);
 
@@ -1991,7 +2053,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     roundRect(ctx, headX - 28, headY - 32, 56, 32, 6, true, true);
     ctx.shadowBlur = 0;
 
-    ctx.font = "bold 11px DotGothic16, monospace";
+    ctx.font = "bold 13px DotGothic16, monospace";
     ctx.fillStyle = "#FFFFFF";
     ctx.textAlign = "center";
     ctx.fillText("HEAD", headX, headY - 12);
@@ -2007,7 +2069,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     }
 
     const meterY = y + h - 80;
-    ctx.font = "bold 12px DotGothic16, monospace";
+    ctx.font = "bold 13.5px DotGothic16, monospace";
     ctx.fillStyle = "#888899";
     ctx.fillText("FLYWHEEL INERTIA & SCRUB VELOCITY:", x + 30, meterY);
 
@@ -2025,7 +2087,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "grain") {
     // Granular Engine Playheads & Spray Window (UI Animation from graph_grain)
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("GRANULAR CLOUD · 16 HANN-WINDOWED GRAIN HEADS", x + 30, y + 40);
 
@@ -2117,7 +2179,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
       ctx.lineWidth = 2;
       roundRect(ctx, bx, y + 80, bw - 12, bh, 6, true, true);
 
-      ctx.font = "bold 13px DotGothic16, monospace";
+      ctx.font = "bold 14px DotGothic16, monospace";
       ctx.fillStyle = theme;
       ctx.fillText(`${idx + 1}`, bx + bw / 2 - 8, y + 70);
     });
@@ -2149,7 +2211,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
       roundRect(ctx, op.cx - 45, op.cy - 30, 90, 60, 10, true, true);
       ctx.shadowBlur = 0;
 
-      ctx.font = "bold 18px DotGothic16, monospace";
+      ctx.font = "bold 20px DotGothic16, monospace";
       ctx.fillStyle = "#FFFFFF";
       ctx.textAlign = "center";
       ctx.fillText(`OP ${op.id}`, op.cx, op.cy + 6);
@@ -2193,7 +2255,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     const lh = (h - 100) / 8;
     lanes.forEach((name, lIdx) => {
       const ly = y + 60 + lIdx * lh;
-      ctx.font = "bold 12px DotGothic16, monospace";
+      ctx.font = "bold 13.5px DotGothic16, monospace";
       ctx.fillStyle = theme;
       ctx.fillText(name, x + 30, ly + lh / 2 + 4);
 
@@ -2215,7 +2277,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "arp_patterns") {
     // Elegant Musical Staff with Birds on a Wire & Complete Pattern List
-    ctx.font = "bold 14px DotGothic16, monospace";
+    ctx.font = "bold 15px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("ALGORITHMIC NOTE TRAJECTORY & STAFF WIRE", x + 30, y + 40);
 
@@ -2258,7 +2320,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     }
 
     // 12 Patterns Listed Clearly in Grid
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = theme;
     ctx.fillText("12 CORE ARPEGGIATOR PATTERNS:", x + 30, y + 230);
 
@@ -2279,7 +2341,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
       ctx.lineWidth = 1;
       roundRect(ctx, px, py - 18, 350, 30, 6, true, true);
 
-      ctx.font = "bold 12.5px DotGothic16, monospace";
+      ctx.font = "bold 13.5px DotGothic16, monospace";
       ctx.fillStyle = col === 0 ? "#E0E0E8" : accent;
       ctx.fillText(pat, px + 12, py + 2);
     });
@@ -2288,7 +2350,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "insert_grid") {
     // 12 Track Insert FX Grid
-    ctx.font = "bold 14px DotGothic16, monospace";
+    ctx.font = "bold 15px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("FULL SUITE OF 12 TRACK INSERT EFFECTS:", x + 30, y + 40);
 
@@ -2318,11 +2380,11 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
       ctx.lineWidth = 1.5;
       roundRect(ctx, bx, by, 350, 64, 10, true, true);
 
-      ctx.font = "bold 14px DotGothic16, monospace";
+      ctx.font = "bold 15px DotGothic16, monospace";
       ctx.fillStyle = idx % 2 === 0 ? theme : accent;
       ctx.fillText(item.name, bx + 14, by + 24);
 
-      ctx.font = "12px -apple-system, sans-serif";
+      ctx.font = "13.5px -apple-system, sans-serif";
       ctx.fillStyle = "#B0B0C0";
       ctx.fillText(item.desc, bx + 14, by + 48);
     });
@@ -2332,7 +2394,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   else if (type === "delay_trampoline") {
     // Dynamic Physics Trampoline Delay (graph_delay from firmware/src/ui_graph.c)
     // Progression over slide: starts with few balls -> increases feedback -> adds cross-delay sloped lines & tape wobble!
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("TAPE DELAY · PHYSICS TRAMPOLINE VISUALIZER (GRAPH_DELAY)", x + 30, y + 40);
 
@@ -2510,7 +2572,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "reverb_cave") {
     // Large Cave Mouth in Purple Sparkling with Green & White Crystals (graph_reverb SPACE mode)
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("SPACE REVERB CAVERN · COSMIC INFINITE DECAY & CRYSTALS", x + 30, y + 40);
 
@@ -2660,7 +2722,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     // 2.2 - 3.8s: Sound wave surges higher in amplitude and frequency
     // 3.8 - 5.2s: Color shifts from Cool Electric Blue -> Magenta -> Warm Analog Red
     // 5.2 - 7.0s: Voices expand (1 -> 2 -> 3 -> 4) with stacked voice silhouettes fanning out behind!
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("STEREO CHORUS · MULTI-VOICE ENSEMBLE & TONE SPECTRUM (GRAPH_CHORUS)", x + 30, y + 40);
 
@@ -2858,13 +2920,13 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
   }
   else if (type === "lfo_matrix") {
     // Track LFO Engine with 4 Preset Destinations
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14.5px DotGothic16, monospace";
     ctx.fillStyle = "#A0A0B2";
     ctx.fillText("TRACK LFO ENGINE · 4 SIMULTANEOUS PRESET DESTINATIONS", x + 30, y + 40);
 
     // LFO Waveform Preview Bar
     const lfoBoxY = y + 65;
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14px DotGothic16, monospace";
     ctx.fillStyle = theme;
     ctx.fillText("LFO WAVE: SINE / TRI / SAW / PULSE / RANDOM (TEMPO SYNC 1/4)", x + 30, lfoBoxY);
 
@@ -2882,7 +2944,7 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
     ctx.shadowBlur = 0;
 
     // 4 Preset Destinations
-    ctx.font = "bold 13px DotGothic16, monospace";
+    ctx.font = "bold 14px DotGothic16, monospace";
     ctx.fillStyle = "#C0C0D0";
     ctx.fillText("4 DEDICATED PRESET DESTINATIONS PER TRACK:", x + 30, lfoBoxY + 115);
 
@@ -2910,22 +2972,22 @@ function renderProceduralVectorDisplay(x, y, w, h, type, theme, accent, time) {
       ctx.fillStyle = hexToRgba(d.col, 0.2);
       ctx.strokeStyle = d.col;
       roundRect(ctx, cx + 12, cy + 12, 54, 24, 6, true, true);
-      ctx.font = "bold 12px DotGothic16, monospace";
+      ctx.font = "bold 13px DotGothic16, monospace";
       ctx.fillStyle = d.col;
       ctx.textAlign = "center";
       ctx.fillText(d.code, cx + 39, cy + 28);
       ctx.textAlign = "left";
 
-      ctx.font = "bold 13px DotGothic16, monospace";
+      ctx.font = "bold 14px DotGothic16, monospace";
       ctx.fillStyle = "#FFFFFF";
       ctx.fillText(d.name, cx + 78, cy + 28);
 
-      ctx.font = "12px -apple-system, sans-serif";
+      ctx.font = "13.5px -apple-system, sans-serif";
       ctx.fillStyle = "#A5A5BA";
       ctx.fillText(d.role, cx + 14, cy + 54);
 
       // Depth indicator bar
-      ctx.font = "bold 11px DotGothic16, monospace";
+      ctx.font = "bold 12px DotGothic16, monospace";
       ctx.fillStyle = d.col;
       ctx.fillText(`DEPTH: ${d.depth}`, cx + 14, cy + 76);
 
@@ -3023,7 +3085,7 @@ function renderOutroConvergence(x, y, w, h, elapsed) {
     const logoSize = 340;
     renderBootscreenContent(cx - logoSize / 2, cy - logoSize / 2 - 20, logoSize, elapsed);
 
-    ctx.font = "bold 18px DotGothic16, monospace";
+    ctx.font = "bold 20px DotGothic16, monospace";
     ctx.fillStyle = "#00E5FF";
     ctx.textAlign = "center";
     ctx.fillText("LOOM GROOVEBOX · OPEN CREATIVE PLATFORM", cx, cy + 180);
@@ -3036,12 +3098,12 @@ function drawMiniBadge(bx, by, text, color) {
   ctx.fillStyle = "rgba(12, 12, 20, 0.88)";
   ctx.strokeStyle = hexToRgba(color, 0.65);
   ctx.lineWidth = 1.5;
-  ctx.font = "bold 11px DotGothic16, monospace";
-  const tw = ctx.measureText(text).width + 20;
-  roundRect(ctx, bx, by, tw, 26, 6, true, true);
+  ctx.font = "bold 13px DotGothic16, monospace";
+  const tw = ctx.measureText(text).width + 24;
+  roundRect(ctx, bx, by, tw, 30, 7, true, true);
 
   ctx.fillStyle = color;
-  ctx.fillText(text, bx + 10, by + 17);
+  ctx.fillText(text, bx + 12, by + 20);
 }
 
 function renderWaveformVisualizer(vx, vy, vw, vh, theme, accent) {
@@ -3050,15 +3112,15 @@ function renderWaveformVisualizer(vx, vy, vw, vh, theme, accent) {
   ctx.lineWidth = 1;
   roundRect(ctx, vx, vy, vw, vh, 14, true, true);
 
-  ctx.font = "bold 11px DotGothic16, monospace";
-  ctx.fillStyle = "#6E6E80";
-  ctx.fillText("REAL-TIME AUDIO SPECTRUM & BUS DYNAMICS", vx + 16, vy + 22);
+  ctx.font = "bold 13px DotGothic16, monospace";
+  ctx.fillStyle = "#8888A0";
+  ctx.fillText("REAL-TIME AUDIO SPECTRUM & BUS DYNAMICS", vx + 18, vy + 24);
 
   const numBars = 36;
   const barW = (vw - 40) / numBars;
   for (let b = 0; b < numBars; b++) {
     const ph = b * 0.2 + playhead * 4.5;
-    const mag = Math.max(6, (Math.sin(ph) * 0.5 + 0.5) * (vh - 45) * (0.4 + Math.random() * 0.6));
+    const mag = Math.max(6, (Math.sin(ph) * 0.5 + 0.5) * (vh - 46) * (0.4 + Math.random() * 0.6));
     const bx = vx + 20 + b * barW;
     const by = vy + vh - 15 - mag;
 
