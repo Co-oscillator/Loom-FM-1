@@ -281,8 +281,10 @@
         <p class="bar">
           <button id="libsave" data-t="saveToLib" data-ic="port_disk"></button>
           <button id="libimport" data-t="import" data-ic="symbol_upload"></button>
+          <button id="libloom" data-t="loomImport" data-ic="symbol_upload"></button>
           <button id="libexport" data-t="exportLib" data-ic="symbol_download"></button>
           <input type="file" id="libfile" accept=".json,application/json" multiple hidden>
+          <input type="file" id="libloomfile" accept=".json,.loom.json,.helm,.fxp,application/json" multiple hidden>
           <span class="dim" id="libcount"></span>
         </p>
       </div>
@@ -2578,7 +2580,7 @@ const TEXT = {
     sortModified: "更新順", sortCreated: "作成順", sortName: "名前順", sortEngine: "エンジン順",
     name: "名前", tagsCol: "タグ", date: "更新",
     audition: "試聴", toSlot: "本体スロットへ", rename: "名前変更", tags: "タグ", duplicate: "複製", delete: "削除",
-    exportPatch: "書き出し", saveToLib: "今の音色をライブラリへ", import: "読み込み", exportLib: "ライブラリを書き出し",
+    exportPatch: "書き出し", saveToLib: "今の音色をライブラリへ", import: "読み込み", loomImport: "Loom / Helm / Surge…", exportLib: "ライブラリを書き出し",
     factoryToLib: "ライブラリへコピー", libEmpty: "ライブラリは空です。「今の音色をライブラリへ」やファクトリープリセットのコピー、本体スロットからの取り込み、ファイルの読み込みで追加できます。",
     noMatch: "該当なし", noLibDB: "（ブラウザに保存できません。再読み込みで消えます）",
     bank: "本体のユーザープリセット", bankLoad: "読込", bankStore: "今の音色を保存", bankGet: "ライブラリへ",
@@ -2681,7 +2683,7 @@ const TEXT = {
     sortModified: "Recently changed", sortCreated: "Recently added", sortName: "Name", sortEngine: "Engine",
     name: "Name", tagsCol: "Tags", date: "Changed",
     audition: "Audition", toSlot: "To device slot", rename: "Rename", tags: "Tags", duplicate: "Duplicate", delete: "Delete",
-    exportPatch: "Export", saveToLib: "Save current sound", import: "Import", exportLib: "Export library",
+    exportPatch: "Export", saveToLib: "Save current sound", import: "Import", loomImport: "Loom / Helm / Surge…", exportLib: "Export library",
     factoryToLib: "Copy to library", libEmpty: "The library is empty. Add sounds with \"Save current sound\", by copying a factory preset or a device slot, or by importing a file.",
     noMatch: "No match", noLibDB: "(this browser cannot store it: it is gone after a reload)",
     bank: "User presets on the device", bankLoad: "Load", bankStore: "Store current sound", bankGet: "To library",
@@ -5110,6 +5112,23 @@ $("libfile").addEventListener("change", async () => {
         try { await store.setMeta("layout", libMeta); } catch (e) { console.warn(e); }
       }
       if (obj.kind === "bank") r.patches.forEach((p) => { if (!p.tags.includes("bank")) p.tags.push("bank"); });
+      await libAdd(r.patches);
+      n += r.patches.length;
+      skipped += r.skipped;
+    } catch (e) { sayK("badfile", `${f.name}: ${e.message}`); return; }
+  }
+  sayK("imported", n + (skipped ? t("skippedN").replace("{n}", skipped) : t("patchesN")));
+});
+$("libloom").addEventListener("click", () => { $("libloomfile").value = ""; $("libloomfile").click(); });
+$("libloomfile").addEventListener("change", async () => {
+  let n = 0, skipped = 0;
+  let mod;
+  try { mod = await import("./loom_import.js"); }
+  catch (e) { sayK("badfile", `loom_import.js: ${e.message}`); return; }
+  for (const f of [...$("libloomfile").files]) {
+    try {
+      const obj = await mod.importPresetFile(f, libCtx());
+      const r = readLibraryFile(obj, libCtx());
       await libAdd(r.patches);
       n += r.patches.length;
       skipped += r.skipped;

@@ -78,7 +78,7 @@ def main(pkg, version, out):
     for doc in ("LICENSE", "LICENSING.md"):
         shutil.copy(HERE.parent / doc, fw / doc)
     shutil.copy(HERE / "editor.html", ed / "index.html")
-    for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt", "fm1backup.js"):
+    for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt", "fm1backup.js", "loom_import.js"):
         if (HERE / f).exists():
             shutil.copy(HERE / f, ed / f)
     emu_dir = HERE.parent / "build" / "emu"

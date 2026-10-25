@@ -16,7 +16,7 @@
 - **64-Step Dual-View Sequencer:** Switch between `4x4 STEP` / `4x4 PAT` piano roll and `8x8 STEP` / `8x8 PAT` 64-step matrix views with humanize, swing, parameter locks, and instant pattern clear.
 - **Chord Progression Generator & Bipolar Arpeggiator:** Generative mood/complexity chord progression engine (`CHRD: PROG`) with real-time voicing display, plus a 10-mode arpeggiator with bipolar `-3` to `+3` octave range and Euclidean gating.
 - **Performance Macros & Sidechain Ducking:** 4 assignable multi-destination performance macro knobs (`HOME > MACROS`) and drum-triggered sidechain compression across synth tracks and master send FX.
-- **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor and real-time WebAssembly emulator with `.mid` / `.midi` multi-track import and `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`).
+- **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor and real-time WebAssembly emulator with `.mid` / `.midi` multi-track import, `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`), and Loom / Helm / Surge preset import into the librarian (see [`web/LOOM_IMPORT.md`](web/LOOM_IMPORT.md)).
 - **Firmware Package:** [`loom-groovebox.fwsc`](loom-groovebox.fwsc) / [`loom-groovebox.fswc`](loom-groovebox.fswc) (Package Identity: `FM-1_985`, License: [`GPL-3.0-only`](LICENSE), full details in [`LICENSING.md`](LICENSING.md)).
 
 ---
