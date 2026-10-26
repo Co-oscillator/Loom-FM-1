@@ -282,6 +282,15 @@ async function editorMock() {
   }
   const st = E.parse[E.CMD.STEP_SET](await rq(E.req.stepSet(5, { n: 2, notes: [60, 64], time: 0, flags: 1, vel: 100 })));
   ok(st.n === 2 && st.notes[1] === 64 && st.vel === 100, "editor: STEP_SET");
+  /* a step's nudge (1.2, INFO 54 01): the byte after the ratchet, sent only when asked for */
+  const nudgeReq = E.req.stepSet(5, { n: 1, notes: [60], time: 0, flags: 0, vel: 100, hit: 0, acc: 0, chance: 100, ratchet: 2, nudge: -3 });
+  const nudged = E.parse[E.CMD.STEP_SET]([5, 1, 60, 0, 0, 0, 0, 0, 100, 0, 0, 0, 100, 2, 5]);
+  const noNudge = E.req.stepSet(5, { n: 1, notes: [60], time: 0, flags: 0, vel: 100, hit: 0, acc: 0, chance: 100, ratchet: 2 });
+  ok(nudgeReq[1].length === noNudge[1].length + 1 && nudgeReq[1][nudgeReq[1].length - 1] === 5 && nudged.nudge === -3,
+    "editor: a step carries its nudge (1.2)");
+  const older = E.parse[E.CMD.STEP_SET]([5, 1, 60, 0, 0, 0, 0, 0, 100]);
+  ok(older.chance === 100 && older.ratchet === 1 && older.nudge === 0,
+    "editor: a step reply without chance / ratchet / nudge still parses");
   const pj = E.parse[E.CMD.PROJECT](await rq(E.req.project(1, 2), { timeout: 4000, retries: 0 }));
   ok(pj.used === 1, "editor: PROJECT save");
   /* sample upload as smpUpload() does it */
