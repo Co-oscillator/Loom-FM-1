@@ -165,13 +165,16 @@ $("go").addEventListener("click", async () => {
   catch (e) { sayK("denied"); lockInstaller(false); return; }
   try {
     const up = new Updater(midi, log);
-    const total = 74 + 1167;
-    const step = (k, a) => {
+    /* Progress by address, not by request count: the loader's chunk size (and a
+       restarted write) decides how many requests an image takes, so counting them
+       ran the bar past 100% (up to ~200%). Verify fills 0..45%, the write 45..99%. */
+    const pct = (addr) => (image && image.length ? Math.max(0, Math.min(1, addr / image.length)) : 0);
+    const step = (k, a, addr) => {
       log(`${k} ${a ?? ""}`);
       if (k === "start") sayK("start");
-      if (k === "verify") { sayK("verify"); $("bar").value = (a / total) * 100; }
+      if (k === "verify") { sayK("verify"); $("bar").value = pct(addr) * 45; }
       if (k === "loader") sayK("loader");
-      if (k === "write") { sayK("write"); $("bar").value = ((74 + a) / total) * 100; }
+      if (k === "write") { sayK("write"); $("bar").value = 45 + pct(addr) * 54; }
       if (k === "reboot") sayK("reboot");
       if (k === "done") { $("bar").value = 100; sayK("done"); }
     };
