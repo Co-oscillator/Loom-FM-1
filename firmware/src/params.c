@@ -185,6 +185,9 @@ static const param_desc_t TP[P_COUNT] = {
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE
  * LPF, the swept ones RATE DEPTH FDBK; OFF TP's own */
 #define PU(l, f, df, n, u) {l, f, 0, 127, df, n, u}
+/* an enum among the INSERT's values: its max must be the last name, or param_format reads past the
+   table (the Octaver's MODE showed strings from the parameters after it) */
+#define PUE(l, df, n) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof((n)[0]) - 1), df, n, 0}
 static const param_desc_t INS_DESC[7][3] = {
     /* 0: Drives (IT_SOFT .. IT_FUZZ) */
     {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 96, 0, 0), PU("LEVEL", F_DB, 96, 0, 0)},
@@ -195,11 +198,11 @@ static const param_desc_t INS_DESC[7][3] = {
     /* 3: IT_WOBBLE (Tape Wobble) */
     {PU("RATE", F_LFOHZ, 50, 0, 0), PU("DEPTH", F_PCT, 70, 0, 0), PU("SAT", F_PCT, 60, 0, 0)},
     /* 4: IT_OCTAVER (Octaver / Harmony) */
-    {PU("MODE", F_ENUM, 0, N_OCT_MODE, 0), PU("UNIS", F_PCT, 0, 0, 0), PU("TONE", F_CUTOFF, 100, 0, 0)},
+    {PUE("MODE", 0, N_OCT_MODE), PU("UNIS", F_PCT, 0, 0, 0), PU("TONE", F_CUTOFF, 100, 0, 0)},
     /* 5: IT_OVERDRIVE (Loom Overdrive) */
     {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 90, 0, 0), PU("GRIT", F_PCT, 40, 0, 0)},
     /* 6: IT_PANNER (AutoPanner) */
-    {PU("RATE", F_LFOHZ, 60, 0, 0), PU("DEPTH", F_PCT, 80, 0, 0), PU("SHAPE", F_ENUM, 0, N_PAN_SHAPE, 0)},
+    {PU("RATE", F_LFOHZ, 60, 0, 0), PU("DEPTH", F_PCT, 80, 0, 0), PUE("SHAPE", 0, N_PAN_SHAPE)},
 };
 #undef PU
 static const param_desc_t *ins_desc(int32_t type, uint32_t k)
@@ -551,8 +554,8 @@ static const page_t PAGES[] = {
     {"PRESETS", FAM_SAVE, SC_GLOBAL, GR_BROWSE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* browser: PRESETS knob / KNOB 1 */
     {"PHRASES", FAM_SAVE, SC_GLOBAL, GR_PATS, {0xFF, 0xFF, 0xFF, 0xFF}},    /* pattern loader: PAT LOAD (ui.c pat_load) */
     {"ARP", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_ARATE, P_AOCT, P_AGATE}},
-    {"ARP 2", FAM_ARP, SC_TRACK, GR_NONE, {P_ASWING, P_APROB, P_AWEIRD, P_AHOLD}},
-    {"ARP 3", FAM_ARP, SC_TRACK, GR_NONE, {P_AORDER, 0xFF, 0xFF, 0xFF}},
+    {"ARP 2", FAM_ARP, SC_TRACK, GR_ARP, {P_ASWING, P_APROB, P_AWEIRD, P_AHOLD}},   /* the note graph stays */
+    {"ARP 3", FAM_ARP, SC_TRACK, GR_ARP, {P_AORDER, 0xFF, 0xFF, 0xFF}},
     {"4x4 STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
     {"4x4 PAT", FAM_SEQ, SC_TRACK, GR_ROLL, {P_SLEN, P_SDIV, P_SSWING, P_SHUMAN}},
     {"8x8 STEP", FAM_SEQ, SC_STEP, GR_STEPS, {0, 1, 2, 3}},

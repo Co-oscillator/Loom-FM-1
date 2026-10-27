@@ -119,6 +119,60 @@ static void graph_adsr(const track_t *t, uint16_t c)
 #undef EGY
 }
 
+/* ARP page: the note list the arp is walking (the held keys over OCT, as seq.c arp_list builds it), one bar
+ * per note from low to high, the note sounding now filled and capped. The mode name and the position read
+ * along the top. MODE OFF or nothing held: a flat rule, as the page had. */
+static void graph_arp(const track_t *t, uint16_t c)
+{
+    uint32_t n = arp_viz_len, i;
+    int32_t lo = 127, hi = 0, top = 16, floor = graph_ht - 4, gap, w;
+    char buf[12];
+
+    if (!t->p[P_AMODE] || !n || !t->nheld) {
+        cv_rect(PANEL_X0, graph_ht / 2, PANEL_W, 1, T_LINE);
+        cv_text_in(PANEL_X0 + 4, graph_ht / 2 - 12, PANEL_W - 8, &AF_S,
+                   N_AMODE[clamp(t->p[P_AMODE], 0, AM_COUNT - 1)], T_DIM, T_BG);
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        if (arp_viz_notes[i] < lo) lo = arp_viz_notes[i];
+        if (arp_viz_notes[i] > hi) hi = arp_viz_notes[i];
+    }
+    if (hi <= lo) hi = lo + 1;
+    gap = n > 24u ? 1 : 2;
+    w = ((int32_t)PANEL_W - (int32_t)n * gap) / (int32_t)n;
+    if (w < 1) w = 1;
+    for (i = 0; i < n; i++) {
+        int32_t x = PANEL_X0 + (int32_t)i * (w + gap);
+        int32_t h = 6 + (int32_t)(arp_viz_notes[i] - lo) * (floor - top - 6) / (hi - lo);
+        int32_t on = (i == arp_viz_pos);
+        cv_rect(x, floor - h, w, h, on ? c : T_TINT);
+        if (on) {
+            cv_rect(x, floor - h - 3, w, 3, T_ACCENT);
+            cv_rect(x, floor + 1, w, 2, T_ACCENT);
+        }
+    }
+    cv_rect(PANEL_X0, floor + 1, PANEL_W, 1, T_LINE);
+    str_cpy(buf, N_AMODE[clamp(t->p[P_AMODE], 0, AM_COUNT - 1)], sizeof buf);
+    cv_text_in(PANEL_X0 + 4, 2, PANEL_W / 2 - 4, &AF_S, buf, T_MID, T_BG);
+    {   /* "pos/len" and the sounding note, right aligned-ish */
+        char num[8];
+        unsigned k = 0, m = 0;
+        fmt_int(num, (int32_t)arp_viz_pos + 1);
+        while (num[k] && k < 4) buf[k] = num[k], k++;
+        buf[k++] = '/';
+        fmt_int(num, (int32_t)arp_viz_len);
+        while (num[m] && k < 8) buf[k++] = num[m++];
+        buf[k++] = ' ';
+        {   /* the sounding note's name (ui.c note_name) */
+            char nb[8];
+            note_name(nb, arp_viz_cur);
+            str_cpy(buf + k, nb, sizeof buf - k);
+        }
+        cv_text_in(PANEL_X0 + PANEL_W / 2, 2, PANEL_W / 2 - 4, &AF_S, buf, c, T_BG);
+    }
+}
+
 static void graph_lfo(const track_t *t, uint16_t c)
 {
     int32_t x, cy = graph_ht / 2, a = 38 * graph_ht / 100, py = cy, uni = t->p[P_LPOL] != 0;
@@ -2854,7 +2908,9 @@ static uint32_t graph_signature(void)
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u + ui.page * 1291u;
     if (strip_kind() == SK_TITLE)                    /* MENU > LARGE: the page's title (its engine, its number) */
         return h ^ 0x5A17u;
-    if (pg->graph == GR_NONE || pg->graph == GR_ARP) h ^= ui.frame / 2u;
+    if (pg->graph == GR_NONE) h ^= ui.frame / 2u;
+    if (pg->graph == GR_ARP)                        /* redraw when the arp moves, not every other frame */
+        h ^= (uint32_t)arp_viz_pos * 31u + (uint32_t)arp_viz_len * 7919u + (uint32_t)arp_viz_cur * 131u;
     for (i = 0; i < P_COUNT; i++)
         h = (h ^ (uint32_t)t->p[i]) * 16777619u;
     h ^= (uint32_t)TSEL->preset * 7u + (uint32_t)song.g[G_SLOT] * 13u + TSEL->user * 257u + up_gen * 7919u + ui.uslot * 104729u +
@@ -4041,6 +4097,10 @@ static void draw_graph(void)
             break;
         case GR_LFO:
             graph_lfo(t, c);
+            break;
+        case GR_ARP:
+            cv_oy = 0;
+            graph_arp(t, c);
             break;
         case GR_ROLL:
             cv_oy = 0;

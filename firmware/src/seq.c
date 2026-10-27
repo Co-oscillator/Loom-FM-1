@@ -214,6 +214,11 @@ static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) &
 enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_STAG_UP, AM_STAG_DN, AM_RND, AM_RNDP, AM_BACH, AM_BROWN, AM_CONV, AM_DIVG, AM_COUNT };
 
 static uint8_t arp_rnd_pat[NTRK][16];
+/* The ARP page's note graph (ui_graph.c graph_arp): the list the arp is walking (the held keys across OCT),
+ * the step it is on, and the note it last fired. Written once an arp step on the audio side, read by the UI:
+ * single bytes, so a frame may catch the list mid-update; that is a redraw, not a crash. */
+volatile uint8_t arp_viz_notes[64];
+volatile uint8_t arp_viz_len, arp_viz_pos, arp_viz_cur;
 static void arp_rnd_init(uint32_t trk_idx)
 {
     for (uint32_t s = 0; s < 16u; s++)
@@ -485,6 +490,11 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     }
     t->arp_idx++;
     j = arp_pick(t, list, len);
+    arp_viz_len = (uint8_t)(len > 64u ? 64u : len);
+    for (uint32_t k = 0; k < arp_viz_len; k++)
+        arp_viz_notes[k] = (uint8_t)list[k];
+    arp_viz_pos = (uint8_t)j;
+    arp_viz_cur = (uint8_t)list[j];
     if (t->arp_note)
         arp_off(t);
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
