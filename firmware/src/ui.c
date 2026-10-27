@@ -13,6 +13,7 @@ static void project_reset_init(void);
 static uint32_t chain_prepare(void);
 static int up_used(uint32_t k);              /* user presets: upreset.c */
 static int up_load(uint32_t k);
+static int arp_pat_on(void);                        /* (ui_input.c: the ARP pattern page's keys) */
 static uint32_t up_count(void);
 static uint32_t up_nth(uint32_t n);
 static uint32_t up_rank(uint32_t slot);
@@ -162,6 +163,7 @@ static struct {
     uint8_t confirm_trk;         /* the track it clears, the slot it overwrites */
     uint8_t uslot;               /* SAVE > USER: the selected user preset slot */
     uint8_t ppick;               /* SAVE > PHRASES: the pattern picked (pat_count list index) */
+    uint8_t apat;                /* Loom: ARP PAT's step cursor (0..15) */
     uint8_t song_row;            /* SONG: the section selected, count selects + ADD */
     uint8_t song_trk;            /* SONG: the lane (track) selected, 0..NTRK-1 */
     uint16_t ev_row;             /* SEQ > AUTOMATION (ui_events.c ev_*): the row selected (0 PLAY / CLEAR, 1 QUANTIZE, the
@@ -1332,6 +1334,9 @@ static void track_defaults(track_t *t)
     uint32_t i;
     for (i = 0; i < P_E0; i++)
         t->p[i] = TP[i].def;
+    for (i = 0; i < 16u; i++)
+        t->arp_pat[i] = 0x80u;                     /* Loom: every step plays, offset 0 (a straight walk) */
+    t->arp_pstep = 0;
     track_defaults_steps(t);
 }
 

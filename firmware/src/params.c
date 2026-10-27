@@ -8,7 +8,8 @@ static const char *const N_LSYNC[] = {"OFF", "4BAR", "2BAR", "1/1", "1/2", "1/4"
 static const uint8_t LSYNC_DIV[11] = {0, 9, 8, 7, 6, 0, 1, 4, 2, 5, 3};
 static const char *const N_LTRIG[] = {"NOTE", "FREE"};
 static const char *const N_LPOL[] = {"BI", "UNI"};
-static const char *const N_AMODE[] = {"OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG"};
+static const char *const N_AMODE[] = {"OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG",
+                                      "PAT"};   /* Loom: the pattern on the ARP PAT page (seq.c arp_fire) */
 static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"};
 /* the delay's TIME (G_DTIME): N_DIV's ten (their values kept), then 1.5.1's dotted ones appended (stored values:
  * append-only). A list of its own: ARP RATE, SEQ DIV and LFO SYNC keep N_DIV's ten (fx.c delay_samples) */
@@ -513,6 +514,7 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
        FAM_COUNT };
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK };   /* SC_TRK: the TRACKS page (ui_input.c tracks_edit) */
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
+       GR_ARP_PAT,
        GR_SLCR, GR_MOD, GR_PATS, GR_SONG, GR_TOOLS, GR_CHORD, GR_SLICES, GR_EVENTS,
        GR_FMOP, GR_FMOP2, GR_FMENV, GR_INS, GR_PROG, GR_MACRO, GR_SIDECHAIN,
        GR_DELAY, GR_REVERB, GR_CHORUS };   /* (GR_STEPS: SEQ TOOLS' knobs; GR_FMOP..: FM6's operator pages, ui_fm6op.c) */
@@ -572,6 +574,7 @@ static const page_t PAGES[] = {
     {"ARP", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_ARATE, P_AOCT, P_AGATE}},
     {"ARP 2", FAM_ARP, SC_TRACK, GR_ARP, {P_ASWING, P_APROB, P_AWEIRD, P_AHOLD}},   /* the note graph stays */
     {"ARP 3", FAM_ARP, SC_TRACK, GR_ARP, {P_AORDER, 0xFF, 0xFF, 0xFF}},
+    {"ARP PAT", FAM_ARP, SC_TRACK, GR_ARP_PAT, {0xFF, 0xFF, 0xFF, 0xFF}},   /* Loom: the 16-step pattern editor */
     {"4x4 STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
     {"4x4 PAT", FAM_SEQ, SC_TRACK, GR_ROLL, {P_SLEN, P_SDIV, P_SSWING, P_SHUMAN}},
     {"8x8 STEP", FAM_SEQ, SC_STEP, GR_STEPS, {0, 1, 2, 3}},

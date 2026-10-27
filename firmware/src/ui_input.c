@@ -1115,6 +1115,44 @@ static void step_target_turn(track_t *t, int32_t steps)
     ui.force = 1;
 }
 
+/* Loom: SEQ's keys muted while the ARP pattern page is up (keys_mode: 2), so the white keys edit it */
+static int arp_pat_on(void)
+{
+    return !ui.home && !ui.menu && !ui.confirm && !ui.layer && !name_on() && cur_page()->graph == GR_ARP_PAT;
+}
+static void arp_pat_knob(uint32_t slot, int32_t steps)
+{
+    track_t *t = TSEL;
+    uint8_t *c = &t->arp_pat[ui.apat & 15u];
+    if (slot == 0u) {
+        ui.apat = (uint8_t)((ui.apat + (steps > 0 ? 1 : 15)) & 15u);
+    } else if (slot == 1u) {                            /* the offset from the walk (-8..+7) */
+        int32_t off = clamp((int32_t)(*c & 15u) - 8 + steps, -8, 7);
+        *c = (uint8_t)((*c & 0x80u) | (uint8_t)(off + 8));
+    } else if (slot == 2u) {                            /* play / rest (a rest holds the walk) */
+        *c ^= 0x80u;
+    } else {                                            /* every step plays, offset 0 */
+        uint32_t i;
+        for (i = 0; i < 16u; i++)
+            t->arp_pat[i] = 0x80u;
+    }
+    ui.force = 1;
+}
+/* the white keys 1..16 toggle a step's play/rest (the pattern is 16 steps, as the key row) */
+static void arp_pat_keys(uint32_t pressed)
+{
+    track_t *t = TSEL;
+    uint32_t k;
+    for (k = 0; k < 27u; k++) {
+        uint32_t p = key_place(k);
+        if (!((pressed >> k) & 1u) || key_black(k) || p >= 16u)
+            continue;
+        t->arp_pat[p] ^= 0x80u;
+        ui.apat = (uint8_t)p;
+        ui.force = 1;
+    }
+}
+
 static void step_edit(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
@@ -1300,6 +1338,10 @@ static void edit_param(uint32_t slot, int32_t steps)
     if (pg->graph == GR_PATS) {                          /* KNOB 1 the pattern */
         if (slot == 0u)
             ui.ppick = (uint8_t)clamp((int32_t)pat_pick() + steps, 0, (int32_t)pat_count() - 1);
+        return;
+    }
+    if (pg->graph == GR_ARP_PAT) {                       /* Loom: [K1] step, [K2] offset, [K3] play/rest, [K4] reset */
+        arp_pat_knob(slot, steps);
         return;
     }
     if (fop_page(pg->graph)) {                           /* FM6's operators: KNOB 1 OP, 2..4 its bytes (ui_fm6op.c) */
@@ -2076,7 +2118,9 @@ static void ui_input(void)
         slice_keys_pick(notes);
 #endif
     lock_keys();                                        /* (a grid key on a hit let go: the hit goes) */
-    if (song.grid == 3u) {
+    if (arp_pat_on()) {
+        arp_pat_keys(notes);
+    } else if (song.grid == 3u) {
         song_keys(notes);
     } else if (song.grid) {
         grid_keys(notes, steps8_on() != 0);

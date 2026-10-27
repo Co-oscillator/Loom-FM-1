@@ -358,6 +358,9 @@ typedef struct track {
     uint8_t arp_walk;            /* WALK: the place in the note list it stands on */
     uint8_t arp_ch[3];           /* CHORD: the other notes sounding with arp_note, 0 = none */
     uint8_t arp_last;            /* the mode a long [ARP] turned off (Loom): what turning it back on restores */
+    uint8_t arp_pat[16];         /* Loom: the arp pattern, one byte a step. bit 7 = plays, bits 0..3 = the offset
+                                  * from the walk (+8; -8..+7), a rest holds the walk where it is */
+    uint8_t arp_pstep;           /* the pattern step the next arp step plays (0..15) */
     uint32_t arp_off;            /* q8 sample time of its note-off */
     /* sequencer */
     step_t step[NSTEP];

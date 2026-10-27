@@ -211,7 +211,8 @@ static int rec_on(const track_t *t) { return ((song.rec >> trk_index(t)) & 1u) &
  * CONV C G E (outside in); DIVG E G C (inside out); PINKY C G E G (the top note between the others); THUMB
  * C E C G (the bottom one); WALK a random step up or down the list (bouncing off its ends); CHORD all the held
  * notes together (the first 4), an octave higher each step through OCT */
-enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_STAG_UP, AM_STAG_DN, AM_RND, AM_RNDP, AM_BACH, AM_BROWN, AM_CONV, AM_DIVG, AM_COUNT };
+enum { AM_OFF, AM_UP, AM_DN, AM_UPDN, AM_STAG_UP, AM_STAG_DN, AM_RND, AM_RNDP, AM_BACH, AM_BROWN, AM_CONV, AM_DIVG,
+       AM_PAT, AM_COUNT };   /* AM_PAT: the 16-step pattern (Loom, ARP PAT) */
 
 static uint8_t arp_rnd_pat[NTRK][16];
 /* The ARP page's note graph (ui_graph.c graph_arp): the list the arp is walking (the held keys across OCT),
@@ -228,6 +229,7 @@ static void arp_rnd_init(uint32_t trk_idx)
 static void arp_forget(track_t *t)               /* (its notes ended otherwise: trk_all_off) */
 {
     t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = 0;
+    t->arp_pstep = 0;                            /* Loom: the pattern starts with the chord */
 }
 
 /* CHORD's notes. Not inlined: they run once an arp step, and kept out of the audio ISR's loop over the tracks
@@ -488,8 +490,21 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
     if (t->p[P_AMODE] == AM_RNDP && !t->arp_idx) {
         arp_rnd_init(trk_index(t));
     }
-    t->arp_idx++;
-    j = arp_pick(t, list, len);
+    if (t->p[P_AMODE] == AM_PAT) {                      /* Loom: the pattern decides the rhythm and the note */
+        uint8_t c = t->arp_pat[t->arp_pstep & 15u];
+        t->arp_pstep = (uint8_t)((t->arp_pstep + 1u) & 15u);
+        if (!(c & 0x80u)) {                             /* a rest: silent, the walk holds where it is */
+            if (t->arp_note)
+                arp_off(t);
+            return;
+        }
+        t->arp_idx++;
+        j = (uint32_t)(((int32_t)(t->arp_idx - 1u) + (int32_t)(c & 15u) - 8) % (int32_t)len);
+        j = (uint32_t)(((int32_t)j + (int32_t)len) % (int32_t)len);
+    } else {
+        t->arp_idx++;
+        j = arp_pick(t, list, len);
+    }
     arp_viz_len = (uint8_t)(len > 64u ? 64u : len);
     for (uint32_t k = 0; k < arp_viz_len; k++)
         arp_viz_notes[k] = (uint8_t)list[k];

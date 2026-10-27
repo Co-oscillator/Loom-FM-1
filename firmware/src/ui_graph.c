@@ -128,6 +128,42 @@ static void graph_arp(const track_t *t, uint16_t c)
     int32_t lo = 127, hi = 0, top = 16, floor = graph_ht - 4, gap, w;
     char buf[12];
 
+    if (t->p[P_AMODE] == AM_PAT) {                     /* Loom: the 16-step pattern (AREA: the offsets, dots: rests) */
+        int32_t mid = graph_ht / 2 + 6;
+        char b[16];
+        cv_rect(PANEL_X0, mid, PANEL_W, 1, T_LINE);
+        for (i = 0; i < 16u; i++) {
+            uint8_t c = t->arp_pat[i];
+            int32_t off = (int32_t)(c & 15u) - 8;
+            int32_t x = PANEL_X0 + 6 + (int32_t)i * 14;
+            int32_t h = off * 8;
+            int cur = (int32_t)i == (int32_t)(ui.apat & 15u);
+            if (!(c & 0x80u)) {                        /* a rest */
+                cv_rect(x + 3, mid + 3, 5, 3, cur ? c : T_DIM);
+            } else {
+                cv_rect(x + 3, h >= 0 ? mid - h - 4 : mid + 2, 5, h >= 0 ? h + 4 : -h + 2, cur ? c : T_TINT);
+                cv_rect(x + 3, h >= 0 ? mid - h - 6 : mid, 5, 2, cur ? c : T_MID);
+            }
+            if (song.playing && i == t->arp_pstep)
+                cv_rect(x + 2, mid - 2, 7, 5, T_ACCENT);
+            if (cur)                                   /* the cursor step's frame */
+                cv_rect(x + 1, 2, 9, graph_ht - 4, T_RAISE);
+        }
+        {   /* the step and its offset */
+            uint8_t c = t->arp_pat[ui.apat & 15u];
+            uint32_t k = 0, m = 0;
+            char num[6];
+            fmt_int(num, (int32_t)(ui.apat & 15u) + 1);
+            while (num[k] && k < 4) b[k] = num[k], k++;
+            b[k++] = ' ';
+            b[k++] = (char)((c & 0x80u) ? '+' : '-');
+            fmt_int(num, (int32_t)(c & 15u) - 8);
+            while (num[m] && k < 14) b[k++] = num[m++];
+            b[k] = 0;
+            cv_text_in(PANEL_X0 + 2, 2, PANEL_W - 4, &AF_S, b, T_MID, T_BG);
+        }
+        return;
+    }
     if (!t->p[P_AMODE] || !n || !t->nheld) {
         cv_rect(PANEL_X0, graph_ht / 2, PANEL_W, 1, T_LINE);
         cv_text_in(PANEL_X0 + 4, graph_ht / 2 - 12, PANEL_W - 8, &AF_S,
@@ -4099,6 +4135,7 @@ static void draw_graph(void)
             graph_lfo(t, c);
             break;
         case GR_ARP:
+        case GR_ARP_PAT:
             cv_oy = 0;
             graph_arp(t, c);
             break;
