@@ -860,7 +860,9 @@ static void grid_keys(uint32_t pressed, int eight)      /* eight: SEQ > STEP 8x8
             }
             cursor_set((int32_t)i);
         } else if (eight) {
-            continue;                                   /* the black keys only show the bank on the 8x8 page */
+            if (p < 4u)                                 /* black keys 1..4 pick the bank */
+                cursor_move((int32_t)(p * 16u + ui.cursor % 16u));
+            continue;
         } else if (p < NLANE) {
             ui.lane = (uint8_t)p;
         } else if (p != GK_ACC) {
