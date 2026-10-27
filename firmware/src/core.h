@@ -361,6 +361,7 @@ typedef struct track {
     uint8_t arp_pat[16];         /* Loom: the arp pattern, one byte a step. bit 7 = plays, bits 0..3 = the offset
                                   * from the walk (+8; -8..+7), a rest holds the walk where it is */
     uint8_t arp_pstep;           /* the pattern step the next arp step plays (0..15) */
+    uint8_t arp_mode_seen;       /* the mode the last arp step saw: a change to RNDP makes a new pattern */
     uint32_t arp_off;            /* q8 sample time of its note-off */
     /* sequencer */
     step_t step[NSTEP];

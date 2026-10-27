@@ -1336,6 +1336,7 @@ static void track_defaults(track_t *t)
     for (i = 0; i < 16u; i++)
         t->arp_pat[i] = 0x80u;                     /* Loom: every step plays, offset 0 (a straight walk) */
     t->arp_pstep = 0;
+    t->arp_mode_seen = 0xFFu;
     track_defaults_steps(t);
 }
 

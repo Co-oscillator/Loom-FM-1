@@ -230,6 +230,7 @@ static void arp_forget(track_t *t)               /* (its notes ended otherwise: 
 {
     t->arp_note = t->arp_ch[0] = t->arp_ch[1] = t->arp_ch[2] = 0;
     t->arp_pstep = 0;                            /* Loom: the pattern starts with the chord */
+    t->arp_mode_seen = 0xFFu;                    /* .. and RNDP draws a new pattern for it */
 }
 
 /* CHORD's notes. Not inlined: they run once an arp step, and kept out of the audio ISR's loop over the tracks
@@ -487,8 +488,10 @@ static __attribute__((noinline)) void arp_fire(track_t *t, uint32_t period)
             arp_off(t);
         return;
     }
-    if (t->p[P_AMODE] == AM_RNDP && !t->arp_idx) {
-        arp_rnd_init(trk_index(t));
+    if (t->p[P_AMODE] != t->arp_mode_seen) {            /* Loom: a fresh selection of RNDP makes a new pattern */
+        t->arp_mode_seen = (uint8_t)t->p[P_AMODE];
+        if (t->p[P_AMODE] == AM_RNDP)
+            arp_rnd_init(trk_index(t));
     }
     if (t->p[P_AMODE] == AM_PAT) {                      /* Loom: the pattern decides the rhythm and the note */
         uint8_t c = t->arp_pat[t->arp_pstep & 15u];
