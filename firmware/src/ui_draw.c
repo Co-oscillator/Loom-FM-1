@@ -1372,6 +1372,25 @@ static void draw_columns(void)
         }
         return;
     }
+    if (cur_page()->graph == GR_ARP_PAT) {              /* Loom: the pattern page's four cards, with no parameters
+                                                         * behind them (the step, its offset, play/rest, reset) */
+        uint8_t cc = TSEL->arp_pat[ui.apat & 15u];
+        char b[8];
+        unsigned k, m;
+        m = 0;
+        fmt_int(b, (int32_t)(ui.apat & 15u) + 1);
+        k = str_len(b);
+        b[k++] = '/'; b[k++] = '1'; b[k++] = '6'; b[k] = 0;
+        draw_column(0, "STEP", b, "", T_THEME, (int32_t)(ui.apat & 15u) * 1000 / 15, ICON_AUTO);
+        k = (cc & 15u) >= 8u ? 1u : 0u;
+        b[0] = '+';
+        fmt_int(b + k, (int32_t)(cc & 15u) - 8);
+        (void)m;
+        draw_column(1, "OFFSET", b, "", T_THEME, (int32_t)(cc & 15u) * 1000 / 15, ICON_AUTO);
+        draw_column(2, "STATE", (cc & 0x80u) ? "PLAY" : "REST", "", T_THEME, -1, ICON_AUTO);
+        draw_column(3, "RESET", "ALL", "", T_THEME, -1, ICON_AUTO);
+        return;
+    }
     for (c = 0; c < 4u; c++) {
         int16_t *vp;
         const param_desc_t *d = page_desc(cur_page(), c, &vp);

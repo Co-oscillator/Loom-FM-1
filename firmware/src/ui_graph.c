@@ -151,7 +151,7 @@ static void graph_arp(const track_t *t, uint16_t c)
             if (cur)                                   /* the cursor step's frame */
                 cv_rect(x + 1, 2, 9, graph_ht - 4, T_RAISE);
         }
-        if (cur_page()->graph == GR_ARP_PAT) {          /* the knobs (this page has no parameters behind them) */
+        if (0 && cur_page()->graph == GR_ARP_PAT) {     /* (the cards in the header carry these now) */
             char lab[22], num[6];
             uint8_t cc = t->arp_pat[ui.apat & 15u];
             unsigned k = 0, m = 0;
