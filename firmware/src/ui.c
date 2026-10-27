@@ -380,7 +380,7 @@ static int32_t ink_w(const aafont_t *f, const char *s)
 }
 
 /* the quick layers (ui_layer.c): a button held, the keys and KNOB 1..4 are its shortcuts, its map over the page */
-enum { LAYER_NONE, LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT, LAYER_SEQ, LAYER_REC, LAYER_N };
+enum { LAYER_NONE, LAYER_FX, LAYER_GLO, LAYER_SCL, LAYER_EDIT, LAYER_SEQ, LAYER_REC, LAYER_ARP, LAYER_N };
 static void draw_layer(void);
 static const char *layer_head(void);
 static int layer_locked(void);
@@ -554,6 +554,14 @@ static uint32_t note_set_len(track_t *t, uint32_t i, uint32_t want)
  * steps: the grid shows a step's notes on their lanes (eng_drum.c step_lanes) and an edit makes the lane its
  * own (grid_own). Live recording on a DRUM track writes hits (seq.c rec_note) */
 static int grid_on(void) { return !ui.home && !ui.menu && !ui.confirm && cur_page()->graph == GR_ROLL && drum_track(TSEL); }
+/* Loom: SEQ > STEP's 8x8 page (every track). The white keys are the 16 steps of the bank the OCT keys pick, on a
+ * DRUM track as they are on the 4x4 grid; the first 1..4 black keys show which bank. On a melodic track the keys
+ * record into the cursor step, as they do on the roll (ui_input.c) */
+static int steps8_on(void)
+{
+    return !ui.home && !ui.menu && !ui.confirm && song.seq_mode && cur_page()->scope == SC_STEP &&
+           cur_page()->graph == GR_STEPS;
+}
 /* SEQ > DETAIL (1.5.1, Discussion #199; params.c, between STEP and AUTOMATION): a step page as STEP (the cursor, the
  * roll's keys, the grid's lane and page keys), its knobs the cursor step's CHANCE RATCH NUDGE VEL (ui_input.c sd_turn),
  * its panel their lanes (ui_graph.c graph_detail). No state of its own: the page is what says so */

@@ -150,6 +150,47 @@ static uint32_t grid_leds(void)
     return m;
 }
 
+/* Loom: SEQ > STEP's 8x8 page. The bank the white keys address shows on the first 1..4 black keys */
+static uint32_t steps8_bank(void)
+{
+    uint32_t k, m = 0;
+    for (k = 0; k < 27u; k++)
+        if (key_black(k) && key_place(k) < 4u)
+            m |= (uint32_t)(key_place(k) <= ui.bank) << k;
+    return m;
+}
+/* .. on a DRUM track: the 16 steps of the bank (white, the selected lane's hits or accents) and ACC (black 9) */
+static uint32_t steps8_leds(void)
+{
+    const track_t *t = TSEL;
+    uint32_t k, m = steps8_bank(), len = (uint32_t)t->p[P_SLEN], b = 1u << ui.lane;
+    uint32_t acc = black_held(GK_ACC);
+    uint32_t ph = song.playing && t->seq_idx < len && t->seq_idx / 16u == ui.bank ? t->seq_idx % 16u : 0xFFu;
+    for (k = 0; k < 27u; k++) {
+        uint32_t p = key_place(k), i = ui.bank * 16u + p, on;
+        if (key_black(k)) {
+            if (p == GK_ACC)
+                m |= (uint32_t)acc << k;
+            continue;
+        }
+        on = i < len && ((acc ? step_accents(&seq_steps(t)[i]) : step_lanes(&seq_steps(t)[i])) & b) != 0u;
+        on ^= (uint32_t)(p == ph);
+        m |= on << k;
+    }
+    return m;
+}
+/* .. the keys that do something there glow, as the DRUM grid's do */
+static uint32_t steps8_glow(void)
+{
+    const track_t *t = TSEL;
+    uint32_t k, m = 0, len = (uint32_t)t->p[P_SLEN];
+    for (k = 0; k < 27u; k++) {
+        uint32_t p = key_place(k);
+        m |= (uint32_t)(!key_black(k) ? ui.bank * 16u + p < len : p <= ui.bank || p == GK_ACC) << k;
+    }
+    return m;
+}
+
 /* the DRUM grid's beats, bit k = key k (ui_leds: a steady brighter glow than the other steps', hal/fm1_input.h
  * fm1_led_mid): the first step of each group of four on the page shown, steps 1 5 9 13 of 16 ("5111 5111 5111 5111"),
  * within LEN, where grid_leds shows no hit (the lane's, its accents while ACC is held) and not the playhead. Always
@@ -248,8 +289,8 @@ static uint32_t step_leds(void)
     const track_t *t = TSEL;
     const step_t *st;
     uint32_t i, k, note, used = 0, m = 0;
-    if (ui.home || ui.menu || ui.confirm || !song.seq_mode || cur_page()->graph != GR_ROLL || song.playing ||
-        chain_busy() || ui.cursor >= NSTEP)
+    if (ui.home || ui.menu || ui.confirm || !song.seq_mode || (cur_page()->graph != GR_ROLL && !steps8_on()) ||
+        song.playing || chain_busy() || ui.cursor >= NSTEP)
         return 0;
     st = &t->step[ui.cursor];
     if (!st->n || st->time == ST_REST)
@@ -269,7 +310,7 @@ static uint32_t step_leds(void)
  * dark; 0: the keys held and the notes playing, over the idle glow */
 static int keys_own(void)
 {
-    return (name_on() && !ui.menu) || ui.layer || grid_on()
+    return (name_on() && !ui.menu) || ui.layer || grid_on() || (steps8_on() && drum_track(TSEL))
 #if FELUCCA_SLICE
            || (!ui.menu && !name_on() && slice_page_on())
 #endif
@@ -340,8 +381,11 @@ static uint32_t key_leds(uint32_t *br)                 /* (*br: a layer's keys t
     uint32_t c;
     if (br)
         *br = 0;
-    c = name_on() && !ui.menu ? name_leds() : ui.layer ? layer_leds(br) : grid_on() ? grid_leds() :
+    c = name_on() && !ui.menu ? name_leds() : ui.layer ? layer_leds(br) :
+        grid_on() ? grid_leds() : (steps8_on() && drum_track(TSEL)) ? steps8_leds() :
                  (fm1_in.notes & ~kb_layer) | play_leds() | step_leds() | (song_keys_on() ? song_leds() : 0u);
+    if (steps8_on() && !drum_track(TSEL))
+        c |= steps8_bank();                             /* melodic: the keys still play, the bank shows too */
 #if FELUCCA_SLICE
     if (!ui.layer && !ui.menu && !name_on() && slice_page_on())
         c |= slice_leds();                              /* SLICES: and the keys of the selected slice */
@@ -397,7 +441,8 @@ static void ui_leds(void)
     led_put(nb, panel.btn[B_OCTUP], (int)(k & OCT_BREATH));
     led_put(nb, panel.btn[B_OCTDN], (k & OCT_BREATH_DN) != 0u);
     c = key_leds(&br);
-    g = !keys_map ? 0u : grid_on() && !ui.layer && !name_on() ? grid_glow() : 0u;   /* (key_leds: the grid's map) */
+    g = !keys_map ? 0u : grid_on() && !ui.layer && !name_on() ? grid_glow() :
+        (steps8_on() && drum_track(TSEL) && !ui.layer && !name_on()) ? steps8_glow() : 0u;   /* (key_leds: the map) */
     beat = g ? grid_beats() & ~c : 0u;                  /* (the grid's empty beat starts: brighter than the glow) */
     sc = keys_map ? 0u : scale_leds(&sr);               /* SCALE LEDS: the scale's keys glow, the root's brighter */
     for (k = 0; k < 27u; k++) {
@@ -782,7 +827,7 @@ static void step_edit_opt(track_t *t, int32_t steps)
 
 /* the keys on the grid (presses): a white key toggles the selected lane at its step of the page (its accent
  * while ACC is held) and puts the cursor there; a lane key selects the lane (seq.c plays it); the page keys */
-static void grid_keys(uint32_t pressed)
+static void grid_keys(uint32_t pressed, int eight)      /* eight: SEQ > STEP 8x8 (black keys show the bank) */
 {
     uint32_t k, len = (uint32_t)TSEL->p[P_SLEN];
     for (k = 0; k < 27u; k++) {
@@ -814,6 +859,8 @@ static void grid_keys(uint32_t pressed)
                 }
             }
             cursor_set((int32_t)i);
+        } else if (eight) {
+            continue;                                   /* the black keys only show the bank on the 8x8 page */
         } else if (p < NLANE) {
             ui.lane = (uint8_t)p;
         } else if (p != GK_ACC) {
@@ -1992,6 +2039,12 @@ static void ui_input(void)
                     ui_message(ui.seq_8x8 ? "GRID: 8x8 VIEW" : "GRID: 4x4 VIEW");
                     ui.force = 1;
                 }
+            } else if (steps8_on()) {                   /* Loom: the bank the keys address, not the octave */
+                int32_t nb = clamp((int32_t)ui.bank + (b == B_OCTDN ? -1 : 1), 0, 3);
+                if (nb != (int32_t)ui.bank) {
+                    cursor_move((int32_t)((uint32_t)nb * 16u + ui.cursor % 16u));
+                    ui.force = 1;
+                }
             } else
                 song.octave += b == B_OCTDN ? (song.octave > -3 ? -1 : 0) : (song.octave < 3 ? 1 : 0);
             break;
@@ -2026,8 +2079,8 @@ static void ui_input(void)
     if (song.grid == 3u) {
         song_keys(notes);
     } else if (song.grid) {
-        grid_keys(notes);
-    } else if (song.seq_mode && cur_page()->graph == GR_ROLL) {   /* STEP */
+        grid_keys(notes, steps8_on() != 0);
+    } else if (song.seq_mode && (cur_page()->graph == GR_ROLL || steps8_on())) {   /* STEP (roll, 8x8) */
         if (live_rec_sel() || !((song.rec >> song.sel) & 1u))   /* armed and playing: the keys record live, not
                                                          * into the cursor step too; not armed (1.2, #133): they
                                                          * only play, being on STEP writes nothing */

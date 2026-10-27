@@ -63,8 +63,9 @@ static const layer_t LAYERS[LAYER_N] = {
     {B_EDIT, LK_SET, FAM_HOME, "[EDIT] SET", {{KC_KEYS, "ENGINE"}, {KC_OCTDN, "UNDO"}, {KC_EDIT, "DONE"}}},
     {B_SEQ, LK_SET, FAM_SEQ, "[SEQ] TOOLS", {{KC_KEYS, "TOOLS"}, {KC_OCTDN, "UNDO"}, {KC_SEQ, "DONE"}}},
     {B_REC, LK_SET, FAM_HOME, "[REC] SET", {{KC_KEYS, "RECORDING"}, {KC_OCTDN, "UNDO"}, {KC_REC, "DONE"}}},
+    {B_ARP, LK_HOLD, FAM_ARP, "[ARP] HOLD", {{KC_KEYS, "MODE"}, {KC_ARP, "ON / OFF"}, {0, 0}}},   /* (let go: toggles) */
 };
-static const uint8_t LY_KC[LAYER_N] = {0, KC_FX, KC_GLO, KC_SCL, KC_EDIT, KC_SEQ, KC_REC};
+static const uint8_t LY_KC[LAYER_N] = {0, KC_FX, KC_GLO, KC_SCL, KC_EDIT, KC_SEQ, KC_REC, KC_ARP};
 /* SCL's knobs: the key and its chord (cur_page() while the layer edits or draws them: page_over) */
 static const page_t LY_SCL = {"SCL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_CHRD, P_VOIC}};
 /* SEQ TOOLS' knobs: LEN DIV SWING GATE (the length the tools work in; up to 1.1.5 the PATTERN page's) */
@@ -89,6 +90,7 @@ static struct {
     uint8_t cook;                      /* SEQ: COOK pressed since it opened */
     uint8_t rp_dirty;                  /* REC: a setting changed (settings_save when the layer lets go); FX: the key map */
     uint8_t fxk;                       /* FX: the white key pressed last in the layer (+ 1; 0 none): PRESETS assigns it */
+    uint8_t ak;                        /* ARP: a mode key was pressed (letting go then does not toggle) */
     uint8_t mute[NTRK];                /* EDIT: the DRUM lanes' mutes when it opened (eng_drum.c drum_mute; OCT-) */
     uint32_t eqh;                      /* EDIT: the keys (bits 0..26) of the HOLD quick actions held */
     int16_t v[11];                     /* the values when it opened: GLO mutes, levels, BPM; SCL ROOT..TRN, CHRD VOIC;
@@ -234,6 +236,7 @@ static void layer_opened(uint32_t l)
     lys.trk = song.sel;
     lys.loaded = 0;
     lys.cook = 0;
+    lys.ak = 0;
     if (l == LAYER_SEQ || l == LAYER_REC) {             /* the track as it is now (OCT-) */
         memcpy(tl_open.step, TSEL->step, sizeof tl_open.step);
         motion_snapshot_track(TSEL, &tl_open.mo);
@@ -259,6 +262,19 @@ static void layer_opened(uint32_t l)
         lys.v[0] = ui_rec_prefs;
 }
 
+/* Loom: a long [ARP] turns the track's arpeggiator off, and back on to the mode it was (UP the first time) */
+static void arp_toggle(void)
+{
+    track_t *t = TSEL;
+    if (t->p[P_AMODE]) {
+        t->arp_last = (uint8_t)t->p[P_AMODE];
+        t->p[P_AMODE] = 0;
+    } else
+        t->p[P_AMODE] = (int16_t)(t->arp_last && t->arp_last < AM_COUNT ? t->arp_last : AM_UP);
+    ui_message(t->p[P_AMODE] ? "ARP ON" : "ARP OFF");
+    ui.force = 1;
+}
+
 /* the armed button: 0, or the layer whose button was tapped (let go) */
 static uint32_t layer_gesture(uint32_t now, uint32_t combo)
 {
@@ -277,6 +293,9 @@ static uint32_t layer_gesture(uint32_t now, uint32_t combo)
         }
         return 0;
     }
+    if (ui.ly == LAYER_ARP && (*t0 & LY_OPEN) && !(*t0 & (LY_COMBO | LY_DEAD)) && !lys.ak && !lys.dtap)
+        arp_toggle();                                   /* Loom: held and let go with no mode key: on / off */
+    lys.ak = 0;
     l = *t0 & (LY_OPEN | LY_DEAD) || combo ? 0u : l;   /* (a knob turned as it was let go: a combo, no tap) */
     if (l && lys.dtap) {                                /* #83: a double tap: locked open (no tap) */
         lys.dtap = 0;
@@ -641,6 +660,13 @@ static void layer_key(uint32_t l, uint32_t k)
         } else if (p == 7u) {
             glo_tap();
         }
+    } else if (l == LAYER_ARP) {
+        if (!key_black(k) && p < AM_COUNT) {                /* white keys 1..12: the arp's modes */
+            TSEL->p[P_AMODE] = (int16_t)p;
+            lys.ak = 1;
+            ui_message(N_AMODE[p]);
+            ui.force = 1;
+        }
     } else if (l == LAYER_SCL) {
         if (key_black(k))
             TSEL->p[P_ROOT] = (int16_t)((k + 5u) % 12u);    /* black keys: ROOT note; white keys: chords 1..8 */
@@ -842,6 +868,9 @@ static uint32_t layer_leds(uint32_t *br)
         } else if (l == LAYER_EDIT && (a = eqa_of(TSEL, p)) != 0) {   /* the quick actions: on lit (DRUM: sounding), */
             on = a->on(TSEL, a->arg) != 0u;             /* a HOLD one off breathes, none dark */
             can = a->kind == LK_HOLD;
+        } else if (l == LAYER_ARP && !b) {              /* the modes: the one in effect lit, the others breathe */
+            on = p < AM_COUNT && p == (uint32_t)TSEL->p[P_AMODE];
+            can = p < AM_COUNT;
         } else if (l == LAYER_SEQ) {                    /* the tools breathe (not while a song plays); DRUM: the lane */
             on = b && p < NLANE && drum_track(TSEL) && p == ui.lane;   /* lit, the other lanes breathe */
             can = b ? p < NLANE && drum_track(TSEL) : tl_cell(TSEL, p) && !chain_busy();
