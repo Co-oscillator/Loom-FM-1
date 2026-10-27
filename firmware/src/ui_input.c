@@ -1120,7 +1120,9 @@ static void step_target_turn(track_t *t, int32_t steps)
 /* Loom: SEQ's keys muted while the ARP pattern page is up (keys_mode: 2), so the white keys edit it */
 static int arp_pat_on(void)
 {
-    return !ui.home && !ui.menu && !ui.confirm && !ui.layer && !name_on() && cur_page()->graph == GR_ARP_PAT;
+    return !ui.home && !ui.menu && !ui.confirm && !ui.layer && !name_on() &&
+           (cur_page()->graph == GR_ARP_PAT ||
+            (cur_page()->graph == GR_ARP && TSEL->p[P_AMODE] == AM_PAT));   /* the keys edit it from either page */
 }
 static void arp_pat_knob(uint32_t slot, int32_t steps)
 {

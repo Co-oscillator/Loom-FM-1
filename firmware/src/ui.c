@@ -561,8 +561,7 @@ static int grid_on(void) { return !ui.home && !ui.menu && !ui.confirm && cur_pag
  * record into the cursor step, as they do on the roll (ui_input.c) */
 static int steps8_on(void)
 {
-    return !ui.home && !ui.menu && !ui.confirm && song.seq_mode && cur_page()->scope == SC_STEP &&
-           cur_page()->graph == GR_STEPS;
+    return !ui.home && !ui.menu && !ui.confirm && song.seq_mode && cur_page()->graph == GR_STEPS;
 }
 /* SEQ > DETAIL (1.5.1, Discussion #199; params.c, between STEP and AUTOMATION): a step page as STEP (the cursor, the
  * roll's keys, the grid's lane and page keys), its knobs the cursor step's CHANCE RATCH NUDGE VEL (ui_input.c sd_turn),
