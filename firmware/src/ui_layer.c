@@ -1227,11 +1227,11 @@ static void layer_cards(uint32_t l)
 static void draw_layer(void)
 {
     uint32_t l = ui.layer % LAYER_N, sig = l * 7919u + ux.gen * 977u;
-    if (l == LAYER_ARP) {                               /* Loom: the modes on the keys, the one in effect named */
-        char b[24];
-        str_cpy(b, "MODE ", sizeof b);
-        str_cpy(b + 5, N_AMODE[clamp(TSEL->p[P_AMODE], 0, AM_COUNT - 1)], sizeof b - 5);
-        panel_note(b, "KEYS: SET A MODE   LET GO: ON / OFF", 0);
+    if (l == LAYER_ARP) {                               /* Loom: the modes are on the keys; name the one in effect */
+        layer_cards(l);
+        cv_text(8, 40, &AF_S, "ARP MODE", T_MID);
+        cv_text(8, 58, &AF_M, N_AMODE[clamp(TSEL->p[P_AMODE], 0, AM_COUNT - 1)], T_THEME);
+        cv_text(8, 84, &AF_S, "WHITE KEYS: SET    LET GO: ON / OFF", T_MID);
         return;
     }
     static uint8_t fx_foot;                             /* FX: the footer for a key held (PRESETS ASSIGN, EDIT DEFAULT) */
