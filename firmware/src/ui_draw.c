@@ -1577,8 +1577,8 @@ static void draw_splash(void)
     /* Subtitle in AF_S */
     cv_text_in(0, 56, 240, &AF_S, "G R O O V E B O X", RGB(160, 165, 175), T_BG);
 
-    /* Device tagline */
-    cv_text_in(0, 78, 240, &AF_S, "Loom v0.1  -  FM-1", RGB(85, 90, 100), T_BG);
+    /* Device tagline: the build's version, so --release shows on the splash too */
+    cv_text_in(0, 78, 240, &AF_S, "Loom " FELUCCA_VERSION "  -  FM-1", RGB(85, 90, 100), T_BG);
 
     cv_blit(0, 120);
     lcd_sync();

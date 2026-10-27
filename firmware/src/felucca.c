@@ -32,7 +32,7 @@
 #define FELUCCA_ID "FM-1_985"    /* Loom FM-1 unique package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "Loom v0.1" /* shown in the menu, the console and the editor */
+#define FELUCCA_VERSION "v0.1" /* shown in the menu, the console, the editor and the splash; build.py --release sets it */
 #endif
 #if FELUCCA_OTA && !FELUCCA_FLASH
 #error "FELUCCA_OTA needs FELUCCA_FLASH"
