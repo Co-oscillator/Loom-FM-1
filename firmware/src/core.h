@@ -92,6 +92,14 @@ enum {                          /* per-track parameters */
 #define P_POCT  P_FM4_DEC
 #define P_PHOLD P_FM4_SUS
 #define P_SHUMAN P_FM4_REL
+/* Loom: the FILTER envelope (voice.c) - five values of the retired DIGITAL operator ids, as the chord
+ * progression above. Their defaults are the operator envelope's (ATK 0, DEC 0, SUS 127, REL 0), and F AMT
+ * sits on an operator attack whose stored value is 0, so a project from before this sounds unchanged */
+#define P_FATK P_FM1_ATK
+#define P_FDEC P_FM1_DEC
+#define P_FSUS P_FM1_SUS
+#define P_FREL P_FM1_REL
+#define P_FAMT P_FM2_ATK
 
 enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
@@ -173,8 +181,10 @@ enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
 typedef struct {
     uint8_t note, vel, gate, active;
     uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release */
+    uint8_t fstage;              /* the FILTER envelope (Loom): the same stages */
     uint8_t side;                /* SPREAD (fx.c mix_spread): 0 left of PAN, 1 right; set as the voice starts */
     int32_t env;                 /* Q24 */
+    int32_t fenv;                /* Q24, the FILTER envelope */
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
     int32_t gstep;               /* glide TIME mode: 1/16 st per control tick, 0 = RATE mode */

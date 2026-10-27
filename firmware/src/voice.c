@@ -148,6 +148,7 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
 {
     v->gate = 0;
     v->stage = 4;
+    v->fstage = 4;
     voice_kills++;
 }
 
@@ -268,6 +269,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->gate = 1;
     v->active = 1;
     v->stage = 1;
+    v->fstage = 1;
     v->age = ++vage;
     v->pitch16 = (int32_t)note * 16;
     v->mvel = t->m_vel;                                 /* mod.c: the note's VEL and RAND */
@@ -277,6 +279,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     if (!sounding) {
         v->env = 0;
         v->env_out = 0;
+        v->fenv = 0;
         v->side = t->sp_alt;                            /* SPREAD: left, right, left .. (UNISON: mono_play); a */
         t->sp_alt ^= 1u;                                /* sounding voice keeps its side (no jump) */
     }                                                   /* sounding: the attack starts from the current level */
@@ -428,6 +431,7 @@ static void trk_note_off(track_t *t, uint32_t note)
                     if (t->v[i].gate) {
                         t->v[i].gate = 0;
                         t->v[i].stage = 3;
+                        t->v[i].fstage = 3;
                     }
                 t->mono_note = 0;
             }
@@ -437,6 +441,7 @@ static void trk_note_off(track_t *t, uint32_t note)
         if (t->v[i].note == note && t->v[i].gate) {
             t->v[i].gate = 0;
             t->v[i].stage = 3;
+            t->v[i].fstage = 3;
         }
 }
 
@@ -446,6 +451,7 @@ static void trk_all_off(track_t *t)
     for (i = 0; i < NVOICE; i++) {
         t->v[i].gate = 0;
         t->v[i].stage = t->v[i].active ? 3 : 0;
+        t->v[i].fstage = t->v[i].active ? 3 : 0;
     }
     t->nmono = 0;
     t->mono_note = 0;
@@ -478,7 +484,9 @@ static void engine_block(track_t *t)
             voice_t *v = &t->v[i];
             v->active = v->gate = 0;
             v->stage = 0;
+            v->fstage = 0;
             v->env = v->env_out = 0;
+            v->fenv = 0;
         }
         t->engine = eng_idx(t->eng_req);
         eng_mem_claim(t);                               /* its state region, before the waiting notes */
@@ -508,6 +516,7 @@ static void engine_block(track_t *t)
 static uint32_t beat_samples(void);                /* (fx.c) */
 _Static_assert(CTL == 32, "esync_one: 4.6 CTL in Q16 is 9646899");
 static uint32_t esync_k[3];      /* ATK's step, DEC's and REL's coefficient (Q16): the part's, this block (env_tick) */
+static uint32_t esync_kf[3];     /* the same for the FILTER envelope (Loom; P_FATK .. P_FREL) */
 static uint32_t esync_one(uint32_t quarter, int32_t v, uint32_t i)
 {
     uint32_t u = ESYNC_UNITS[esync_idx(v)], T = quarter * u / 96u, x, x2, x3, x4;   /* T: samples */
@@ -533,10 +542,16 @@ static __attribute__((noinline)) void esync_coef(const track_t *t)   /* (not inl
         esync_k[0] = esync_one(q, p[P_ATK], 0);
         esync_k[1] = esync_one(q, p[P_DEC], 1);
         esync_k[2] = esync_one(q, p[P_REL], 2);
+        esync_kf[0] = esync_one(q, p[P_FATK], 0);
+        esync_kf[1] = esync_one(q, p[P_FDEC], 1);
+        esync_kf[2] = esync_one(q, p[P_FREL], 2);
     } else {                                            /* OFF: the tables, as always */
         esync_k[0] = ENV_LIN[p[P_ATK] & 127];
         esync_k[1] = ENV_EXP[p[P_DEC] & 127];
         esync_k[2] = ENV_EXP[p[P_REL] & 127];
+        esync_kf[0] = ENV_LIN[p[P_FATK] & 127];
+        esync_kf[1] = ENV_EXP[p[P_FDEC] & 127];
+        esync_kf[2] = ENV_EXP[p[P_FREL] & 127];
     }
 }
 
@@ -574,6 +589,41 @@ static int32_t env_tick(track_t *t, voice_t *v)
         break;
     }
     return v->env >> 9;
+}
+
+/* one control tick of the FILTER envelope (Loom): the amplitude envelope's shape with its own times and
+ * sustain. Its release never ends the voice - the amplitude envelope does that. Returns Q15. */
+static int32_t fenv_tick(track_t *t, voice_t *v)
+{
+    const int16_t *p = t->p;
+    int32_t sus = (int32_t)p[P_FSUS] << 17;             /* Q24 */
+    switch (v->fstage) {
+    case 1:
+        v->fenv += (int32_t)esync_kf[0];
+        if (v->fenv >= (1 << 24)) {
+            v->fenv = 1 << 24;
+            v->fstage = 2;
+        }
+        break;
+    case 2:
+        v->fenv += mulq16(sus - v->fenv, esync_kf[1]);
+        break;
+    case 3:
+        v->fenv -= mulq16(v->fenv, esync_kf[2]);
+        if (v->fenv < (1 << 12)) {
+            v->fenv = 0;
+            v->fstage = 0;
+        }
+        break;
+    case 4:
+        v->fenv = 0;
+        v->fstage = 0;
+        break;
+    default:
+        v->fenv = 0;
+        break;
+    }
+    return v->fenv >> 9;
 }
 
 /* SPREAD (#148, fx.c mix_spread): while spread_on (mix_part sets it for the part it renders), track_render renders the
@@ -638,11 +688,12 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     for (i = 0; i < NVOICE; i++) {
         voice_t *v = &t->v[i];
         vmod_t m;
-        int32_t env, pitch;
+        int32_t env, pitch, fq15;
         if (!v->active)
             continue;
         {
             env = env_tick(t, v);
+            fq15 = fenv_tick(t, v);                     /* the FILTER envelope (Loom) */
             if (e->ownenv && v->active) {               /* the engine's envelopes (FM6): they end the voice */
                 if (e->done(t, v)) {
                     v->active = v->gate = 0;
@@ -679,7 +730,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         m.fine = v->fine + tune_fine + bend_fine;
         if (v->fine + tune_fine + bend_fine)             /* residual below 1/16 semitone */
             m.inc += (uint32_t)((int32_t)(m.inc >> 12) * (v->fine + tune_fine + bend_fine));
-        m.cutoff = ((lfo * p[P_LD_FLT]) >> 7) + ((m.envq15 * p[P_ED_FLT]) >> 7);
+        m.cutoff = ((lfo * p[P_LD_FLT]) >> 7) + ((m.envq15 * p[P_ED_FLT]) >> 7) + ((fq15 * p[P_FAMT]) >> 7);
         if (v->vel > 110)                               /* accent opens the filter with the env */
             m.cutoff += (m.envq15 * 24) >> 7;
         m.shape = (64 << 8) + ((lfo * p[P_LD_SHP]) >> 7) + ((m.envq15 * p[P_ED_SHP]) >> 7);

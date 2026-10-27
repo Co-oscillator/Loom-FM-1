@@ -86,6 +86,14 @@ static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-",
 
 #define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
 #define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
+/* Loom: the FILTER envelope's four times and its depth to the cutoff (voice.c). ATK DEC SUS REL keep the
+ * operator envelope's defaults, and F AMT is 0, so a patch from before the filter envelope sounds unchanged;
+ * ENV SYNC shows the times as note values, as it does for the amplitude envelope */
+static const param_desc_t FILT_DESC[5] = {
+    PD("ATK", F_TIME, 0, 127, 0), PD("DEC", F_TIME, 0, 127, 0),
+    PD("SUS", F_PCT, 0, 127, 127), PD("REL", F_TIME, 0, 127, 0),
+    PD("F AMT", F_BIPCT, -64, 63, 0),
+};
 
 static const param_desc_t TP[P_COUNT] = {
     [P_LEVEL] = PD("LVL", F_DB, 0, 127, 104),
@@ -263,6 +271,11 @@ static const param_desc_t *track_desc(const track_t *t, uint32_t id)
         return ins_desc(t->p[P_ITYPE], id - P_IA);
     if (t->p[P_ESYNC] && (id == P_ATK || id == P_DEC || id == P_REL))   /* ENV SYNC: note values (1.5, #175) */
         return &ESYNC_DESC[id == P_ATK ? 0 : id == P_DEC ? 1 : 2];
+    if (id >= P_FATK && id <= P_FAMT) {                /* the FILTER envelope (Loom): its own four and its depth */
+        if (t->p[P_ESYNC] && id != P_FAMT && id != P_FSUS)
+            return &ESYNC_DESC[id == P_FATK ? 0 : id == P_FDEC ? 1 : 2];
+        return &FILT_DESC[id - P_FATK];
+    }
     return &TP[id];
 }
 
@@ -270,6 +283,8 @@ static const param_desc_t *track_desc(const track_t *t, uint32_t id)
  * only; range and default are the same): what the editor protocol, user presets and projects use */
 static const param_desc_t *param_desc_of(uint32_t e, uint32_t id)
 {
+    if (id >= P_FATK && id <= P_FAMT)                 /* Loom: the FILTER envelope's ids (retired DIGITAL ones) */
+        return &FILT_DESC[id - P_FATK];
     return id >= P_E0 ? &ENGINES[e]->edit[id - P_E0] : &TP[id];
 }
 
@@ -509,9 +524,10 @@ typedef struct {
 } page_t;
 
 static const page_t PAGES[] = {
-    {"ENV", FAM_ENV, SC_TRACK, GR_ADSR, {P_ATK, P_DEC, P_SUS, P_REL}},
-    {"ENV DEST", FAM_ENV, SC_TRACK, GR_NONE, {P_ED_FLT, P_ED_PIT, P_ED_SHP, P_ESYNC}},   /* (P_ED_FX: nothing reads it);
-                                                                             * 1.5: ESYNC, ENV's times as note values */
+    {"AMP ENV", FAM_ENV, SC_TRACK, GR_ADSR, {P_ATK, P_DEC, P_SUS, P_REL}},       /* Loom: the two envelopes have */
+    {"FILT ENV", FAM_ENV, SC_TRACK, GR_ADSR, {P_FATK, P_FDEC, P_FSUS, P_FREL}},  /* a page each, and ENV DEST the */
+    {"ENV DEST", FAM_ENV, SC_TRACK, GR_NONE, {P_ED_FLT, P_ED_PIT, P_ED_SHP, P_FAMT}},   /* amounts either one sends */
+    {"ENV SYNC", FAM_ENV, SC_TRACK, GR_NONE, {P_ESYNC, 0xFF, 0xFF, 0xFF}},      /* (1.5: ENV's times as note values) */
     {"LFO", FAM_LFO, SC_TRACK, GR_LFO, {P_LRATE, P_LWAVE, P_LSYNC, P_LFADE}},
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LTRIG, P_LPOL, P_LPHASE, 0xFF}},   /* 1.2: TRIG POL PHS */
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_LFO, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
