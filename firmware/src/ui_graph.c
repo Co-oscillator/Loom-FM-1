@@ -1204,7 +1204,7 @@ static void graph_chorus(uint16_t c)
     /* 3. Sine wave on right side: density scales visibly with RATE from 1.0 to 10.0 full cycles */
     int32_t x_start = 98, x_end = 226, wave_w = x_end - x_start;
     int32_t amp = 3 + (depth * 30) / 127;
-    uint32_t lfo_inc = 0x02000000u + ((uint32_t)rate * 0x12000000u) / 127u;
+    uint32_t lfo_inc = (1u << 25) + ((uint32_t)rate * 0x12000000u) / 127u;   /* (1u << 25): a phase step, written so it is not read as a register address */
     uint32_t ph_anim = (ui.frame * 0x02800000u);
     int32_t prev_wx = x_start, prev_wy = y0;
     for (int32_t x = x_start; x <= x_end; x++) {

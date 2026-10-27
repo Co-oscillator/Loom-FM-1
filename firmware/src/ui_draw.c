@@ -1318,7 +1318,14 @@ static void draw_columns(void)
             if (st->time == ST_NOTE && st->n > 0) {
                 int32_t j = ((int32_t)st->note[0] - SLC_BASE - TSEL->p[P_ROOT]) % (int32_t)max_slc;
                 if (j < 0) j += max_slc;
-                snprintf(tgt_val, sizeof(tgt_val), "SLC %d", (int)(j + 1));
+                {   /* no snprintf in the firmware's libc: "SLC n" by hand */
+                    char slc_n[6];
+                    unsigned n = 0, k = 0;
+                    fmt_int(slc_n, (int32_t)(j + 1));
+                    while ("SLC "[n]) { tgt_val[n] = "SLC "[n]; n++; }
+                    while (slc_n[k] && n + 1 < sizeof(tgt_val)) tgt_val[n++] = slc_n[k++];
+                    tgt_val[n] = 0;
+                }
                 tgt_active = 1;
             }
         } else if (drum_track(TSEL)) {

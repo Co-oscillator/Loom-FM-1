@@ -293,8 +293,9 @@ static void sample_tempo_sync(track_t *t, int sync_idx)
     uint32_t start_pct = (uint32_t)clamp(t->p[P_E5], 0, 100);
     uint32_t end_pct = (uint32_t)clamp(t->p[P_E6], 0, 100);
     if (end_pct <= start_pct) end_pct = 100u;
-    uint32_t start_pos = (uint32_t)((uint64_t)z->n * start_pct / 100u);
-    uint32_t end_pos = (uint32_t)((uint64_t)z->n * end_pct / 100u);
+    /* 32-bit safe: the toolchain has no __udivdi3, and a 64-bit divide by a variable needs it */
+    uint32_t start_pos = (z->n / 100u) * start_pct + ((z->n % 100u) * start_pct) / 100u;
+    uint32_t end_pos = (z->n / 100u) * end_pct + ((z->n % 100u) * end_pct) / 100u;
     uint32_t n_samples = (end_pos > start_pos) ? (end_pos - start_pos) : z->n;
     if (!n_samples)
         return;
@@ -306,9 +307,11 @@ static void sample_tempo_sync(track_t *t, int sync_idx)
     if (!stepq) stepq = 65536u;
 
     uint32_t s_target = (steps * 661500u) / bpm;
-    uint64_t num = (uint64_t)s_target * (uint64_t)stepq * 100ULL;
-    uint64_t den = (uint64_t)n_samples * 65536ULL;
-    uint32_t strch = (uint32_t)(num / (den ? den : 1ULL));
+    /* STRCH = s_target * stepq * 100 / (n_samples * 65536). Fold the 65536 into the
+       product (stepq is a Q16 rate) so the only division left is 32-bit: a 64-bit
+       divide by a variable would need __udivdi3, which this toolchain does not have. */
+    uint32_t rate_q16 = (uint32_t)(((uint64_t)s_target * (uint64_t)stepq) >> 16);
+    uint32_t strch = (uint32_t)((rate_q16 * 100u) / (n_samples ? n_samples : 1u));
 
     t->p[P_E4] = (int16_t)clamp((int32_t)strch, 25, 400);
 }

@@ -610,9 +610,10 @@ static void slice_tempo_sync(track_t *t, int sync_idx)
     if (!stepq) stepq = 65536u;
 
     uint32_t s_target = (steps * 661500u) / bpm;
-    uint64_t num = (uint64_t)s_target * (uint64_t)stepq * 100ULL;
-    uint64_t den = (uint64_t)s->len * 65536ULL;
-    uint32_t strch = (uint32_t)(num / (den ? den : 1ULL));
+    /* as in eng_sample.c: fold the Q16 rate before the divide, so no 64-bit divide by a
+       variable (the toolchain has no __udivdi3) */
+    uint32_t rate_q16 = (uint32_t)(((uint64_t)s_target * (uint64_t)stepq) >> 16);
+    uint32_t strch = (uint32_t)((rate_q16 * 100u) / (s->len ? s->len : 1u));
 
     t->p[P_E4] = (int16_t)clamp((int32_t)strch, 25, 400);
 }

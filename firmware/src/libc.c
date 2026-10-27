@@ -2,6 +2,39 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* The few libc routines the compiler may call implicitly (struct copies,
  * zeroing). Freestanding: no other libc. */
+/* 64-bit division helpers. The pi32v2 build links no libgcc, so a 64-bit
+ * divide by a value the compiler cannot fold becomes a call to these; without
+ * them the link fails with "undefined reference to __udivdi3". Shift/subtract
+ * only, so they add no further libcalls. (Values here are small for the
+ * unsigned case: d <= 2^63 keeps r << 1 in range.) */
+unsigned long long __udivdi3(unsigned long long n, unsigned long long d)
+{
+    unsigned long long q = 0, r = 0;
+    int i;
+    if (!d)
+        return 0;
+    for (i = 63; i >= 0; --i) {
+        r = (r << 1) | ((n >> i) & 1ULL);
+        if (r >= d) {
+            r -= d;
+            q |= 1ULL << i;
+        }
+    }
+    return q;
+}
+unsigned long long __umoddi3(unsigned long long n, unsigned long long d)
+{
+    unsigned long long r = 0;
+    int i;
+    if (!d)
+        return 0;
+    for (i = 63; i >= 0; --i) {
+        r = (r << 1) | ((n >> i) & 1ULL);
+        if (r >= d)
+            r -= d;
+    }
+    return r;
+}
 void *memset(void *d, int c, unsigned n)
 {
     unsigned char *p = d;
