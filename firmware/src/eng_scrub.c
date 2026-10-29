@@ -14,6 +14,7 @@ typedef struct {
     int64_t pos;                /* current playback position in Q16 sample frames */
     int64_t target_pos;         /* target position in Q16 sample frames */
     int64_t smoothed_target;    /* smoothed target position in Q16 sample frames */
+    int64_t move_span;          /* how far the last POS move asked the playhead to go (Q16) */
     int32_t velocity;           /* current speed in Q16 samples / sample (65536 = 1.0x) */
     int32_t prev_step;          /* previous block sample step in Q16 for sub-block smoothing */
     int16_t last_scrub_param;   /* previous POS knob value */
@@ -186,14 +187,16 @@ static void scrub_block(track_t *t)
 
     /* 1. Update Physics (runs at 44100 / 32 = 1378.125 Hz, dt = 0.7256 ms) */
     if (p[P_E0] != sp->last_scrub_param) {
-        if (sp->touch_timer == 0 && scrb_abs32(sp->velocity) < 512) {
-            /* First touch from idle: start smoothed target from current playhead */
+        if (sp->touch_timer == 0) {
+            /* First touch from idle (the motor may be running): start from the current playhead */
             sp->smoothed_target = sp->pos;
         }
         sp->last_scrub_param = p[P_E0];
         uint32_t pct = (uint32_t)clamp(p[P_E0], 0, 100);
         uint32_t q16_pct = pct * 655u + (pct * 36u) / 100u;
         sp->target_pos = (int64_t)(s->len - 1u) * (int64_t)q16_pct;
+        sp->move_span = sp->target_pos - sp->pos;
+        if (sp->move_span < 0) sp->move_span = -sp->move_span;
         sp->touch_timer = 1100; /* ~800ms hangover window so slow encoder turns stay in continuous scrub mode */
     }
     if (sp->touch_timer > 0) sp->touch_timer--;
@@ -209,8 +212,8 @@ static void scrub_block(track_t *t)
          * Tuned for 1378 Hz block rate so discrete 1% encoder steps blend into a
          * single continuous glide with smooth pitch shifting rather than discrete pops. */
         int32_t inert = clamp(p[P_E2], 0, 100);
-        /* Stage 1: smooth discrete encoder steps over ~90ms..300ms */
-        int32_t slew_alpha = 260 - (inert * 180) / 100; /* Q15 per 0.725ms block */
+        /* Stage 1: smooth discrete encoder steps over ~15ms..60ms */
+        int32_t slew_alpha = 1600 - (inert * 1200) / 100; /* Q15 per 0.725ms block */
         int64_t pos_diff = sp->target_pos - sp->smoothed_target;
         int64_t pos_step = (pos_diff * slew_alpha) / 32768;
         if (pos_step == 0 && pos_diff != 0) pos_step = pos_diff > 0 ? 1 : -1;
@@ -219,21 +222,30 @@ static void scrub_block(track_t *t)
         /* Stage 2: proportional velocity servo (error in Q16 source samples -> velocity in Q16).
          * Bridges encoder clicks into continuous tape movement with smooth pitch shifting. */
         int64_t error = sp->smoothed_target - sp->pos;
-        int32_t k_vel = 8 + ((100 - inert) * 20) / 100;
+        int32_t k_vel = 24 + ((100 - inert) * 44) / 100;   /* more torque: the first detent moves at once */
         int64_t target_vel64 = (error * k_vel) / 32768;
         int32_t target_vel = (int32_t)(target_vel64 > 262144 ? 262144 : (target_vel64 < -262144 ? -262144 : target_vel64));
 
         /* Platter momentum filter: smooth acceleration/deceleration */
-        int32_t track_rate = 180 + ((100 - inert) * 420) / 100; /* Q15 per 0.725ms block */
+        int32_t track_rate = 600 + ((100 - inert) * 1200) / 100; /* Q15 per 0.725ms block */
         int32_t vel_diff = target_vel - sp->velocity;
         int32_t vel_step = (int32_t)(((int64_t)vel_diff * track_rate) / 32768);
         if (vel_step == 0 && vel_diff != 0) vel_step = vel_diff > 0 ? 1 : -1;
         sp->velocity += vel_step;
 
-        if (scrb_abs64(error) < 1024 && scrb_abs64(sp->target_pos - sp->pos) < 2048 && scrb_abs32(sp->velocity) < 32) {
+        if (scrb_abs32(motor_speed) > 655) {            /* the motor wants to run: hand back as soon as the move is done */
+            int64_t tol = sp->move_span / 8;            /* (a fraction of the move: it never skips a small nudge) */
+            if (tol < ((int64_t)64 << 16)) tol = (int64_t)64 << 16;
+            if (tol > ((int64_t)512 << 16)) tol = (int64_t)512 << 16;
+            if (scrb_abs64(sp->target_pos - sp->pos) < tol && scrb_abs64(sp->target_pos - sp->smoothed_target) < tol)
+                sp->touch_timer = 0;
+        }
+        if (scrb_abs64(error) < 16384 && scrb_abs64(sp->target_pos - sp->pos) < 65536 && scrb_abs32(sp->velocity) < 256) {
             sp->pos = sp->target_pos;
             sp->smoothed_target = sp->target_pos;
             sp->velocity = 0;
+            if (scrb_abs32(motor_speed) > 655)          /* landed: the motor takes over now, not after the hangover */
+                sp->touch_timer = 0;
         }
     } else if (scrb_abs32(motor_speed) > 655) {
         /* Motor is running: accelerate/decelerate toward motor speed with inertia */
