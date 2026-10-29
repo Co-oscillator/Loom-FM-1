@@ -310,6 +310,7 @@ static void go_page(uint32_t graph)               /* the page that draws graph *
     for (i = 0; i < NPAGES; i++)
         if (PAGES[i].graph == graph)
             break;
+    if (i == NPAGES) i = 0;                       /* (a test that names a retired page: stay on a valid one) */
     ui.home = 0;
     ui.page = (uint8_t)i;
     page_entered();
@@ -972,11 +973,25 @@ static int test_save(void)
     return bad;
 }
 
+/* the page names 1.5.1 used, for the tests written before the Loom page rework */
+static const char *page_alias(const char *title)
+{
+    if (str_eq(title, "ENV")) return "AMP ENV";
+    if (str_eq(title, "SCL")) return "SCALE";
+    if (str_eq(title, "DLY")) return "TAPE DELAY";
+    if (str_eq(title, "STEP")) return "4x4 STEP";
+    if (str_eq(title, "PATTERN")) return "4x4 PAT";
+    if (str_eq(title, "MOD")) return "MACRO 1";
+    return title;
+}
+
 static void go_title(const char *title)
 {
     uint32_t i;
+    title = page_alias(title);
     for (i = 0; i < NPAGES && !str_eq(PAGES[i].title, title); i++)
         ;
+    if (i == NPAGES) i = 0;                       /* (a title no page has: a valid page, not PAGES[NPAGES]) */
     ui.home = 0;
     ui.page = (uint8_t)i;
     page_entered();
@@ -2409,11 +2424,11 @@ static int test_chain(void)
     bad += check("PROJECT load during SONG stops it before loading new timing", !chain.running && !song.playing &&
         trk[0].p[P_SLEN] == 2 && trk[0].step[0].note[0] == 60 && !chain_config.count);
     ui_power_on();
-    open_family(FAM_GLO);
-    for (k = 0; k < NPAGES && cur_page()->graph != GR_SONG; k++) open_family(FAM_GLO);
+    open_family(FAM_TRK);
+    for (k = 0; k < NPAGES && cur_page()->graph != GR_SONG; k++) open_family(FAM_TRK);
     press(B_PLAY);
-    bad += check("SONG page (GLO's, 1.2) empty PLAY explains how to start", msg_is("ADD A SECTION") && !transport_req &&
-                 cur_page()->fam == FAM_GLO);
+    bad += check("SONG page (HOME's) empty PLAY explains how to start", msg_is("ADD A SECTION") && !transport_req &&
+                 cur_page()->fam == FAM_TRK);
     turn(EN_K3, 1);
     bad += check("SONG PAT knob (K3) on + ADD adds the first section: every track on A, one repeat",
                  chain_config.count == 1 && !memcmp(&chain_config.row[0], &(chain_row_t){{0, 0, 0, 0}, 1}, sizeof(chain_row_t)));
@@ -2675,8 +2690,9 @@ static int test_page_cycles(void)
     for (i = 0; i < NPAGES; i++) {                       /* every page in a family its button reaches, and its LED */
         uint32_t f = PAGES[i].fam;
         ok &= f != FAM_SEQ || PAGES[i].graph == GR_ROLL || PAGES[i].graph == GR_EVENTS;
-        ok &= f != FAM_GLO || PAGES[i].graph == GR_SONG;   /* (1.2: GLO's only page) */
-        ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || str_eq(PAGES[i].title, "CLOCK");   /* HOME's: MIXER CLOCK */
+        ok &= f != FAM_GLO || str_eq(PAGES[i].title, "GLOBAL");   /* (GLOBAL is GLO's only page) */
+        ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || PAGES[i].graph == GR_SONG ||
+              str_eq(PAGES[i].title, "CLOCK") || str_eq(PAGES[i].title, "MACROS");   /* HOME's: MIXER CLOCK MACROS SONG */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
         ok &= FAM_BTN[cur_fam()] == (f == FAM_TRK ? B_HOME : f == FAM_GLO ? B_GLO : f == FAM_SEQ ? B_SEQ :
@@ -2684,8 +2700,8 @@ static int test_page_cycles(void)
     }
     for (i = 0; i < NPAGES; i++)
         ok &= !str_eq(PAGES[i].title, "PATTERN") && !str_eq(PAGES[i].title, "CHANCE") && !str_eq(PAGES[i].title, "AUTO LIST");
-    bad += check("1.2: SEQ has STEP and AUTOMATION only; SONG is GLO's only page, PHRASES SAVE's, MIXER and CLOCK HOME's "
-                 "(their LED HOME)", ok);
+    bad += check("1.2: SEQ has STEP and AUTOMATION only; GLOBAL is GLO's only page; PHRASES SAVE's; MIXER, CLOCK, "
+                 "MACROS and SONG are HOME's (their LED HOME)", ok);
     {   /* 1.2: GLOBAL and SYSTEM are gone; their knobs: BPM SWG CLK on HOME > CLOCK, TUNE and ROUT on no page (the MENU's),
          * MIDI SYNC CPU on none (INFO shows the USB state and the CPU) */
         uint32_t k, clock = 0;
@@ -7453,8 +7469,7 @@ static int test_div_order(void)
         uint32_t prev = 0xFFFFFFFFu, len;
         for (n = 0; n < 40; n++) v = param_turn(d, v, -1);
         for (n = 0; n <= d->max - d->min; n++) {
-            len = d->names == N_SLDIV ? 1000000u / SL_DEN[v] : v >= 10 ? (beat_samples() * 3u) >> DIV_DOT[v - 10] :
-                  div_samples((uint32_t)v);                     /* (TIME's dotted ones, 1.5.1: fx.c delay_samples) */
+            len = d->names == N_SLDIV ? 1000000u / SL_DEN[v] : div_samples((uint32_t)v);   /* (TIME's dotted ones too) */
             if (!(len < prev && enum_rank(d, v) == d->min + n && !((seen >> v) & 1))) {
                 printf("  %s: %s (value %d, place %d, length %u) after %u\n", d->label, d->names[v], (int)v,
                        (int)enum_rank(d, v), len, prev);

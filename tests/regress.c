@@ -740,14 +740,15 @@ static int chk_sample_end(char *msg, uint32_t n)
     host_tracks_init();
     host_preset(t, 4, 0);
     t->p[P_E1] = t->p[P_E2] = t->p[P_E3] = t->p[P_E6] = 0;
-    t->p[P_E4] = 127;
+    t->p[P_E4] = 100;                              /* STRCH 100 % (the model below) */
     usr_zone[0][0] = (smp_zone_t){.n = 1, .rate = 65536, .root16 = 960};
     for (a = 0; a < NELEM(SAMPLE); a++)
         for (b = 0; b < NELEM(FRAC); b++)
             for (c = 0; c < NELEM(PITCH); c++) {
                 vmod_t m = {.pitch16 = 960 + PITCH[c], .amp0 = 32767, .amp1 = 32767};
                 int32_t out[CTL] = {0}, src, lp = 4000 + (((127 << 8) * 28767) >> 15), want;
-                uint32_t step = (pow2_q16(PITCH[c]) >> 8) * 256u, f = FRAC[b] + step;
+                /* STRCH (P_E4 = 127) divides the advance: the engine's stepq_adv */
+                uint32_t step = ((pow2_q16(PITCH[c]) >> 8) * 256u * 100u) / 100u, f = FRAC[b] + step;
                 memset(v, 0, sizeof *v);
                 v->active = 1;
                 v->ph[0] = 1;

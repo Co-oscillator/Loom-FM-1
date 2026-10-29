@@ -915,8 +915,10 @@ static void detail_values(track_t *t, int drum_kit)
 static void go_title_page(const char *title)
 {
     uint32_t i;
+    title = page_alias(title);
     for (i = 0; i < NPAGES && !str_eq(PAGES[i].title, title); i++)
         ;
+    if (i == NPAGES) i = 0;
     ui.home = 0;
     ui.page = (uint8_t)i;
     page_entered();
@@ -1570,6 +1572,10 @@ static void draw(int s)
     }
     if (s == S_SPLASH) {                          /* the power-on splash (main.c, before the UI): its lines, the version
                                                    * shown FELUCCA_VERSION (run_tests.sh: src/felucca.c's) */
+        if (large_on || ui_style != ST_FLAT) {     /* LINE / LARGE draw the Loom sign; the Felucca check is FLAT's */
+            draw_splash();
+            return;
+        }
         static const char WANT[] = "Felucca|" FELUCCA_VERSION "|H\xFCgelton Instruments|with community";
         splash_seen[0] = 0;
         in_splash = 1;
