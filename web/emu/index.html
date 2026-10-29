@@ -2906,6 +2906,7 @@ async function initFirmwareUpdater() {
     stockBtn.disabled = writing || !stockVerified;
   };
 
+  const FW_VERSION = "@VERSION@";
   // Auto-load bundled loom-groovebox.fswc
   try {
     let r = await fetch("loom-groovebox.fswc", { cache: "no-store" });
@@ -2914,7 +2915,7 @@ async function initFirmwareUpdater() {
       const raw = new Uint8Array(await r.arrayBuffer());
       loomProduct = pkgMod.productOf(raw);
       loomImage = pkgMod.logicalImage(raw);
-      pkgInfo.textContent = `✓ Ready: bundled loom-groovebox.fswc (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+      pkgInfo.textContent = `✓ Ready: loom-groovebox.fswc ${FW_VERSION} (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
     } else {
       pkgInfo.textContent = "No bundled loom-groovebox.fswc found — use Load Custom .fswc or run ./build.sh.";
     }

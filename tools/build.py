@@ -374,6 +374,7 @@ def main():
     (OUT / "loom-groovebox.fwsc").write_bytes(pkg)
     (SRC / "loom-groovebox.fswc").write_bytes(pkg)
     (SRC / "loom-groovebox.fwsc").write_bytes(pkg)
+    (OUT / "version").write_text((VERSION or "v0.1") + "\n", encoding="utf-8")
     att = SRC / "assets" / "samples-cc0" / "ATTRIBUTION.txt"
     if att.exists():
         shutil.copy(att, OUT / "ATTRIBUTION.txt")
