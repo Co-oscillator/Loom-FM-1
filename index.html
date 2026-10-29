@@ -1141,7 +1141,7 @@ footer small { font-size: 11px; opacity: .8; }
           <div class="mag-pill"><strong>1/5 PROJECT:</strong> Full song memory (slots <code>A</code>–<code>D</code>). Turn K1 to choose slot, K3 to Load, K4 to Save. Turn K2 (<code>INIT+</code>) to save your current layout as the custom boot template.</div>
           <div class="mag-pill"><strong>2/5 TOOLS:</strong> Quick-reset tools. <code>TRACK</code> resets active track; <code>SEQ</code> clears step pattern; <code>SOUND</code> resets synth patch; <code>LOCKS</code> removes automation.</div>
           <div class="mag-pill"><strong>3/5 USER:</strong> 32 flash user patch slots (<code>U01</code>–<code>U32</code>). Save custom sounds on the active track or load them into any track.</div>
-          <div class="mag-pill"><strong>4/5 PRESETS:</strong> Full preset browser and favorites (<code>★</code>). Filter by category tag (<code>ALL</code>, <code>FAV</code>, <code>USER</code>, <code>BASS</code>, <code>LEAD</code>, <code>PAD</code>, etc.).</div>
+          <div class="mag-pill"><strong>4/5 PRESETS:</strong> The preset browser for the track's engine: turn the PRESETS knob or K1 to scroll, and load the one shown.</div>
           <div class="mag-pill"><strong>5/5 PHRASES:</strong> 16-step sequence bank (<code>P01</code>–<code>P16</code>). Save or load sequence riffs and motion locks independently of the song.</div>
         </div>
       </div>
@@ -1171,7 +1171,7 @@ footer small { font-size: 11px; opacity: .8; }
 
 
 <footer>
-  <small class="version">@VERSION@@PREVIEW@</small><br>
+  <small class="version">v1.8.3 (preview)</small><br>
   Loom FM-1 Groovebox · Built on Felucca / SLOOP core · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · DotGothic16 font, <a href="fonts/OFL.txt">SIL OFL 1.1</a><br>
   <div style="margin-top:6px;">
     Explore more: <a href="video.html" style="color:#00E5FF; text-decoration:none; margin-right:12px;" target="_blank">🎬 1080p Video Overview</a> · <a href="https://github.com/Co-oscillator/Loom-Pi" style="color:#5fe08a; text-decoration:none;">Loom Pi</a> · <a href="https://github.com/Co-oscillator/loom-groovebox" style="color:#5fe08a; text-decoration:none;">Loom for Android</a> · <a href="https://github.com/Co-oscillator/Loom-FM-1" style="color:#5fe08a; text-decoration:none;">Loom FM-1 GitHub</a>
@@ -2906,6 +2906,7 @@ async function initFirmwareUpdater() {
     stockBtn.disabled = writing || !stockVerified;
   };
 
+  const FW_VERSION = "v1.8.3";
   // Auto-load bundled loom-groovebox.fswc
   try {
     let r = await fetch("loom-groovebox.fswc", { cache: "no-store" });
@@ -2914,7 +2915,7 @@ async function initFirmwareUpdater() {
       const raw = new Uint8Array(await r.arrayBuffer());
       loomProduct = pkgMod.productOf(raw);
       loomImage = pkgMod.logicalImage(raw);
-      pkgInfo.textContent = `✓ Ready: bundled loom-groovebox.fswc (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
+      pkgInfo.textContent = `✓ Ready: loom-groovebox.fswc ${FW_VERSION} (${loomProduct}, ${(raw.length / 1024).toFixed(1)} KB)`;
     } else {
       pkgInfo.textContent = "No bundled loom-groovebox.fswc found — use Load Custom .fswc or run ./build.sh.";
     }

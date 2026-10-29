@@ -180,7 +180,7 @@ export class Updater {
     step("start", dev.id.text);
     dev.link.send(UPGRADE);
     await sleep(2000);
-    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
+    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n, addr) => step("verify", n, addr));
     dev.link.close();
     if (!s1.finished) throw fail(s1.lost ? "lost" : "stopped", `the device ${s1.lost ? "was disconnected" : "stopped"} after ${s1.served} requests: nothing was written`);
     step("loader");
@@ -203,7 +203,7 @@ export class Updater {
   async write(ota, image, step) {
     ota.link.send(UPGRADE);
     await sleep(2000);
-    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
+    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n, addr) => step("write", n, addr));
     ota.link.close();
     return s2;
   }
