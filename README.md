@@ -51,7 +51,7 @@
 - **Metronome and count-in:** CLICK (OFF, while recording, or always) with three levels, and a count-in
   of 1 or 2 bars before recording from stop; the click goes to the headphones and speaker only, never to
   USB audio or into a pattern
-- **Songs** (GLO > SONG): up to 16 sections, each naming the project slot (A–D) **every track** plays, or "-" for a
+- **Songs** (HOME > SONG): up to 16 sections, each naming the project slot (A–D) **every track** plays, or "-" for a
   track that rests there, with its repeats; drawn as a timeline with a lane per track
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
   shapes), with voicings; on the keys, MIDI in, recording and the arpeggiator
@@ -108,6 +108,24 @@
   step grid, mixer, preset library, sample upload and recording with trim, the MENU settings; full backup and restore
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
+
+## New in 1.8.2
+
+- **Update without a replug:** the update path now holds the USB disconnect long enough for the host to see it, so
+  USB MIDI comes back on its own after a flash (it used to need a physical replug; this was also the web installer's
+  false "device did not come back").
+- **SONG, DETAIL and AUTOMATION are reachable again.** The Loom page rework had left them out of the page table:
+  SONG is a HOME view (HOME taps: MIXER, CLOCK, MACROS, SONG; GLOBAL stays GLO's one page), and SEQ keeps its 4x4 /
+  8x8 STEP and PAT pages followed by DETAIL and AUTOMATION.
+- **DRUM macros and kits:** the Loom drum engine was reading the track parameter block from the wrong offset (P_LEVEL
+  as KIT, P_ATK as TUNE, ...), so kits, TUNE / TONE / DECY / SNAP / ACC / PUNCH and the FM kit were wrong or silent.
+  It now reads P_E0..P_E7, the analog and FM lane types are initialized, and a kit only keeps its own voices.
+- **SCRUB voices end:** a released note is no longer held in sustain by the motor, and the auto-play voice releases
+  when the scrub stops. The tape can keep moving silently; it no longer holds a voice open.
+- **WAVETABLE DC:** a ~10 Hz blocker after the filter removes the offset left by bit reduction and drive (DIGI BITS
+  and CYBERVOX were over the health limit).
+- The sound categories now match the current engine order (SCRUB, WAVETABLE included), and the sound/CPU regression
+  baselines are 1.8's.
 
 ## New in 1.8.1
 
@@ -221,9 +239,9 @@ where marked here:
   or project using ORD sounds different when its notes were pressed in another order than low to high.
 - **SAMPLE's PIANO** was a lighter lo-fi piano in 1.4 and 1.4.1; since 1.5 it is the full piano of 1.1.5 again.
 - **The pages moved** (Discussion #153): see Controls below. In short: SEQ is STEP and AUTOMATION; **SEQ held is SEQ
-  TOOLS on every page** (it no longer opens SONG); **GLO opens SONG**; PHRASES is on SAVE; HOME goes round HOME,
-  MIXER and CLOCK (BPM, swing, clock source); TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and the USB state
-  and CPU load are MENU > SYSTEM > INFO. REC held is the REC layer as before.
+  TOOLS on every page** (it no longer opens SONG); **GLO opens GLOBAL**; PHRASES is on SAVE; HOME goes round HOME,
+  MIXER, CLOCK (BPM, swing, clock source), MACROS and SONG; TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and
+  the USB state and CPU load are MENU > SYSTEM > INFO. REC held is the REC layer as before.
 - **SONG has a lane per track**: older songs load with all four tracks on each row's slot and play as before; its
   knobs are KNOB 1 SECTION, 2 TRACK, 3 PAT, 4 REPS, and on SONG the white keys A3 B3 C4 D4 set the slot.
 - **A fresh start uses the HALL reverb** (up to 1.1.5: ROOM). Saved projects keep their reverb TYPE.
@@ -247,9 +265,9 @@ The pages by button:
 
 | Button | Taps go round | Held |
 |---|---|---|
-| HOME | HOME, MIXER, CLOCK (BPM, swing, clock source) | the menu |
-| SEQ | STEP (the piano roll, or the drum grid), DETAIL, AUTOMATION | SEQ TOOLS, on every page |
-| GLO | SONG | the GLO layer (mutes, solos, levels, TAP tempo, D4: MIDI LEARN) |
+| HOME | HOME, MIXER, CLOCK (BPM, swing, clock source), MACROS, SONG | the menu |
+| SEQ | 4x4 STEP, 4x4 PAT, 8x8 STEP, 8x8 PAT, DETAIL, AUTOMATION | SEQ TOOLS, on every page |
+| GLO | GLOBAL | the GLO layer (mutes, solos, levels, TAP tempo, D4: MIDI LEARN) |
 | SAVE | USER, PRESETS, PHRASES (the pattern loader), PROJECT, TOOLS | UNDO |
 | LFO | LFO, LFO 2, LFO DEST, MOD | MOMENTARY (with a knob) |
 | EDIT | EDIT 1, EDIT 2, VOICE, VOICE 2, VOICE 3 (FM6 adds OPERATOR, OP ENV, OPERATOR 2; DRUM LANES; SLICE SLICES; ANALOG FILTER) | the EDIT layer (the engines; on DRUM the black keys mute lanes) |
