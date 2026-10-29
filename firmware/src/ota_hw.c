@@ -50,6 +50,6 @@ static void ota_commit(const uint8_t *parm)
 {
     bootguard.pending = 0;                              /* intentional reset */
     usb_detach();
-    fm1_delay_ms(30);
+    fm1_delay_ms(500);                                  /* let the host see the disconnect before the reset */
     fm1_enter_update(parm);                             /* record into RAM, core reset (fm1_sys.h) */
 }

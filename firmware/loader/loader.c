@@ -96,7 +96,7 @@ void ldr_main(void)
             if (ldr_session() == 0) {
                 fm1_delay_ms(200);                  /* the "success" reply leaves */
                 usb_detach();
-                fm1_delay_ms(30);
+                fm1_delay_ms(500);                  /* let the host see the disconnect before the reset */
                 fm1_core_reset();                   /* the SPL boots the new app */
             }
         }
