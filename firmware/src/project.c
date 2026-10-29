@@ -241,8 +241,8 @@ static void proj_trk_from(proj_trk_t *d, const int16_t *p, uint32_t np, uint8_t 
 {
     int16_t def[P_E0];
     uint32_t k;
-    for (k = 0; k < P_E0; k++)
-        def[k] = TP[k].def;
+    for (k = 0; k < P_E0; k++)                  /* the same defaults as the FUN5..FUN10 paths */
+        def[k] = param_desc_of(engine, k)->def;
     params_by_count(d->p, p, np, def);
     d->engine = engine;                         /* (indices 0..7 of formats 1 and 2 as they were) */
     d->preset = preset;
@@ -272,19 +272,59 @@ static void proj_trk_from_v2(proj_trk_t *d, const proj_trk_v2_t *s)
     proj_trk_from(d, s->p, PROJ_NP_V2, s->engine, s->preset, s->step);
 }
 
-/* a project written with the GM drum part as track 4 (parts 0) -> track 4 a part (see the top);
- * project_load gives it DRUM's kit (PROJ_DEF_KEEP; the SAMPLE PERC sound until 1.0.2). Idempotent */
+/* a melodic track at its power-on sound and no steps (the old fourth track, once its drum part moved) */
+static void proj_trk_default(proj_trk_t *t, uint32_t k)
+{
+    uint32_t i;
+    for (i = 0; i < P_COUNT; i++)
+        t->p[i] = param_desc_of(trk_def_engine(k), i)->def;
+    t->engine = (uint8_t)trk_def_engine(k);
+    t->preset = PROJ_DEF_SOUND;
+    memset(t->step, 0, sizeof t->step);
+    for (i = 0; i < NSTEP; i++)
+        t->step[i].time = ST_REST;
+}
+
+/* a project written with the GM drum part as track 4 (parts 0): that fourth track becomes the dedicated DRUM
+ * track (proj_drum_home), and project_load gives it DRUM's kit (PROJ_DEF_KEEP; the SAMPLE PERC sound until
+ * 1.0.2). Idempotent */
 static void proj_drums_to_part(project_t *q)
 {
-    proj_trk_t *d = &q->t[NTRK - 1u];
+    proj_trk_t *d = &q->t[NPART - 1u];
+    int perc;
     if (q->parts >= NPART)
         return;
-    d->engine = ENGI_DRUM;                      /* DRUM's first kit: independent of today's power-on drum sound */
-    d->preset = PROJ_DEF_KEEP;
-    d->p[P_LEVEL] = (int16_t)clamp(q->g[G_DRLVL], 0, 127);   /* the drum part's level and reverb send */
-    d->p[P_REV] = (int16_t)clamp(q->g[G_DRREV], 0, 127);
+    perc = d->engine == ENGI_SAMPLE && d->p[P_E0] == (int16_t)SMP_SET_PERC;
+    if (!perc) {                                /* (SAMPLE PERC keeps its own sound: proj_perc turns it into DRUM) */
+        d->engine = ENGI_DRUM;                  /* DRUM's first kit: independent of today's power-on drum sound */
+        d->preset = PROJ_DEF_KEEP;
+        d->p[P_LEVEL] = (int16_t)clamp(q->g[G_DRLVL], 0, 127);   /* the drum part's level and reverb send */
+        d->p[P_REV] = (int16_t)clamp(q->g[G_DRREV], 0, 127);
+    }
     q->parts = NPART;
     q->sum = proj_sum(q);
+}
+
+/* a DRUM track in a melodic slot (old projects, before the dedicated fifth track): it moves to track 5, its
+ * slot becomes a power-on melodic track. A 5-track project's own drum track stays where it is. Idempotent */
+static void proj_drum_home(project_t *q)
+{
+    uint32_t k, i, moved = 0;
+    int dedicated = q->parts > NPART;
+    for (k = 0; k < NPART; k++) {
+        if (q->t[k].engine != ENGI_DRUM)
+            continue;
+        if (!moved && (!dedicated || q->t[NPART].engine != ENGI_DRUM)) {
+            q->t[NPART] = q->t[k];
+            for (i = 0; i < q->motion.count && i < MOTION_MAX; i++)   /* its locks / automation follow it */
+                if ((q->motion.event[i].place >> 6) == k)
+                    q->motion.event[i].place = (uint8_t)(NPART << 6 | (q->motion.event[i].place & 63u));
+            moved = 1;
+        }
+        proj_trk_default(&q->t[k], k);
+    }
+    if (moved)
+        q->sum = proj_sum(q);
 }
 
 /* PHYS tracks of a project written before PROJ_PHYS (see the top) -> today's: DUST as MODAL bowed, MODEL
@@ -393,8 +433,9 @@ static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
     q->sel = v4->sel;
     q->parts = v4->parts;
     q->phys = v4->phys;
-    for (i = 0; i < NTRK; i++)
+    for (i = 0; i < NPART; i++)
         proj_trk_from(&q->t[i], v4->t[i].p, PROJ_NP_V4, v4->t[i].engine, v4->t[i].preset, v4->t[i].step);
+    proj_trk_default(&q->t[NPART], NPART);
     q->sum = proj_sum(q);
     proj_drums_to_part(q);
     return 1;
@@ -414,8 +455,9 @@ static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
     proj_rtype_room(q->g);
     q->sel = v3->sel;
     q->parts = v3->parts;
-    for (i = 0; i < NTRK; i++)
+    for (i = 0; i < NPART; i++)
         proj_trk_from(&q->t[i], v3->t[i].p, PROJ_NP_V3, v3->t[i].engine, v3->t[i].preset, v3->t[i].step);
+    proj_trk_default(&q->t[NPART], NPART);
     q->sum = proj_sum(q);
     proj_drums_to_part(q);                     /* (a format 3 of firmware before 1.0: parts 0) */
     return 1;
@@ -433,8 +475,9 @@ static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
     q->size = sizeof *q;
     proj_g_from_v2(q->g, v2->g);
     q->sel = v2->sel;
-    for (i = 0; i < NTRK; i++)
+    for (i = 0; i < NPART; i++)
         proj_trk_from_v2(&q->t[i], &v2->t[i]);
+    proj_trk_default(&q->t[NPART], NPART);
     proj_drums_to_part(q);                     /* (format 2 had the drum track: parts 0) */
     return 1;
 }
@@ -496,6 +539,7 @@ static int proj_import(project_t *q, const void *b, int n)
         return 0;
     proj_fm4(q);
     proj_perc(q);
+    proj_drum_home(q);
     return 1;
 }
 static int proj_import_any(project_t *q, const void *b, int n)
@@ -537,7 +581,7 @@ static int proj_import_old(project_t *q, const void *b, int n)
             memcpy(q->g, v->g, sizeof q->g);
             proj_rtype_room(q->g);
             q->sel = v->sel; q->parts = v->parts; q->phys = v->phys;
-            for (i = 0; i < NTRK; i++) {
+            for (i = 0; i < NPART; i++) {
                 int16_t def[P_COUNT];
                 if (v->t[i].engine >= NENGINES) return 0;
                 for (k = 0; k < P_COUNT; k++) def[k] = param_desc_of(v->t[i].engine, k)->def;
@@ -548,6 +592,7 @@ static int proj_import_old(project_t *q, const void *b, int n)
                     q->t[i].step[k].flags &= 3u;       /* (x1: no RATCH then) */
                 }
             }
+            proj_trk_default(&q->t[NPART], NPART);
             if (bytes == sizeof *v6) q->chain = c6; else chain_defaults(&q->chain);
             q->sum = proj_sum(q); proj_drums_to_part(q); proj_phys(q);
             return 1;
@@ -1085,6 +1130,7 @@ static int project_restore_runtime(const project_t *input)
     proj_phys(p);                                       /* .. before PHYS lost DUST and DRUM */
     proj_fm4(p);                                        /* .. that had DIGITAL tracks */
     proj_perc(p);                                       /* .. or SAMPLE PERC tracks */
+    proj_drum_home(p);                                  /* .. or a DRUM track on a melodic slot */
     transport_req = 2;
     panic_req = (1u << NTRK) - 1u;
     fm1_irq_off();                                      /* the audio ISR must not see half a project */
@@ -1139,7 +1185,8 @@ static int project_restore_runtime(const project_t *input)
             memcpy(keep, t->p, sizeof keep);
             fm1_irq_off();                           /* publish the legacy sound as one bounded parameter batch */
             proj_legacy_drums(t);                     /* (keeps the SLICER: param_kept) */
-            t->p[P_REV] = keep[P_REV];                  /* and the drums' reverb send */
+            t->p[P_LEVEL] = keep[P_LEVEL];              /* and the drums' level and reverb send */
+            t->p[P_REV] = keep[P_REV];
             for (i = P_AMODE; i <= P_TRANS; i++)        /* the drum part had no arp or scale */
                 t->p[i] = TP[i].def;
             fm1_irq_on();

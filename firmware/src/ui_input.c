@@ -1715,6 +1715,22 @@ static void layer_lock_input(uint32_t pressed);
 static int page_tap(uint32_t b)
 {
     uint32_t f;
+    if (b == B_EDIT && song.seq_mode && !ui.home && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step */
+        uint64_t held = lock_held();
+        if (chain_busy()) {
+            ui_message("STOP TO EDIT");
+            return 1;
+        }
+        if (held) {                                     /* a step held: its locks (the step stays) */
+            lock_clear(held);
+            return 1;
+        }
+        step_clear(&TSEL->step[ui.cursor]);
+        (void)motion_clear_locks(TSEL, ui.cursor);
+        cursor_set(ui.cursor + 1);
+        ui_message("STEP CLEARED");
+        return 1;
+    }
     if (b == B_EDIT && detail_on()) {                    /* DETAIL (1.5.1): the step's CHANCE RATCH NUDGE VEL back */
         if (chain_busy())
             ui_message("STOP TO EDIT");

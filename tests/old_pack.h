@@ -22,7 +22,7 @@ static uint32_t old_pack(uint8_t *b, const project_t *q, uint32_t magic, uint32_
     memcpy(b + 4, &st, 4);
     memcpy(b + 8, q->g, sizeof q->g);
     b[62] = q->sel; b[63] = q->parts; b[64] = q->phys; b[66] = (uint8_t)np;
-    for (t = 0; t < NTRK; t++) {
+    for (t = 0; t < 4u; t++) {                       /* the four tracks every old format stored */
         for (i = 0; i < np; i++) {
             uint32_t id = i < np - 8u ? i : P_E0 + i - (np - 8u);
             b[pos++] = (uint8_t)(q->t[t].p[id] + 64);
@@ -70,9 +70,9 @@ static uint32_t old_pack(uint8_t *b, const project_t *q, uint32_t magic, uint32_
     }
     pos += 260u;
     if (magic != OLD_FUN7) {
-        if (pos > name - NTRK * FM6_PACKED)
+        if (pos > name - NPART * FM6_PACKED)
             return 0;
-        memcpy(b + name - NTRK * FM6_PACKED, q->fm6, NTRK * FM6_PACKED);
+        memcpy(b + name - NPART * FM6_PACKED, q->fm6, NPART * FM6_PACKED);
     } else if (pos > name) {
         return 0;
     }

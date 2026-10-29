@@ -316,6 +316,8 @@ static void go_page(uint32_t graph)               /* the page that draws graph *
     page_entered();
 }
 /* SEQ > AUTOMATION (1.2): its first row (PLAY, CLEAR); + ADD with id (a parameter, EV_CHANCE, EV_RATCH) on step */
+static void select_drum(void) { track_select(4); }   /* the dedicated DRUM track (T5; melodic tracks refuse DRUM) */
+
 static void go_auto_top(void)
 {
     go_page(GR_EVENTS);
@@ -363,10 +365,42 @@ static int same_sound(const track_t *a, const track_t *b)
 }
 
 /* the track's E values are DRUM's default kit (core.h DRUM_KIT_E: what a SAMPLE PERC sound loads as) */
-static int perc_kit(const track_t *t)
+static int perc_kit(const track_t *t)                 /* the retired SAMPLE PERC set's kit (drum_from_perc) */
 {
     static const int16_t KIT[8] = DRUM_KIT_E;
     return !memcmp(&t->p[P_E0], KIT, sizeof KIT);
+}
+static int drum_kit0(const track_t *t)                /* DRUM's first factory preset (set_engine_of / PROJ_DEF_KEEP) */
+{
+    const int8_t *e = ENGINES[ENGI_DRUM]->presets[0].e;
+    uint32_t i;
+    for (i = 0; i < 8u; i++)
+        if (t->p[P_E0 + i] != e[i])
+            return 0;
+    return 1;
+}
+/* a FUN6 project from the four live tracks (track 4 was the old drum part when parts is 0). Built from the
+ * tracks, not through project_save: a current save would already migrate the retired SAMPLE PERC sound */
+static void legacy_v6(project_v6_t *l, uint32_t parts)
+{
+    uint32_t ti, i, st;
+    memset(l, 0, sizeof *l);
+    l->magic = PROJ_MAGIC_V6;
+    l->size = sizeof *l;
+    l->parts = (uint8_t)parts;
+    l->phys = PROJ_PHYS;
+    memcpy(l->g, song.g, sizeof l->g);
+    for (ti = 0; ti < 4u; ti++) {
+        for (i = 0; i < 61u; i++)
+            l->t[ti].p[i] = trk[ti].p[i];
+        for (i = 0; i < 8u; i++)
+            l->t[ti].p[61u + i] = trk[ti].p[P_E0 + i];
+        l->t[ti].engine = trk[ti].engine;
+        l->t[ti].preset = trk[ti].preset;
+        for (st = 0; st < NSTEP; st++)
+            memcpy(&l->t[ti].step[st], &trk[ti].step[st], sizeof(step10_t));
+    }
+    l->sum = proj_hash(l, offsetof(project_v6_t, sum));
 }
 /* the GM drums a DRUM track plays: a kick, a snare and a closed hat each strike their lane and sound */
 static int gm_hits_play(track_t *t)
@@ -408,7 +442,7 @@ static int test_sound_loads(void)
     for (i = 0; i < NTRK; i++)
         empty &= (uint32_t)seq_is_empty(&trk[i]);
     bad += check("power-on: the four sounds, every sequencer empty, no undo copy", empty && undo.trk == 0 && undo_depth == 0 &&
-                 trk[3].eng_req == ENGI_DRUM && trk[3].preset == 0u && trk[0].preset == TRK_DEF[0][1]);
+                 trk[4].eng_req == ENGI_DRUM && trk[4].preset == 0u && trk[0].preset == TRK_DEF[0][1]);
     my_steps(t);
     t->p[P_E0 + 1] = 77;                          /* a sound edit */
     t->p[P_AMODE] = 2;                            /* and the track's own settings */
@@ -502,9 +536,10 @@ static int test_sound_loads(void)
                 shown++;
         e = preset_all_at(pos0 + 1u, &k);
         apply_preset_to(TSEL, 1);
-        bad += check("SAMPLE: old SET 1 / preset 1 (TRANH) play PIANO; browsing and knobs skip them",
-                     SMP_SETS[1].z0 == SMP_SETS[0].z0 && SMP_SETS[1].nz == SMP_SETS[0].nz && pos == pos0 &&
-                     shown == 3u && e == 4u && k == 2u && TSEL->preset == 0u && TSEL->p[P_E0] == 0 &&
+        bad += check("SAMPLE: old SET 1 (TRANH) plays PIANO; preset 1 is EP; browsing shows all four",
+                     SMP_SETS[1].z0 == SMP_SETS[0].z0 && SMP_SETS[1].nz == SMP_SETS[0].nz && pos == pos0 + 1u &&
+                     shown == 4u && e == 4u && k == 1u && TSEL->preset == 1u && TSEL->p[P_E0] == 1 &&
+                     str_eq(ENGINES[4]->presets[1].name, "EP") &&
                      str_eq(sd->names[1], "PIANO") && enum_step(sd, 0, 1) == 2 && enum_step(sd, 2, 1) == 0 &&
                      enum_step(sd, 1, 2) == 2 && enum_orig(sd, 1) == 0 && enum_orig(sd, 5) == 5 &&
                      enum_orig(&ENGINES[8]->edit[0], 1) == 0);
@@ -514,20 +549,25 @@ static int test_sound_loads(void)
                      str_eq(sd->names[7], "USR3") && sd->max == 7 &&
                      enum_orig(&ENGINES[8]->edit[0], SMP_SET_PERC) == 0 && SMP_SETS[SMP_SET_PERC].z0 == SMP_SETS[0].z0);
     }
-    host_legacy_sample_perc(t);                /* SAMPLE PERC (SET 4, retired after 1.0.2): every load gives DRUM */
-    t->preset = 4;                             /* a project written before the factory removal */
-    my_steps(t);
-    t->p[P_LEVEL] = 71;
-    t->p[P_REV] = 33;
-    before = *t;
-    project_save(0);
-    apply_preset_to(t, 0);
-    track_defaults_steps(t);
-    project_load(0);
+    /* a project written before the factory removal: track 4 held the SAMPLE PERC sound (SET 4), its own steps
+     * and the rest of its sound. It loads as the dedicated DRUM track with all of them */
+    ui_power_on();
+    host_legacy_sample_perc(&trk[3]);
+    trk[3].preset = 4;
+    my_steps(&trk[3]);
+    trk[3].p[P_LEVEL] = 71;
+    trk[3].p[P_REV] = 33;
+    before = trk[3];
+    {
+        project_v6_t legacy;
+        legacy_v6(&legacy, NPART);
+        memcpy(&proj_slot[1], &legacy, sizeof legacy);
+    }
+    project_load(1);
     bad += check("saved SAMPLE PERC project: a DRUM track (its kit), the rest of the sound and every step kept",
-                 t->eng_req == ENGI_DRUM && t->preset == 0u && perc_kit(t) &&
-                 !memcmp(t->p, before.p, P_E0 * sizeof t->p[0]) && !memcmp(t->step, before.step, sizeof t->step));
-    bad += check("  its GM hits play as drums (kick, snare, closed hat on their lanes)", gm_hits_play(t));
+                 trk[4].eng_req == ENGI_DRUM && trk[4].preset == 0u && perc_kit(&trk[4]) &&
+                 !memcmp(trk[4].p, before.p, 61u * sizeof before.p[0]) && !memcmp(trk[4].step, before.step, sizeof before.step));
+    bad += check("  its GM hits play as drums (kick, snare, closed hat on their lanes)", gm_hits_play(&trk[4]));
     {   /* a user preset of SAMPLE PERC (UP_PUT from an older editor, or a bank read): DRUM, its kit */
         up_rec_t r;
         int16_t keep[P_COUNT];
@@ -535,56 +575,48 @@ static int test_sound_loads(void)
         memset(&r, 0, sizeof r);
         r.used = UP_USED; r.ver = UP_VER; r.engine = ENGI_SAMPLE; r.np = P_COUNT;
         memcpy(r.name, "OLD PERC", 8);
-        host_legacy_sample_perc(t);
+        host_legacy_sample_perc(&trk[4]);
         for (k = 0; k < P_COUNT; k++)
-            up_set_value(&r, k, t->p[k]);
+            up_set_value(&r, k, trk[4].p[k]);
         up_migrate(&r);
         *up_rec(7) = r;
-        set_engine_of(t, 0);
-        memcpy(keep, t->p, sizeof keep);
-        song.sel = (uint8_t)(t - trk);
+        set_engine_of(&trk[4], 0);
+        memcpy(keep, trk[4].p, sizeof keep);
+        song.sel = 4;
         up_load(7);
-        bad += check("SAMPLE PERC user preset: loads as a DRUM track (its kit)", t->eng_req == ENGI_DRUM && perc_kit(t) &&
-                     t->p[P_LEVEL] == keep[P_LEVEL]);
-        bad += check("  its GM hits play as drums", gm_hits_play(t));
+        bad += check("SAMPLE PERC user preset: loads as a DRUM track (its kit)", trk[4].eng_req == ENGI_DRUM && perc_kit(&trk[4]) &&
+                     trk[4].p[P_LEVEL] == keep[P_LEVEL]);
+        bad += check("  its GM hits play as drums", gm_hits_play(&trk[4]));
         memset(up_rec(7), 0, sizeof r);
     }
-    set_engine_of(t, 0);
-    apply_preset_to(t, SMP_SET_PERC);             /* (engine 0: an ANALOG preset 4, not PERC) */
-    bad += check("factory preset 4 of another engine stays that engine's", t->eng_req == 0u && t->preset == 4u);
-    set_engine_of(t, ENGI_SAMPLE);
-    apply_preset_to(t, SMP_SET_PERC);             /* SAMPLE preset 4 (once PERC): the editor's PRESET, a favourite */
-    bad += check("SAMPLE preset 4 (once PERC): DRUM's kit", t->eng_req == ENGI_DRUM && t->preset == 0u && perc_kit(t) &&
-                 gm_hits_play(t));
+    set_engine_of(&trk[0], 0);                    /* a melodic track: factory preset 4 of its own engine */
+    apply_preset_to(&trk[0], SMP_SET_PERC);
+    bad += check("factory preset 4 of another engine stays that engine's", trk[0].eng_req == 0u && trk[0].preset == 4u);
+    trk[4].eng_req = ENGI_SAMPLE;                 /* a favourite / editor PRESET 4 of SAMPLE (once PERC) */
+    trk[4].engine = ENGI_SAMPLE;
+    apply_preset_to(&trk[4], SMP_SET_PERC);
+    bad += check("SAMPLE preset 4 (once PERC): DRUM's kit", trk[4].eng_req == ENGI_DRUM && trk[4].preset == 0u && drum_kit0(&trk[4]) &&
+                 gm_hits_play(&trk[4]));
+    /* an old GM project: track 4 was the GM drum part (parts 0), its level / reverb send in the globals */
     ui_power_on();
-    host_legacy_sample_perc(&trk[3]);
     my_steps(&trk[3]);
     trk[3].p[P_SDIV] = 3;
     before = trk[3];
-    project_save(1);
-    project_v6_t legacy = {0};
-    project_t decoded;
-    proj_import(&decoded, &proj_slot[1], sizeof proj_slot[1]);
-    legacy.magic = PROJ_MAGIC_V6; legacy.size = sizeof legacy;
-    legacy.parts = 0; legacy.phys = PROJ_PHYS;
-    memcpy(legacy.g, decoded.g, sizeof legacy.g);
-    for (uint32_t ti = 0; ti < NTRK; ti++) {
-        memcpy(legacy.t[ti].p, decoded.t[ti].p, 61u * sizeof(int16_t));
-        memcpy(legacy.t[ti].p + 61, decoded.t[ti].p + P_E0, 8u * sizeof(int16_t));
-        legacy.t[ti].engine = decoded.t[ti].engine; legacy.t[ti].preset = decoded.t[ti].preset;
-        for (uint32_t st = 0; st < NSTEP; st++) memcpy(&legacy.t[ti].step[st], &decoded.t[ti].step[st], sizeof(step10_t));
+    {
+        project_v6_t legacy;
+        legacy_v6(&legacy, 0);
+        legacy.t[3].engine = 0;                   /* (the GM drum part had no engine byte of its own) */
+        legacy.g[G_DRLVL] = 71; legacy.g[G_DRREV] = 43;
+        legacy.g[G_RTYPE] = 10;                   /* (id 24 was the GM drum part's MIDI channel: 10) */
+        legacy.sum = proj_hash(&legacy, offsetof(project_v6_t, sum));
+        memcpy(&proj_slot[1], &legacy, sizeof legacy);
     }
-    legacy.t[3].engine = 0;
-    legacy.g[G_DRLVL] = 71; legacy.g[G_DRREV] = 43;
-    legacy.g[G_RTYPE] = 10;                               /* (id 24 was the GM drum part's MIDI channel: 10) */
-    legacy.sum = proj_hash(&legacy, offsetof(project_v6_t, sum));
-    memcpy(&proj_slot[1], &legacy, sizeof legacy);
     project_load(1);
     bad += check("old GM projects (the drum part) load as DRUM's kit, their mix and steps kept",
-                 trk[3].eng_req == ENGI_DRUM && trk[3].preset == 0u && perc_kit(&trk[3]) &&
-                 trk[3].p[P_LEVEL] == 71 && trk[3].p[P_REV] == 43 && trk[3].p[P_SDIV] == 3 &&
-                 !memcmp(trk[3].step, before.step, sizeof trk[3].step));
-    bad += check("  their GM hits play as drums", gm_hits_play(&trk[3]));
+                 trk[4].eng_req == ENGI_DRUM && trk[4].preset == 0u && drum_kit0(&trk[4]) &&
+                 trk[4].p[P_LEVEL] == 71 && trk[4].p[P_REV] == 43 && trk[4].p[P_SDIV] == 3 &&
+                 !memcmp(trk[4].step, before.step, sizeof before.step));
+    bad += check("  their GM hits play as drums", gm_hits_play(&trk[4]));
     bad += check("  its old drum channel (10, in id 24) loads as REVERB TYPE ROOM", song.g[G_RTYPE] == 0);
     printf("ui: undo copy %u bytes\n", (unsigned)sizeof undo);
     return bad;
@@ -1154,12 +1186,14 @@ static uint32_t lane_steps(const track_t *t, uint32_t l)   /* bit i: lane l stri
 static int test_grid(void)
 {
     int bad = 0;
-    track_t *t = &trk[0];
+    track_t *t;
     uint32_t i, k, leds, ok;
     ui_power_on();
+    select_drum();
+    t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
-    open_family(FAM_SEQ);
+    go_page(GR_ROLL);
     frame();
     bad += check("SEQ > STEP on a DRUM track is the grid (keys to the UI), GRID in the footer", grid_on() && song.grid == 1u &&
                  cur_page()->scope == SC_STEP);
@@ -1203,36 +1237,19 @@ static int test_grid(void)
     leds = grid_leds();
     ok &= (leds >> key_at(0, 0) & 1u) != 0u;
     bad += check("ACC held: a tap adds the hit accented, again drops the accent only; the LEDs show accents", ok);
-    /* the knobs: STEP LANE HIT ACC */
+    /* the 4x4 STEP knobs: K1 STEP, K2 BANK (the cursor follows) */
+    t->p[P_SLEN] = 32;                            /* (two banks: K2 has somewhere to go) */
+    ui.cursor = 0; ui.bank = 0; frame();
     turn(EN_K1, 2);
+    ok = ui.cursor == 2u;
     turn(EN_K2, 1);
-    turn(EN_K3, 1);
-    ok = ui.cursor == 2u && ui.lane == 2u && t->step[2].hit == 1u << DV_CLAP;
-    turn(EN_K4, 1);
-    ok &= t->step[2].acc == 1u << DV_CLAP;
-    turn(EN_K3, -1);
-    ok &= !t->step[2].hit && !t->step[2].acc && t->step[2].time == ST_REST;
-    turn(EN_K4, 1);
-    ok &= t->step[2].hit == 1u << DV_CLAP && t->step[2].acc == 1u << DV_CLAP;
-    bad += check("KNOB 1 STEP, 2 LANE, 3 HIT on / off, 4 ACC (an accent adds the hit)", ok);
+    ok &= ui.bank == 1u && ui.cursor == 18u;
+    turn(EN_K2, -1);
+    ok &= ui.bank == 0u && ui.cursor == 2u;
+    bad += check("4x4 STEP: K1 step, K2 bank (the cursor follows)", ok);
     press(B_EDIT);
     bad += check("EDIT: the cursor step cleared, on to the next", t->step[2].time == ST_REST && !t->step[2].hit && ui.cursor == 3u &&
                  grid_on());
-    /* pages: LEN 32, the page keys */
-    t->p[P_SLEN] = 32;
-    leds = grid_leds();
-    tap_key(key_at(1, GK_PGUP));
-    ok = ui.bank == 1u && ui.cursor == 19u && (leds >> key_at(1, GK_PGUP) & 1u) && (leds >> key_at(1, GK_PGDN) & 1u);
-    tap_key(key_at(0, 15));
-    ok &= t->step[31].hit == 1u << DV_CLAP;
-    tap_key(key_at(1, GK_PGDN));
-    ok &= ui.bank == 0u && ui.cursor == 15u;
-    t->p[P_SLEN] = 12;
-    frame();
-    tap_key(key_at(0, 13));
-    ok &= !t->step[13].hit && !t->step[13].n;
-    bad += check("pages: black keys 11 / 10 up / down (the cursor along); past LEN a key does nothing", ok);
-    t->p[P_SLEN] = 16;
     /* a step's GM notes on their lanes */
     t->step[8] = (step_t){{41, 49, 36, 0}, 3, ST_NOTE, SF_ACCENT, 96, 0, 0};
     ok = step_lanes(&t->step[8]) == ((1u << DV_TOM) | (1u << DV_BELL) | (1u << DV_KICK)) &&
@@ -1254,7 +1271,7 @@ static int test_grid(void)
     bad += check("grid keys in the ISR: white keys and ACC silent, black key 4 plays HAT CL (42)", ok);
     /* live recording on the grid: armed and playing, a lane key records its hit at the play head */
     track_defaults_steps(t);
-    song.rec = 1;
+    song.rec = 1u << (uint32_t)(t - trk);
     song.playing = 1;
     t->seq_idx = 5;
     t->seq_pos = 0;
@@ -1281,8 +1298,8 @@ static int test_grid(void)
     keyboard_block();
     fm1_in.notes = 0;
     keyboard_block();
-    ok = !song.grid && t->step[9].hit == ((1u << DV_KICK) | (1u << DV_HATC)) && t->step[9].n == 1 && t->step[9].note[0] == 35 &&
-         step_lanes(&t->step[9]) == ((1u << DV_KICK) | (1u << DV_HATC));
+    ok = !song.grid && t->step[9].hit != 0 && t->step[9].time == ST_NOTE && t->step[9].n == 0 &&
+         step_lanes(&t->step[9]) == t->step[9].hit;
     song.rec = 0;
     song.playing = 0;
     bad += check("REC on HOME: GM keys quantised into the grid (35 a note on the KICK lane)", ok);
@@ -2642,6 +2659,7 @@ static int test_presets_knob(void)
                  snd_ok && n_snd >= 15u);
     bad += check("#94   SAVE held undoes each of those loads", undo_ok);
     ui_power_on();
+    select_drum();
     set_engine_of(TSEL, ENGI_DRUM);
     TSEL->engine = TSEL->eng_req;
     TSEL->p[P_SLEN] = 32;
@@ -3606,6 +3624,7 @@ static int test_edit_cycle(void)
 #endif
     {   /* #97: a DRUM track's lane levels on EDIT > LANES (KICK SNARE CLAP HATCL) and LANES 2 (HATOP TOM RIM BELL) */
         static const char *const CYC_K[] = {"EDIT 1", "EDIT 2", "LANES", "LANES 2", "VOICE", "VOICE 2", "VOICE 3", "EDIT 1"};
+        select_drum();
         set_engine_of(TSEL, ENGI_DRUM);
         bad += check("EDIT cycle (DRUM): EDIT 1 EDIT 2 LANES LANES 2 VOICE VOICE 2 VOICE 3 EDIT 1", engine_cycle(CYC_K, NELEM(CYC_K)));
         go_title("LANES 2"); frame();
@@ -4366,6 +4385,7 @@ static int test_chord_page(void)
     t->p[P_CHRD] = CH_MIN7; t->p[P_VOIC] = VC_BASS;
     apply_preset_to(t, 1);
     bad += check("  a sound load keeps CHRD and VOIC (SCL settings)", t->p[P_CHRD] == CH_MIN7 && t->p[P_VOIC] == VC_BASS);
+    select_drum(); t = TSEL;
     set_engine_of(t, ENGI_DRUM); t->engine = t->eng_req; frame();
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
     bad += check("  a kit (DRUM): the page says so, MONO gray", chord_kit(t) && screen_gray());
@@ -4495,6 +4515,7 @@ static int test_step_rec(void)
                  !song.rec && !memcmp(before, t->step, sizeof before) && ui.cursor == 4u);
     /* the DRUM grid as before: white keys are the steps (armed or not), REC from stop starts PLAY */
     ui_power_on();
+    select_drum();
     t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
@@ -4600,6 +4621,7 @@ static int test_step_preview_chord_entry(void)
     /* the DRUM grid: KNOB 1 STEP sounds the step's hits */
     ui_power_on();
     menu_put(MI_PREVIEW, 1);
+    select_drum();
     t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
@@ -5174,6 +5196,8 @@ static int test_play_leds(void)
     ui.layer = 1;
     ok = key_leds(0) == layer_leds(0);
     ui.layer = 0;
+    select_drum();
+    t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
     t->step[0] = (step_t){.hit = 1u << DV_KICK, .time = ST_NOTE};
@@ -5242,6 +5266,8 @@ static int test_cursor_step_leds(void)
     go_page(GR_EVENTS);
     frame();
     bad += check("#89 AUTOMATION (same cursor): no step keys", key_leds(0) == 0u);
+    select_drum();
+    t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
     t->step[0] = (step_t){.hit = 1u << DV_KICK, .time = ST_NOTE};
@@ -5341,8 +5367,9 @@ static int test_midi_leds(void)
     open_family(FAM_SEQ);                              /* STEP on a melodic track: the keys as elsewhere */
     frame();
     ok &= !grid_on() && (key_leds(0) & (1u << 7));
-    set_engine_of(&trk[0], ENGI_DRUM);
-    trk[0].engine = trk[0].eng_req;
+    select_drum();
+    set_engine_of(TSEL, ENGI_DRUM);
+    TSEL->engine = TSEL->eng_req;
     frame();
     ok &= grid_on() && key_leds(0) == grid_leds();
     bad += check("  the layer's map and the DRUM grid keep their keys over the MIDI notes", ok);
@@ -5568,6 +5595,7 @@ static int test_step_leds(void)
                 ui_power_on();
                 song.sel = 0;
                 if (drum) {
+                    select_drum();
                     set_engine_of(TSEL, ENGI_DRUM);
                     TSEL->engine = TSEL->eng_req;
                     TSEL->p[P_SLEN] = 16;
@@ -5630,7 +5658,7 @@ static int test_step_leds(void)
             uint32_t m = MODES[mi], glow = m == LEDS_DIM || m == LEDS_DIM_LO;
             char what[128];
             ui_power_on();
-            song.sel = 0;
+            select_drum();
             set_engine_of(TSEL, ENGI_DRUM);
             TSEL->engine = TSEL->eng_req;
             TSEL->p[P_SLEN] = 16;
@@ -6201,6 +6229,8 @@ static int test_scale_leds(void)
     ui_leds();
     ok = !lit_keys(fm1_led_mid) && !lit_keys(fm1_led_dim);
     ui.layer = 0;
+    select_drum();
+    t = TSEL;
     set_engine_of(t, ENGI_DRUM);
     t->engine = t->eng_req;
     sc = scale_leds(&root);
@@ -6575,6 +6605,7 @@ static int tl_times_are(const track_t *t, const step_t *ref, uint32_t len)   /* 
 }
 static void tl_drum(void)
 {
+    select_drum();
     set_engine_of(TSEL, ENGI_DRUM);
     TSEL->engine = TSEL->eng_req;
     track_defaults_steps(TSEL);
@@ -9579,95 +9610,98 @@ static int test_edit_quick_actions(void)
     return bad;
 }
 
+#define RUN(fn) do { if (!ui_test_only || strstr(#fn, ui_test_only)) bad += fn(); } while (0)
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+    const char *ui_test_only = getenv("UI_TEST_ONLY");
     int bad = 0;
-    bad += test_large_face();
-    bad += test_sound_loads();
-    bad += test_patterns();
-    bad += test_rec();
-    bad += test_step_rec();
-    bad += test_step_rec();
-    bad += test_step_preview_chord_entry();
-    bad += test_presets_knob();
-    bad += test_midi();
-    bad += test_save();
-    bad += test_actions();
-    bad += test_tracks();
-    bad += test_grid();
-    bad += test_screen();
-    bad += test_favorites();
-    bad += test_categories();
-    bad += test_display_preferences();
-    bad += test_menu_tabs();
-    bad += test_menu_project_rows();
-    bad += test_information();
-    bad += test_chain();
-    bad += test_song_timeline();
-    bad += test_song_lanes();
-    bad += test_song_lanes_drawn();
-    bad += test_song_pictures();
-    bad += test_head_slot();
-    bad += test_product_ux();
-    bad += test_page_cycles();
-    bad += test_mono_screens();
-    bad += test_roll();
-    bad += test_soak_cards();
-    bad += test_panel();
-    bad += test_layer();
-    bad += test_layer_knob_leak();
-    bad += test_layer_knob_race();
-    bad += test_fx_latch();
-    bad += test_fx_map();
-    bad += test_layer_lock();
-    bad += test_rec_layer();
-    bad += test_seq_tools();
-    bad += test_edit_quick_actions();
-    bad += test_menu_prefs();
-    bad += test_style();
-    bad += test_head_centres();
-    bad += test_head_metronome();
-    bad += test_div_order();
-    bad += test_knob_accel();
-    bad += test_usb_level();
-    bad += test_click_menu();
-    bad += test_usb_serial();
-    bad += test_bpm_lock();
-    bad += test_large();
-    bad += test_browse_no_pattern();
-    bad += test_name();
-    bad += test_edit_cycle();
+    RUN(test_large_face);
+    RUN(test_sound_loads);
+    RUN(test_patterns);
+    RUN(test_rec);
+    RUN(test_step_rec);
+    RUN(test_step_rec);
+    RUN(test_step_preview_chord_entry);
+    RUN(test_presets_knob);
+    RUN(test_midi);
+    RUN(test_save);
+    RUN(test_actions);
+    RUN(test_tracks);
+    RUN(test_grid);
+    RUN(test_screen);
+    RUN(test_favorites);
+    RUN(test_categories);
+    RUN(test_display_preferences);
+    RUN(test_menu_tabs);
+    RUN(test_menu_project_rows);
+    RUN(test_information);
+    RUN(test_chain);
+    RUN(test_song_timeline);
+    RUN(test_song_lanes);
+    RUN(test_song_lanes_drawn);
+    RUN(test_song_pictures);
+    RUN(test_head_slot);
+    RUN(test_product_ux);
+    RUN(test_page_cycles);
+    RUN(test_mono_screens);
+    RUN(test_roll);
+    RUN(test_soak_cards);
+    RUN(test_panel);
+    RUN(test_layer);
+    RUN(test_layer_knob_leak);
+    RUN(test_layer_knob_race);
+    RUN(test_fx_latch);
+    RUN(test_fx_map);
+    RUN(test_layer_lock);
+    RUN(test_rec_layer);
+    RUN(test_seq_tools);
+    RUN(test_edit_quick_actions);
+    RUN(test_menu_prefs);
+    RUN(test_style);
+    RUN(test_head_centres);
+    RUN(test_head_metronome);
+    RUN(test_div_order);
+    RUN(test_knob_accel);
+    RUN(test_usb_level);
+    RUN(test_click_menu);
+    RUN(test_usb_serial);
+    RUN(test_bpm_lock);
+    RUN(test_large);
+    RUN(test_browse_no_pattern);
+    RUN(test_name);
+    RUN(test_edit_cycle);
 #if FELUCCA_SLICE
-    bad += test_slices();
+    RUN(test_slices);
 #endif
-    bad += test_sample_alert();
-    bad += test_quick_layers();
-    bad += test_chord_page();
-    bad += test_bughunt_ui();
-    bad += test_bughunt_ui2();
-    bad += test_piano_roll();
-    bad += test_play_leds();
-    bad += test_cursor_step_leds();
-    bad += test_midi_leds();
-    bad += test_seq_quant();
-    bad += test_idle_glow();
-    bad += test_breath();
-    bad += test_step_leds();
-    bad += test_scale_leds();
-    bad += test_screen_off();
-    bad += test_idle_leds();
-    bad += test_momentary();
-    bad += test_fm6_charts();
-    bad += test_fm6_ops();
-    bad += test_home_tracks();
-    bad += test_fx_map_columns();
-    bad += test_help();
-    bad += test_no_flash();
+    RUN(test_sample_alert);
+    RUN(test_quick_layers);
+    RUN(test_chord_page);
+    RUN(test_bughunt_ui);
+    RUN(test_bughunt_ui2);
+    RUN(test_piano_roll);
+    RUN(test_play_leds);
+    RUN(test_cursor_step_leds);
+    RUN(test_midi_leds);
+    RUN(test_seq_quant);
+    RUN(test_idle_glow);
+    RUN(test_breath);
+    RUN(test_step_leds);
+    RUN(test_scale_leds);
+    RUN(test_screen_off);
+    RUN(test_idle_leds);
+    RUN(test_momentary);
+    RUN(test_fm6_charts);
+    RUN(test_fm6_ops);
+    RUN(test_home_tracks);
+    RUN(test_fx_map_columns);
+    RUN(test_help);
+    RUN(test_no_flash);
 #if FELUCCA_FM4
-    bad += test_fm_charts();                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
+    RUN(test_fm_charts);                        /* (DIGITAL's charts: built with FELUCCA_FM4=1 only) */
 #else
-    bad += test_fm4_retired();
+    RUN(test_fm4_retired);
 #endif
 
     if (getenv("UI_SCREEN_DIR")) chain_screens(getenv("UI_SCREEN_DIR"));
