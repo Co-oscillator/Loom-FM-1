@@ -111,10 +111,10 @@ void loom_drum_all_off(void)
     }
 }
 
-int loom_drum_active(void)
+int loom_drum_active(uint32_t kit)
 {
     for (uint32_t i = 0; i < LOOM_DRUM_LANES; i++) {
-        if (a_voice[i].active || f_voice[i].active)
+        if ((kit == LOOM_KIT_FM ? f_voice[i].active : a_voice[i].active))
             return 1;
     }
     return 0;
@@ -134,6 +134,7 @@ void loom_drum_trigger(uint32_t lane, uint32_t vel, const int16_t *p)
     }
 
     /* Read parameters (P_E0..P_E7) */
+    uint32_t kit  = p ? (uint32_t)p[0] : 0; /* the engine renders one kit's voices */
     int32_t tune  = p ? p[1] : 64; /* TUNE (0..127) */
     int32_t tone  = p ? p[2] : 64; /* TONE (0..127) */
     int32_t decy  = p ? p[3] : 64; /* DECY (0..127) */
@@ -340,6 +341,12 @@ void loom_drum_trigger(uint32_t lane, uint32_t vel, const int16_t *p)
     fv->decay_c = decay_ms_to_q16(c_ms);
     fv->decay_m = decay_ms_to_q16(m_ms);
     fv->decay_pitch = decay_ms_to_q16(p_ms);
+
+    /* Only the kit the engine renders may hold a voice: the other model's copy must not keep it alive. */
+    if (kit == LOOM_KIT_FM)
+        av->active = 0;
+    else
+        fv->active = 0;
 }
 
 /* Render block of N samples */

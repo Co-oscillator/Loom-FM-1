@@ -216,7 +216,7 @@ static void drum_note_on(track_t *t, voice_t *v)
     lane = drum_lane(v->note);
     fx_sidechain_trigger(lane, v->vel);
     if (t->p[P_E0] < 2) {
-        loom_drum_trigger(lane, v->vel, t->p);
+        loom_drum_trigger(lane, v->vel, t->p + P_E0);
         v->s[0] = (int32_t)lane;
         v->env_out = v->vel * 258;
         v->env = 1 << 24;
@@ -249,7 +249,7 @@ static int32_t drum_amp(track_t *t, voice_t *v, int32_t adsr)
     if (!v->active)                                      /* (taken for another part: env_tick ended it) */
         return 0;
     if (t->p[P_E0] < 2) {
-        if (!loom_drum_active()) {
+        if (!loom_drum_active((uint32_t)t->p[P_E0])) {
             v->active = v->gate = 0;
             v->stage = 0;
             v->env = 0;
@@ -278,7 +278,7 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
             return;
         int32_t y[CTL];
         for (i = 0; i < n; i++) y[i] = 0;
-        loom_drum_render(y, n, (uint32_t)t->p[P_E0], t->p);
+        loom_drum_render(y, n, (uint32_t)t->p[P_E0], t->p + P_E0);
         for (i = 0; i < n; i++) {
             out[i] += voice_amp(y[i], m, i);
         }

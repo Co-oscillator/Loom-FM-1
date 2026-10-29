@@ -104,6 +104,7 @@ static void felucca_init(void)
         song.g[i] = GP[i].def;
     undo_depth++;                             /* (no undo copy of the power-on loads) */
     fm6_init();                               /* every track's FM6 patch: the init voice */
+    loom_drum_init();                         /* the analog / FM drum voices' lane types */
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         track_defaults(t);

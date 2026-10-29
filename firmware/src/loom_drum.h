@@ -31,7 +31,7 @@ enum {
 void loom_drum_init(void);
 void loom_drum_trigger(uint32_t lane, uint32_t vel, const int16_t *p);
 void loom_drum_render(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p);
-int  loom_drum_active(void);
+int  loom_drum_active(uint32_t kit);
 void loom_drum_all_off(void);
 
 #endif /* LOOM_DRUM_H */

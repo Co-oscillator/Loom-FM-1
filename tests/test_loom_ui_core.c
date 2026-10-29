@@ -843,12 +843,12 @@ static void test_5track_and_drums(void)
 
     /* 4. Drum kits and choke group */
     loom_drum_init();
-    assert(!loom_drum_active());
+    assert(!loom_drum_active(LOOM_KIT_ANALOG));
 
     /* Trigger Open Hat (lane 4) */
-    int16_t drum_params[P_COUNT] = {0};
+    int16_t drum_params[8] = {LOOM_KIT_ANALOG};
     loom_drum_trigger(LOOM_DRUM_HAT_OP, 127, drum_params);
-    assert(loom_drum_active());
+    assert(loom_drum_active(LOOM_KIT_ANALOG));
 
     int32_t audio_buf[256];
     memset(audio_buf, 0, sizeof(audio_buf));
@@ -865,9 +865,10 @@ static void test_5track_and_drums(void)
 
     /* Test FM Drum kit trigger and rendering */
     loom_drum_all_off();
-    assert(!loom_drum_active());
+    assert(!loom_drum_active(LOOM_KIT_ANALOG));
+    drum_params[0] = LOOM_KIT_FM;
     loom_drum_trigger(LOOM_DRUM_KICK, 127, drum_params);
-    assert(loom_drum_active());
+    assert(loom_drum_active(LOOM_KIT_FM));
     memset(audio_buf, 0, sizeof(audio_buf));
     loom_drum_render(audio_buf, 128, LOOM_KIT_FM, drum_params);
     int32_t energy_fm = 0;
