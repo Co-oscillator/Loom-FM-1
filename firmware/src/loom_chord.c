@@ -183,6 +183,54 @@ static void apply_multi_anchor(loom_chord_t *chord, const uint8_t *anchors, uint
     sort_chord(chord);
 }
 
+/* The chord keys' voicings (chord.c VC_*), on a generated chord: OPEN the second tone an octave up, INV1 / INV2
+ * the lowest one / two, BASS the root an octave down (a seventh drops its fifth). Ascending, inside 0..127,
+ * each note once, as chord_make leaves them. Applied here so the progression's own players (the arp, the CHORD
+ * page's keys) play the voicing too, not only a key's chord_make. */
+static void apply_voicing(loom_chord_t *chord, loom_voicing_t voicing)
+{
+    int16_t t[LOOM_CHORD_MAX_NOTES + 1];
+    uint8_t n = chord->count, i, j, out = 0;
+
+    if (voicing <= LOOM_VOICE_CLOSE || voicing >= LOOM_VOICE_COUNT || !n) return;
+    for (i = 0; i < n; i++) t[i] = chord->notes[i];
+
+    if (voicing == LOOM_VOICE_OPEN) {
+        if (n >= 3) t[1] = (int16_t)(t[1] + 12);
+    } else if (voicing == LOOM_VOICE_INV1 || voicing == LOOM_VOICE_INV2) {
+        for (j = 0; j < (voicing == LOOM_VOICE_INV2 ? 2u : 1u); j++) {
+            int16_t low = (int16_t)(t[0] + 12);
+            for (i = 1; i < n; i++) t[i - 1u] = t[i];
+            t[n - 1u] = low;
+        }
+    } else {                                           /* LOOM_VOICE_BASS */
+        if (n >= 4u) {                                 /* a seventh (or a ninth) drops its fifth */
+            for (i = 2; i + 1u < n; i++) t[i] = t[i + 1u];
+            n--;
+        }
+        for (i = n; i > 0; i--) t[i] = t[i - 1u];
+        t[0] = (int16_t)(t[1] - 12);
+        n++;
+    }
+
+    for (i = 1; i < n; i++)                            /* ascending */
+        for (j = i; j > 0 && t[j - 1u] > t[j]; j--) {
+            int16_t x = t[j];
+            t[j] = t[j - 1u];
+            t[j - 1u] = x;
+        }
+    for (i = 0; i < n; i++) {                          /* inside 0..127, each note once */
+        if (t[i] < 0 || t[i] > 127) continue;
+        if (out && chord->notes[out - 1u] == (uint8_t)t[i]) continue;
+        chord->notes[out++] = (uint8_t)t[i];
+    }
+    if (!out) {
+        chord->notes[0] = (uint8_t)(chord->root_note > 127 ? 127 : chord->root_note);
+        out = 1;
+    }
+    chord->count = out;
+}
+
 void loom_chord_generate(
     loom_chord_prog_t *out,
     uint8_t root_note,
@@ -190,12 +238,14 @@ void loom_chord_generate(
     uint8_t scale_len,
     loom_mood_t mood,
     loom_complexity_t complexity,
+    loom_voicing_t voicing,
     const uint8_t *anchors,
     uint8_t anchor_count,
     uint32_t *rng_state
 ) {
     if (!scale_len) return;
     if (mood >= LOOM_MOOD_COUNT) mood = LOOM_MOOD_CALM;
+    if (voicing >= LOOM_VOICE_COUNT) voicing = LOOM_VOICE_CLOSE;
 
     out->root_note = root_note;
     out->mood = mood;
@@ -258,7 +308,8 @@ void loom_chord_generate(
         }
 
         sort_chord(&chord);
+        last_chord = chord;                            /* (voice leading follows the plain chord, not its voicing) */
+        apply_voicing(&chord, voicing);
         out->chords[i] = chord;
-        last_chord = chord;
     }
 }

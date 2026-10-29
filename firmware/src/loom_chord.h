@@ -17,6 +17,15 @@ typedef enum {
 } loom_complexity_t;
 
 typedef enum {
+    LOOM_VOICE_CLOSE = 0,   /* root position (chord.c VC_CLOSE) */
+    LOOM_VOICE_OPEN = 1,    /* the second tone an octave up (VC_OPEN) */
+    LOOM_VOICE_INV1 = 2,    /* the lowest tone an octave up (VC_INV1) */
+    LOOM_VOICE_INV2 = 3,    /* the two lowest tones (VC_INV2) */
+    LOOM_VOICE_BASS = 4,    /* the root an octave down; a seventh drops its fifth (VC_BASS) */
+    LOOM_VOICE_COUNT = 5
+} loom_voicing_t;
+
+typedef enum {
     LOOM_MOOD_CALM = 0,
     LOOM_MOOD_HAPPY = 1,
     LOOM_MOOD_SAD = 2,
@@ -43,7 +52,7 @@ typedef struct {
     uint8_t active_step;
 } loom_chord_prog_t;
 
-/* Generate an 8-chord progression using Loom music theory rules */
+/* Generate an 8-chord progression using Loom music theory rules, every chord voiced by `voicing` */
 void loom_chord_generate(
     loom_chord_prog_t *out,
     uint8_t root_note,
@@ -51,6 +60,7 @@ void loom_chord_generate(
     uint8_t scale_len,
     loom_mood_t mood,
     loom_complexity_t complexity,
+    loom_voicing_t voicing,
     const uint8_t *anchors,
     uint8_t anchor_count,
     uint32_t *rng_state

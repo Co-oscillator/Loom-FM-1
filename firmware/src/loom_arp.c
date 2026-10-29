@@ -81,6 +81,7 @@ static void loom_arp_generate_prog(loom_arp_t *arp)
                             arp->scale_len,
                             (loom_mood_t)arp->chord_mood,
                             (loom_complexity_t)arp->chord_complexity,
+                            LOOM_VOICE_CLOSE,           /* (the tracks' VOIC is applied in chord.c's generator) */
                             arp->held,
                             arp->n_held,
                             &arp->rng_state);

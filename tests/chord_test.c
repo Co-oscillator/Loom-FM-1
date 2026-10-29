@@ -293,6 +293,62 @@ static int midi_in(void)
     return bad;
 }
 
+/* VOIC while CHRD = PROG (1.8): the generated progression itself is voiced, so the keys, the chord page and the
+ * arp play it; chord_make must not apply the voicing a second time */
+static int prog_voic(void)
+{
+    int bad = 0;
+    track_t *t = &trk[0];
+    uint8_t out[CHORD_MAX], close[LOOM_CHORD_MAX_NOTES], cn;
+    uint32_t list[64], cnt = 0, len, i, k;
+    reset();
+    t->p[P_CHRD] = CH_PROG; t->p[P_SCALE] = 1; t->p[P_ROOT] = 3; t->p[P_CMOOD] = 0; t->p[P_CCMPX] = 0;
+    t->p[P_PRATE] = 0; t->p[P_PHOLD] = 0; t->p[P_PINV] = 0; t->p[P_POCT] = 0; t->p[P_AOCT] = 0;
+    t->p[P_VOIC] = VC_CLOSE;
+    ensure_track_prog(t);
+    cn = trk_prog[0].chords[0].count;
+    for (i = 0; i < cn; i++) close[i] = trk_prog[0].chords[0].notes[i];
+    bad += check("PROG CLOSE: the generated chord", cn >= 3u);
+
+    t->p[P_VOIC] = VC_OPEN;
+    ensure_track_prog(t);
+    bad += check("  VOIC OPEN while PROG: 1-5-3, the second tone an octave up",
+                 trk_prog[0].chords[0].count == cn && trk_prog[0].chords[0].notes[0] == close[0] &&
+                 trk_prog[0].chords[0].notes[1] == close[2] &&
+                 trk_prog[0].chords[0].notes[2] == (uint8_t)(close[1] + 12));
+    t->p[P_VOIC] = VC_INV1;
+    ensure_track_prog(t);
+    bad += check("  VOIC INV1: the lowest tone an octave up",
+                 trk_prog[0].chords[0].count == cn && trk_prog[0].chords[0].notes[0] == close[1] &&
+                 trk_prog[0].chords[0].notes[1] == close[2] &&
+                 trk_prog[0].chords[0].notes[2] == (uint8_t)(close[0] + 12));
+    t->p[P_VOIC] = VC_INV2;
+    ensure_track_prog(t);
+    bad += check("  VOIC INV2: the two lowest tones an octave up",
+                 trk_prog[0].chords[0].count == cn && trk_prog[0].chords[0].notes[0] == close[2] &&
+                 trk_prog[0].chords[0].notes[1] == (uint8_t)(close[0] + 12) &&
+                 trk_prog[0].chords[0].notes[2] == (uint8_t)(close[1] + 12));
+    t->p[P_VOIC] = VC_BASS;
+    ensure_track_prog(t);
+    k = trk_prog[0].chords[0].count;
+    bad += check("  VOIC +OCT: the root an octave down, not applied twice",
+                 k == cn + 1u && trk_prog[0].chords[0].notes[0] == (uint8_t)(close[0] - 12) &&
+                 trk_prog[0].chords[0].notes[1] == close[0] && trk_prog[0].chords[0].notes[2] == close[1]);
+
+    in_key = 0;
+    song.playing = 0;
+    chord_last[0].step = 0;
+    bad += check("  a key's chord_make plays the voiced progression once",
+                 chord_build(t, 60, out) == k && !memcmp(out, trk_prog[0].chords[0].notes, k));
+    t->nheld = 1; t->held[0] = 60;
+    len = arp_list(t, list, &cnt);
+    for (i = 0; i < cnt && i < len; i++)
+        if (list[i] != trk_prog[0].chords[0].notes[i]) break;
+    bad += check("  the held ARP plays the voiced progression", i == cnt && cnt == k);
+    t->nheld = 0;
+    return bad;
+}
+
 static int kits(void)
 {
     int bad = 0;
@@ -320,7 +376,7 @@ static int kits(void)
 
 int main(void)
 {
-    int bad = theory() + shapes_voicings() + keys() + arp_rec() + midi_in() + kits();
+    int bad = theory() + shapes_voicings() + keys() + arp_rec() + midi_in() + prog_voic() + kits();
     printf("%s\n", bad ? "CHORD TEST FAILED" : "chord keys test passed");
     return bad != 0;
 }

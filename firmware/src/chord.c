@@ -7,7 +7,8 @@
  *        major scale of ROOT); MAJ MIN DOM7 MAJ7 MIN7 SUS4 POW: that shape on the key, whatever the scale.
  *   VOIC CLOSE (root position); OPEN (the second tone an octave up: 1-5-3); INV1 / INV2 (the lowest tone, then
  *        the next, an octave up); +OCT (the root an octave down added; a seventh drops its fifth). At most
- *        CHORD_MAX notes, notes outside 0..127 left out.
+ *        CHORD_MAX notes, notes outside 0..127 left out. With CHRD = PROG the generated progression is voiced
+ *        (loom_chord_generate), so every player of it gets the same voicing; chord_make does not apply it twice.
  * The key is mapped first (kb_map: QNT SNAP / WHITE, TRN, the octave), the chord is built on the note it gives.
  * MONO / LEGATO / UNISON parts play the chord's root only; a kit (the DRUM engine, slices: an
  * engine that maps the keys itself) ignores CHRD. Every source keeps the notes it started (kb_chord for a
@@ -40,7 +41,8 @@ static void ensure_track_prog(const track_t *t)
                    (((uint32_t)(t->p[P_CCMPX] & 3u)) << 13) |
                    (((uint32_t)(t->p[P_PINV] + 7u)) << 16) |
                    (((uint32_t)(t->p[P_POCT] + 7u)) << 20) |
-                   (((uint32_t)(t->nheld & 7u)) << 24);
+                   (((uint32_t)(t->nheld & 7u)) << 24) |
+                   (((uint32_t)(t->p[P_VOIC] & 7u)) << 27);
     for (uint8_t h = 0; h < t->nheld && h < 4u; h++) {
         sig ^= ((uint32_t)t->held[h]) << (h * 7u + 1u);
     }
@@ -61,6 +63,7 @@ static void ensure_track_prog(const track_t *t)
         loom_chord_generate(&trk_prog[k], tonic, sc_iv, sc_len,
                             (loom_mood_t)clamp(t->p[P_CMOOD], 0, LOOM_MOOD_COUNT - 1),
                             (loom_complexity_t)clamp(t->p[P_CCMPX], 0, LOOM_COMPLEXITY_COUNT - 1),
+                            (loom_voicing_t)clamp(t->p[P_VOIC], 0, LOOM_VOICE_COUNT - 1),
                             t->nheld > 0 ? t->held : 0,
                             t->nheld > 0 ? (t->nheld > 4 ? 4 : t->nheld) : 0,
                             &rng_seed);
@@ -182,32 +185,34 @@ static uint32_t chord_make(const track_t *t, uint32_t root, uint8_t *out, int32_
         out[0] = (uint8_t)clamp(r, 0, 127);
         return 1;
     }
-    switch (t->p[P_VOIC]) {
-    case VC_OPEN:                                       /* 1-5-3(-7): the second tone an octave up */
-        if (n >= 3u)
-            iv[1] += 12;
-        break;
-    case VC_INV2:
-    case VC_INV1:
-        for (j = 0; j < (t->p[P_VOIC] == VC_INV2 ? 2u : 1u); j++) {   /* the lowest tone an octave up */
-            x = iv[0] + 12;
-            for (i = 1; i < n; i++)
-                iv[i - 1u] = iv[i];
-            iv[n - 1u] = x;
+    if (mode != CH_PROG) {                              /* (loom_chord_generate voiced it: do not apply it twice) */
+        switch (t->p[P_VOIC]) {
+        case VC_OPEN:                                   /* 1-5-3(-7): the second tone an octave up */
+            if (n >= 3u)
+                iv[1] += 12;
+            break;
+        case VC_INV2:
+        case VC_INV1:
+            for (j = 0; j < (t->p[P_VOIC] == VC_INV2 ? 2u : 1u); j++) {   /* the lowest tone an octave up */
+                x = iv[0] + 12;
+                for (i = 1; i < n; i++)
+                    iv[i - 1u] = iv[i];
+                iv[n - 1u] = x;
+            }
+            break;
+        case VC_BASS:                                   /* the root an octave down; a seventh drops its fifth */
+            if (n == CHORD_MAX) {
+                iv[2] = iv[3];
+                n--;
+            }
+            for (i = n; i > 0; i--)
+                iv[i] = iv[i - 1u];
+            iv[0] = -12;
+            n++;
+            break;
+        default:
+            break;
         }
-        break;
-    case VC_BASS:                                       /* the root an octave down; a seventh drops its fifth */
-        if (n == CHORD_MAX) {
-            iv[2] = iv[3];
-            n--;
-        }
-        for (i = n; i > 0; i--)
-            iv[i] = iv[i - 1u];
-        iv[0] = -12;
-        n++;
-        break;
-    default:
-        break;
     }
     for (i = 1; i < n; i++)                             /* ascending */
         for (j = i; j > 0 && iv[j - 1u] > iv[j]; j--) {
