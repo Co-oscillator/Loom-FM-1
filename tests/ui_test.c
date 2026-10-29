@@ -7462,7 +7462,7 @@ static int test_div_order(void)
 {
     int bad = 0, ok = 1;
     uint32_t id, c, k, found = 0;
-    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &TP[P_ARATE], &GP[G_DTIME], &TP[P_SLRATE]};
+    static const param_desc_t *const LISTS[] = {&TP[P_SDIV], &TP[P_ARATE], &TP[P_SLRATE]};   /* (G_DTIME is a continuous time now) */
     ui_power_on();
     for (k = 0; k < NELEM(LISTS); k++) {           /* left end -> right end: each one shorter than the one before */
         const param_desc_t *d = LISTS[k];
@@ -7470,13 +7470,14 @@ static int test_div_order(void)
         uint32_t prev = 0xFFFFFFFFu, len;
         for (n = 0; n < 40; n++) v = param_turn(d, v, -1);
         for (n = 0; n <= d->max - d->min; n++) {
-            len = d->names == N_SLDIV ? 1000000u / SL_DEN[v] : div_samples((uint32_t)v);   /* (TIME's dotted ones too) */
-            if (!(len < prev && enum_rank(d, v) == d->min + n && !((seen >> v) & 1))) {
-                printf("  %s: %s (value %d, place %d, length %u) after %u\n", d->label, d->names[v], (int)v,
-                       (int)enum_rank(d, v), len, prev);
+            int32_t vv = v < d->min ? d->min : v > d->max ? d->max : v;   /* (a turn that wrapped: do not index past the list) */
+            len = d->names == N_SLDIV ? 1000000u / SL_DEN[vv] : div_samples((uint32_t)vv);   /* (TIME's dotted ones too) */
+            if (!(len < prev && enum_rank(d, vv) == d->min + n && !((seen >> vv) & 1))) {
+                printf("  %s: %s (value %d, place %d, length %u) after %u\n", d->label, d->names[vv], (int)vv,
+                       (int)enum_rank(d, vv), len, prev);
                 ok = 0;
             }
-            seen |= 1 << v;
+            seen |= 1 << vv;
             prev = len;
             v = param_turn(d, v, 1);
         }
