@@ -719,8 +719,8 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 
 /* two factory sounds, both on BREAK (always there) */
 static const preset_t SLICE_PRESETS[] = {
-    {"CHOP", {0, 16, 0, 100, 100, SLC_ONE, 0, 0}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 12), PAT(9)},
-    {"STUTTER", {0, 8, 0, 100, 100, SLC_GATE, 0, 0}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 20, 10), PAT(10)},
+    {"CHOP", {0, 16, 0, 100, 100, SLC_ONE, 0, 0}, {0, 127, 127, 30}, 0, 0, FX(0, 0, 0, 0), PAT(9)},
+    {"STUTTER", {0, 8, 0, 100, 100, SLC_GATE, 0, 0}, {0, 127, 127, 12}, 0, 0, FX(10, 0, 0, 0), PAT(10)},
 };
 
 /* Each of the 16 white keys plays one of up to 16 slices; black keys are silent */
