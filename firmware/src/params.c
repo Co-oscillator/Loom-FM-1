@@ -584,11 +584,14 @@ static const page_t PAGES[] = {
     {"4x4 PAT", FAM_SEQ, SC_TRACK, GR_ROLL, {P_SLEN, P_SDIV, P_SSWING, P_SHUMAN}},
     {"8x8 STEP", FAM_SEQ, SC_STEP, GR_STEPS, {0, 1, 2, 3}},
     {"8x8 PAT", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SHUMAN}},
+    {"DETAIL", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},   /* 1.5.1: the cursor step's CHANCE RATCH NUDGE VEL */
+    {"AUTOMATION", FAM_SEQ, SC_TRACK, GR_EVENTS, {0xFF, 0xFF, 0xFF, 0xFF}},   /* the locks, events, CHANCE and RATCH */
     /* HOME's pages (1.2): HOME tapped on HOME the MIXER (up to 1.1.5 GLO's; LEVEL PAN REV MUTE), again CLOCK (up to 1.1.5
      * GLO > GLOBAL; its TUNE is MENU > AUDIO's now), again HOME (ui.c home_tap) */
     {"MIXER", FAM_TRK, SC_TRK, GR_TRK, {0, 1, 2, 3}},
     {"CLOCK", FAM_TRK, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, 0xFF}},
     {"MACROS", FAM_TRK, SC_GLOBAL, GR_MACRO, {0, 1, 2, 3}},
+    {"SONG", FAM_TRK, SC_GLOBAL, GR_SONG, {0xFF, 0xFF, 0xFF, 0xFF}},   /* 1.8: a HOME view (GLOBAL stays one page) */
 };
 static const char *const N_SCSRC[] = {"KICK", "K+SN", "K+TM", "ALL"};
 static const param_desc_t SC_DESC[4] = {

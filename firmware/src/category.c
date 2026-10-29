@@ -25,16 +25,18 @@ static const char *const PRESET_CAT[16] = {
     "LKPLUU",                    /* 2 PHASE: BRASS, ORGAN, STRING, RESO, BELL, WIRE */
     "LBLLL",                     /* 3 LOFI: PULSE LD, WAVE BASS, ARP 8BIT, WAVE LEAD, STEP LEAD */
     "KKLL",                      /* 4 SAMPLE: PIANO, (PIANO: the retired TRANH's alias), FLUTE, SAX */
-    "PLBF",                      /* 5 VOICE: CHOIR AAH, VOX LEAD, WOW BASS, WHISPER */
-    "BLLUP",                     /* 6 TRIO: FAT BASS, ARP LEAD, SYNC LEAD, RING BELL, CHIP CHOIR */
+    "PLBP",                      /* 5 VOICE: CHOIR AAH, VOX LEAD, WOW BASS, WHISPER */
+    "UUU",                       /* 6 SCRUB: VINYL, REEL, BRAKE (unique tape sounds) */
     "KKKKK",                     /* 7 WHEEL: the organs */
     "PFPP",                      /* 8 GRAIN: CLOUD PAD, GLITCH, FROZEN, SHIMMER */
     "UUUPUDDPU",                 /* 9 PHYS: BELL TREE, MARIMBA, PLUCK, BOWED METAL, KALIMBA, HAND DRUM, TOMS, DRONE
                                   * STRING, HARP */
-    "D",                         /* 10 DRUM: DRUM KIT */
+    "DDDD",                      /* 10 DRUM: the four kits */
     "FFFF",                      /* 11 NOISE: WIND, RAIN, ARCADE, METAL */
     "KUBLPUKU",                  /* 12 FM6: TINE EP, BELL, FM BASS, BRASS, PAD, MARIMBA, ORGAN, PLUCK */
     "DD",                        /* 13 SLICE: CHOP, STUTTER */
+    "LKPLFLLB",                  /* 14 WAVETABLE: ANLG WT, PIANO RES, AERO FLUT, BRASS SAX, NEON TAPE, DIGI BITS,
+                                  * CYBERVOX, SUB BASS */
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {
