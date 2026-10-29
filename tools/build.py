@@ -370,6 +370,8 @@ def main():
     fwsc_name = re.sub(r"\.fswc$", ".fwsc", name)
     (OUT / name).write_bytes(pkg)
     (OUT / fwsc_name).write_bytes(pkg)
+    (OUT / "loom-groovebox.fswc").write_bytes(pkg)   # also the unversioned artifact the web installer serves
+    (OUT / "loom-groovebox.fwsc").write_bytes(pkg)
     (SRC / "loom-groovebox.fswc").write_bytes(pkg)
     (SRC / "loom-groovebox.fwsc").write_bytes(pkg)
     att = SRC / "assets" / "samples-cc0" / "ATTRIBUTION.txt"
