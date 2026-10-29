@@ -1099,7 +1099,7 @@ static void setup(int s)
     case S_FILTER: TSEL->p[P_FTYPE] = 1; go_title("FILTER"); break;   /* 1.5: ANALOG's TYPE CUT RES KTR */
     case S_LFO: go_title("LFO"); break;
     case S_MOD: TSEL->p[P_M1SRC] = 1; TSEL->p[P_M1DST] = 2; TSEL->p[P_M1AMT] = 40; TSEL->p[P_M2SRC] = 6;
-        TSEL->p[P_M2DST] = 14; TSEL->p[P_M2AMT] = -64; mod_ui_slot = 1; go_title("MOD"); break;
+        TSEL->p[P_M2DST] = 14; TSEL->p[P_M2AMT] = -64; go_title("MOD"); break;
     case S_FX: go_title("FX"); break;
     case S_SLICER: TSEL->p[P_SLCR] = 1; go_title("SLICER"); break;
     case S_DLY: go_title("DLY"); break;
@@ -1730,7 +1730,6 @@ static void sweep_columns(void)
         cur_name = large_on ? "LARGE MOD sweep" : "MOD sweep";
         for (v = 0; v < MD_N; v++) {
             TSEL->p[P_M1SRC] = (int16_t)(v % MS_N); TSEL->p[P_M1DST] = (int16_t)v; TSEL->p[P_M1AMT] = (int16_t)(e * 40 - 64);
-            mod_ui_slot = (uint8_t)(v & 3u);
             draw(-1);
             lint();
         }

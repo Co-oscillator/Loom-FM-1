@@ -13,7 +13,9 @@ static const char *const E_NAME[NE] = {"SELECT", "ALGORITHM", "PRESETS", "KNOB 1
                                         "KNOB 3", "KNOB 4"};
 #define PANEL_MAGIC 0x50414E35u          /* "PAN5": bump when PANEL_DEFAULT changes */
 
+#ifndef PANEL_NO_DEFINE
 panel_t panel __attribute__((section(".noinit")));
+#endif
 
 static const panel_t PANEL_DEFAULT = {
     PANEL_MAGIC,

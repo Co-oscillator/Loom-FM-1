@@ -29,6 +29,8 @@
 #undef memcmp
 static struct { volatile uint32_t notes, buttons; } fm1_in;
 #include "../firmware/src/core.h"
+#define PANEL_NO_DEFINE 1                        /* (a test's own panel.c keeps this object) */
+panel_t panel;                                   /* seq.c reads the SCL button: no panel keys here */
 #include "../firmware/src/engines.c"
 #include "../firmware/src/params.c"
 #include "../firmware/src/loom_macro.h"
