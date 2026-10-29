@@ -340,11 +340,40 @@ static int prog_voic(void)
     chord_last[0].step = 0;
     bad += check("  a key's chord_make plays the voiced progression once",
                  chord_build(t, 60, out) == k && !memcmp(out, trk_prog[0].chords[0].notes, k));
+    {   /* a voicing changes the notes, not the chord's name */
+        char nc[12], ni[12];
+        int32_t rr;
+        uint16_t mm;
+        t->p[P_VOIC] = VC_CLOSE;
+        ensure_track_prog(t);
+        chord_make(t, 60, out, &rr, &mm);
+        chord_name(nc, (uint32_t)rr, mm);
+        t->p[P_VOIC] = VC_INV1;
+        ensure_track_prog(t);
+        chord_make(t, 60, out, &rr, &mm);
+        chord_name(ni, (uint32_t)rr, mm);
+        bad += check("  VOIC INV1 keeps the chord's name", str_eq(nc, ni));
+    }
+    t->p[P_VOIC] = VC_BASS;
+    ensure_track_prog(t);
+    k = trk_prog[0].chords[0].count;
     t->nheld = 1; t->held[0] = 60;
+    t->p[P_AMODE] = AM_UP; t->p[P_AHOLD] = 0; t->p[P_AOCT] = 0;
     len = arp_list(t, list, &cnt);
     for (i = 0; i < cnt && i < len; i++)
         if (list[i] != trk_prog[0].chords[0].notes[i]) break;
     bad += check("  the held ARP plays the voiced progression", i == cnt && cnt == k);
+    /* the ARP walks the progression, and VOIC neither stops it nor jumps its playhead */
+    t->arp_idx = 0; arp_list(t, list, &cnt);
+    k = trk_prog[0].active_step;
+    t->arp_idx = 8; arp_list(t, list, &cnt);
+    bad += check("  the ARP advances to the next chord", trk_prog[0].active_step == (k + 1u) % LOOM_CHORD_STEPS);
+    k = trk_prog[0].active_step;
+    t->p[P_VOIC] = VC_INV2;
+    ensure_track_prog(t);
+    bad += check("  VOIC keeps the progression's active step", trk_prog[0].active_step == k);
+    t->arp_idx = 16; arp_list(t, list, &cnt);
+    bad += check("  .. and the ARP keeps walking after it", trk_prog[0].active_step == (k + 1u) % LOOM_CHORD_STEPS);
     t->nheld = 0;
     return bad;
 }

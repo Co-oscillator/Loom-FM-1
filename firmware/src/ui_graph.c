@@ -883,6 +883,15 @@ static void graph_scale(const track_t *t, uint16_t c)
     }
 }
 
+/* the chord's tones above its true root (bit i: i semitones), also when VOIC has inverted it */
+static uint16_t prog_mask(const loom_chord_t *ch)
+{
+    uint16_t m = 0;
+    for (uint8_t i = 0; i < ch->count; i++)
+        m |= (uint16_t)(1u << ((ch->notes[i] + 120u - ch->root_note) % 12u));
+    return m;
+}
+
 /* Loom 8-step Chord Progression block visualizer across 240px width */
 static void graph_prog_blocks(const track_t *t, uint16_t c, int show_notes)
 {
@@ -906,10 +915,7 @@ static void graph_prog_blocks(const track_t *t, uint16_t c, int show_notes)
         static const char *const ROMAN_MAJ[8] = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII"};
         static const char *const ROMAN_MIN[8] = {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii"};
         uint32_t deg = (ch->degree > 0 && ch->degree <= 8) ? (ch->degree - 1u) : 0u;
-        uint16_t mask = 0;
-        for (uint8_t ci = 0; ci < ch->count; ci++) {
-            mask |= (uint16_t)(1u << ((ch->notes[ci] - ch->notes[0]) % 12));
-        }
+        uint16_t mask = prog_mask(ch);
         int is_min = (mask >> 3) & 1u;
         const char *rom = is_min ? ROMAN_MIN[deg] : ROMAN_MAJ[deg];
         int32_t rw = text_w(&AF_S, rom);
@@ -917,7 +923,7 @@ static void graph_prog_blocks(const track_t *t, uint16_t c, int show_notes)
 
         /* Chord root name */
         char cname[12];
-        chord_name(cname, (uint32_t)ch->notes[0], mask);
+        chord_name(cname, (uint32_t)ch->root_note, mask);
         if (str_len(cname) > 4) {
             cname[4] = 0;
         }
@@ -958,12 +964,9 @@ static void graph_chord(const track_t *t, uint16_t c)
         uint32_t active = prog->active_step % LOOM_CHORD_STEPS;
         const loom_chord_t *ch = &prog->chords[active];
 
-        uint16_t mask = 0;
-        for (uint8_t ci = 0; ci < ch->count; ci++) {
-            mask |= (uint16_t)(1u << ((ch->notes[ci] - ch->notes[0]) % 12));
-        }
+        uint16_t mask = prog_mask(ch);
         char b[24];
-        chord_name(b, (uint32_t)ch->notes[0], mask);
+        chord_name(b, (uint32_t)ch->root_note, mask);
 
         char title[32];
         str_cpy(title, "CHORD: ", sizeof(title));

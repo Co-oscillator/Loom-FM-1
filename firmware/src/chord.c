@@ -39,15 +39,16 @@ static void ensure_track_prog(const track_t *t)
                    (((uint32_t)(t->p[P_SCALE] & 31u)) << 4) |
                    (((uint32_t)(t->p[P_CMOOD] & 15u)) << 9) |
                    (((uint32_t)(t->p[P_CCMPX] & 3u)) << 13) |
-                   (((uint32_t)(t->p[P_PINV] + 7u)) << 16) |
-                   (((uint32_t)(t->p[P_POCT] + 7u)) << 20) |
-                   (((uint32_t)(t->nheld & 7u)) << 24) |
-                   (((uint32_t)(t->p[P_VOIC] & 7u)) << 27);
+                   (((uint32_t)(t->p[P_PINV] + 7u)) << 15) |
+                   (((uint32_t)(t->p[P_POCT] + 7u)) << 19) |
+                   (((uint32_t)(t->nheld & 7u)) << 23) |
+                   (((uint32_t)(t->p[P_VOIC] & 7u)) << 26);
     for (uint8_t h = 0; h < t->nheld && h < 4u; h++) {
-        sig ^= ((uint32_t)t->held[h]) << (h * 7u + 1u);
+        sig = sig * 33u + (uint32_t)t->held[h];     /* (mixed, not shifted into the fields above) */
     }
 
     if (sig != trk_prog_sig[k] || !trk_prog[k].chords[0].count) {
+        uint8_t keep_step = trk_prog[k].chords[0].count ? trk_prog[k].active_step : 0u;
         trk_prog_sig[k] = sig;
         uint32_t mask = scale_mask(t);
         uint8_t sc_iv[12];
@@ -88,6 +89,7 @@ static void ensure_track_prog(const track_t *t)
                 }
             }
         }
+        trk_prog[k].active_step = (uint8_t)(keep_step % LOOM_CHORD_STEPS);   /* the playhead stays where it was */
     }
 }
 
@@ -130,10 +132,16 @@ static uint32_t chord_tones(const track_t *t, uint32_t mode, int32_t *root, int3
         chord_last[k].step = (uint8_t)step;
 
         const loom_chord_t *ch = &trk_prog[k].chords[step];
+        int32_t r = (int32_t)ch->root_note;             /* the true root, also when the chord is voiced */
+        for (i = 0; i < ch->count; i++)
+            if ((ch->notes[i] % 12u) == (ch->root_note % 12u)) {
+                r = ch->notes[i];
+                break;
+            }
         for (i = 0; i < ch->count && n < CHORD_MAX; i++) {
-            iv[n++] = (int32_t)ch->notes[i] - (int32_t)ch->notes[0];
+            iv[n++] = (int32_t)ch->notes[i] - r;
         }
-        *root = (int32_t)ch->notes[0];
+        *root = r;
         return n;
     }
     if (mode >= CH_MAJ && mode <= CH_POW) {
@@ -178,7 +186,7 @@ static uint32_t chord_make(const track_t *t, uint32_t root, uint8_t *out, int32_
     }
     n = chord_tones(t, mode, &r, iv);
     for (i = 0; i < n; i++)
-        mask |= (uint16_t)(1u << (iv[i] % 12));
+        mask |= (uint16_t)(1u << (uint32_t)((iv[i] % 12 + 12) % 12));
     *rp = r;
     *maskp = mask;
     if (trk_vmode(t) != V_POLY) {                       /* one voice: the root */

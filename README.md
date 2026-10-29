@@ -109,6 +109,12 @@
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
 
+## New in 1.8.1
+
+- **PROG + VOIC fixes:** turning **VOIC** while CHRD = PROG no longer resets the progression's playhead to step 1, and
+  the ARP keeps walking after a voicing change. An inverted voicing (INV1 / INV2) keeps the chord's real root and name
+  instead of being displayed as a different chord.
+
 ## New in 1.8
 
 - **Held-ARP screen:** holding **ARP** now shows its map (the mode in effect, spelled out, and the key hints). The

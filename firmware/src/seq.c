@@ -413,12 +413,12 @@ static uint32_t arp_list(const track_t *t, uint32_t *list, uint32_t *cnt)
         chord_last[trk_idx].step = (uint8_t)harm_step;
 
         /* Update chord_last for real-time display of chord name on CHORD screen */
-        chord_last[trk_idx].root = ch->notes[0];
+        chord_last[trk_idx].root = ch->root_note;
         chord_last[trk_idx].n = ch->count < CHORD_MAX ? ch->count : CHORD_MAX;
         uint16_t cmask = 0;
         for (i = 0; i < ch->count; i++) {
             if (i < CHORD_MAX) chord_last[trk_idx].note[i] = ch->notes[i];
-            cmask |= (uint16_t)(1u << ((ch->notes[i] - ch->notes[0]) % 12));
+            cmask |= (uint16_t)(1u << ((ch->notes[i] + 120u - ch->root_note) % 12u));
         }
         chord_last[trk_idx].mask = cmask;
         chord_last[trk_idx].gen++;
@@ -924,7 +924,7 @@ static void key_scl_chord_on(uint32_t k, track_t *t)
 
     prg->active_step = (uint8_t)step;
     chord_last[k_trk].step = (uint8_t)step;
-    chord_last[k_trk].root = ch->notes[0];
+    chord_last[k_trk].root = ch->root_note;
     chord_last[k_trk].n = (uint8_t)(cnt > CHORD_MAX ? CHORD_MAX : cnt);
     chord_last[k_trk].gen++;
 

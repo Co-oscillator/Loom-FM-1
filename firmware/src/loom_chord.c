@@ -142,6 +142,8 @@ static void apply_voice_leading(loom_chord_t *chord, const loom_chord_t *last_ch
 
     if (shift != 0) {
         int shift_semis = shift * 12;
+        int rn = (int)chord->root_note + shift_semis;   /* the root moves with its chord */
+        chord->root_note = (uint8_t)(rn < 0 ? 0 : rn > 127 ? 127 : rn);
         for (i = 0; i < chord->count; i++) {
             int n = (int)chord->notes[i] + shift_semis;
             if (n >= 0 && n <= 127) {
@@ -174,6 +176,8 @@ static void apply_multi_anchor(loom_chord_t *chord, const uint8_t *anchors, uint
             int target_octave = (chord->notes[replacement_idx] / 12) * 12;
             int n = target_octave + anchor_pc;
             if (n >= 0 && n <= 127) {
+                if (replacement_idx == 0)               /* an anchor took the root: it is the root now */
+                    chord->root_note = (uint8_t)n;
                 chord->notes[replacement_idx] = (uint8_t)n;
                 replacement_idx--;
             }
