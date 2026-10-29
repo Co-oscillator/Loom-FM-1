@@ -51,8 +51,9 @@
 - **Metronome and count-in:** CLICK (OFF, while recording, or always) with three levels, and a count-in
   of 1 or 2 bars before recording from stop; the click goes to the headphones and speaker only, never to
   USB audio or into a pattern
-- **Songs** (HOME > SONG): up to 16 sections, each naming the project slot (A–D) **every track** plays, or "-" for a
-  track that rests there, with its repeats; drawn as a timeline with a lane per track. KNOB 1 picks the section, KNOB 2
+- **Songs** (HOME > SONG): up to 16 sections, each naming the project slot (A–D) the four pattern tracks (T1–T4)
+  play, or "-" for a track that rests there, with its repeats; drawn as a timeline with a lane per track. The DRUM
+  track joins SONG with the next chain format. KNOB 1 picks the section, KNOB 2
   the track, KNOB 3 its slot (A–D, "-") and KNOB 4 the repeats; on the **+ ADD** cell a turn of KNOB 3 adds the next
   section (copying the one before it), and PLAY plays the chain. The white keys A3–D4 also set the slot.
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
