@@ -1229,9 +1229,13 @@ static void draw_layer(void)
     uint32_t l = ui.layer % LAYER_N, sig = l * 7919u + ux.gen * 977u;
     if (l == LAYER_ARP) {                               /* Loom: the modes are on the keys; name the one in effect */
         layer_cards(l);
+        cv_begin(240, H_GRAPH, T_BG);                   /* (the panel: canvas -> blit, as every layer's body) */
+        cv_rrect(3, 0, 234, H_GRAPH, 5, T_SURF, T_BG);
+        cv_bg = T_SURF;
         cv_text(8, 40, &AF_S, "ARP MODE", T_MID);
         cv_text(8, 58, &AF_M, N_AMODE[clamp(TSEL->p[P_AMODE], 0, AM_COUNT - 1)], T_THEME);
         cv_text(8, 84, &AF_S, "WHITE KEYS: SET    LET GO: ON / OFF", T_MID);
+        cv_blit(0, Y_GRAPH);
         return;
     }
     static uint8_t fx_foot;                             /* FX: the footer for a key held (PRESETS ASSIGN, EDIT DEFAULT) */

@@ -130,7 +130,6 @@ static void graph_arp(const track_t *t, uint16_t c)
 
     if (t->p[P_AMODE] == AM_PAT) {                     /* Loom: the 16-step pattern (AREA: the offsets, dots: rests) */
         int32_t mid = graph_ht / 2 + 6;
-        char b[16];
         cv_rect(PANEL_X0, mid, PANEL_W, 1, T_LINE);
         for (i = 0; i < 16u; i++) {
             uint8_t c = t->arp_pat[i];
@@ -150,27 +149,6 @@ static void graph_arp(const track_t *t, uint16_t c)
             }
             if (cur)                                   /* the cursor step's frame */
                 cv_rect(x + 1, 2, 9, graph_ht - 4, T_RAISE);
-        }
-        if (0 && cur_page()->graph == GR_ARP_PAT) {     /* (the cards in the header carry these now) */
-            char lab[22], num[6];
-            uint8_t cc = t->arp_pat[ui.apat & 15u];
-            unsigned k = 0, m = 0;
-            str_cpy(lab, "K1 STEP ", sizeof lab);
-            fmt_int(num, (int32_t)(ui.apat & 15u) + 1);
-            while (num[m] && k + 8 < sizeof lab) lab[8 + m] = num[m], m++;
-            lab[8 + m] = 0;
-            cv_text_in(PANEL_X0 + 2, 2, 74, &AF_S, lab, T_MID, T_BG);
-            k = 0;
-            str_cpy(lab, (cc & 0x80u) ? "K2 OFF +" : "K2 OFF ", sizeof lab);
-            k = str_len(lab);
-            fmt_int(num, (int32_t)(cc & 15u) - 8);
-            m = 0;
-            if ((cc & 15u) >= 8u && k < sizeof lab) lab[k++] = '+';
-            while (num[m] && k + 1 < sizeof lab) lab[k++] = num[m++];
-            lab[k] = 0;
-            cv_text_in(PANEL_X0 + 78, 2, 74, &AF_S, lab, T_MID, T_BG);
-            cv_text_in(PANEL_X0 + 154, 2, 84, &AF_S,
-                       (cc & 0x80u) ? "K3 PLAY K4 RST" : "K3 REST K4 RST", T_MID, T_BG);
         }
         return;
     }
