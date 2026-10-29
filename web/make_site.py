@@ -42,6 +42,8 @@ def main(pkg, version, out):
     product = product_of(raw)
     if not re.fullmatch(r"FM-1_9\d\d", product):
         raise SystemExit(f"{pkg}: identity {product!r} is not a Felucca package (FM-1_9xx)")
+    if not re.fullmatch(r"\d+\.\d+(?:\.\d+)*", version):
+        raise SystemExit(f"{version!r}: pass the release version (X.Y), not the package identity {product}")
     if b"FELUCCA-LOADER-1" not in raw:              # Felucca loader marker: never publish a package with vendor files
         raise SystemExit(f"{pkg}: no Felucca loader in it; the site ships only fm1pkg_make.py packages "
                          "(a package patched from an official one carries vendor files)")

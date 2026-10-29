@@ -152,7 +152,7 @@ window.addEventListener("beforeunload", (e) => { if (writing) { e.preventDefault
     const pkg = new Uint8Array(await r.arrayBuffer());
     if (productOf(pkg) !== meta.product) { sayK("badpkg"); return; }
     image = logicalImage(pkg);
-    say(`Felucca ${meta.version}`);
+    say(`Felucca ${meta.version} · ${meta.product}`);
     $("go").disabled = false;
   } catch (e) { sayK("loadfail", e.message); }
 })();
