@@ -52,7 +52,9 @@
   of 1 or 2 bars before recording from stop; the click goes to the headphones and speaker only, never to
   USB audio or into a pattern
 - **Songs** (HOME > SONG): up to 16 sections, each naming the project slot (A–D) **every track** plays, or "-" for a
-  track that rests there, with its repeats; drawn as a timeline with a lane per track
+  track that rests there, with its repeats; drawn as a timeline with a lane per track. KNOB 1 picks the section, KNOB 2
+  the track, KNOB 3 its slot (A–D, "-") and KNOB 4 the repeats; on the **+ ADD** cell a turn of KNOB 3 adds the next
+  section (copying the one before it), and PLAY plays the chain. The white keys A3–D4 also set the slot.
 - **Chord keys:** one finger plays an in-key chord (triads or sevenths of the scale, or fixed chord
   shapes), with voicings; on the keys, MIDI in, recording and the arpeggiator
 - **Arpeggiator** with UP, DN, UPDN, RND, ORD (the notes in the order you pressed them), REPEAT and, for chords,
@@ -108,6 +110,16 @@
   step grid, mixer, preset library, sample upload and recording with trim, the MENU settings; full backup and restore
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
+
+## New in 1.8.3
+
+- **HOME > CLOCK is gone:** it repeated GLOBAL (BPM, SWING, CLOCK, TUNE); GLO has them. HOME now goes round HOME,
+  MIXER, MACROS and SONG.
+- **AUTOMATION is navigable again:** **EDIT** is the page button (it opens EDIT); **OCT+ twice** on a record deletes
+  it. AUTOMATION is the list of parameter locks and automation events, not the notes: the notes are on **STEP** and
+  **DETAIL**.
+- **Help hints** follow the Loom page names (AMP ENV / FILT ENV / ENV SYNC, MACRO 1–4, SCALE, 4x4 and 8x8 STEP/PAT,
+  DETAIL, AUTOMATION, SONG, GLOBAL), so MENU > HELP explains the restored screens.
 
 ## New in 1.8.2
 
@@ -240,7 +252,7 @@ where marked here:
 - **SAMPLE's PIANO** was a lighter lo-fi piano in 1.4 and 1.4.1; since 1.5 it is the full piano of 1.1.5 again.
 - **The pages moved** (Discussion #153): see Controls below. In short: SEQ is STEP and AUTOMATION; **SEQ held is SEQ
   TOOLS on every page** (it no longer opens SONG); **GLO opens GLOBAL**; PHRASES is on SAVE; HOME goes round HOME,
-  MIXER, CLOCK (BPM, swing, clock source), MACROS and SONG; TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and
+  MIXER, MACROS and SONG; BPM, swing and clock source are on GLOBAL (GLO); TUNE is MENU > AUDIO, MIDI IN (ROUT) is MENU > MIDI, and
   the USB state and CPU load are MENU > SYSTEM > INFO. REC held is the REC layer as before.
 - **SONG has a lane per track**: older songs load with all four tracks on each row's slot and play as before; its
   knobs are KNOB 1 SECTION, 2 TRACK, 3 PAT, 4 REPS, and on SONG the white keys A3 B3 C4 D4 set the slot.
@@ -265,7 +277,7 @@ The pages by button:
 
 | Button | Taps go round | Held |
 |---|---|---|
-| HOME | HOME, MIXER, CLOCK (BPM, swing, clock source), MACROS, SONG | the menu |
+| HOME | HOME, MIXER, MACROS, SONG | the menu |
 | SEQ | 4x4 STEP, 4x4 PAT, 8x8 STEP, 8x8 PAT, DETAIL, AUTOMATION | SEQ TOOLS, on every page |
 | GLO | GLOBAL | the GLO layer (mutes, solos, levels, TAP tempo, D4: MIDI LEARN) |
 | SAVE | USER, PRESETS, PHRASES (the pattern loader), PROJECT, TOOLS | UNDO |

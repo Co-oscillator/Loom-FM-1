@@ -30,8 +30,8 @@
  *          parameter of the sound page shown last, to begin with), at the sound's own value; CHANCE 50 %, RATCH x2 or
  *          NUDGE +4/16 on that step, VEL: SHOW / HIDE the VEL rows; on a record: its kind LOCK <-> AUTO (an automation
  *          event holds its value until the next one, a lock sounds on its step only); on PLAY: CLEAR (the dialog)
- *   EDIT   deletes the record, puts a CHANCE / RATCH / NUDGE / VEL back to 100 % / x1 / 0 / 96;  OCT- goes HOME (as
- *          on the other action pages)
+ *   OCT+   twice on a record deletes it (a CHANCE / RATCH / NUDGE / VEL goes back to 100 % / x1 / 0 / 96);
+ *          EDIT stays the page button (it opens EDIT);  OCT- goes HOME (as on the other action pages)
  * Every edit is one undo (SAVE held: ui.c motion_undo_take, step_undo_take; a knob turned on is one; PLAY and QUANTIZE
  * are settings, as on their pages before). Not while a song plays (STOP TO EDIT). The 128 records are shared by the four
  * tracks: AUTOMATION FULL when they are used */

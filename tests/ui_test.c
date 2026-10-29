@@ -982,6 +982,7 @@ static const char *page_alias(const char *title)
     if (str_eq(title, "STEP")) return "4x4 STEP";
     if (str_eq(title, "PATTERN")) return "4x4 PAT";
     if (str_eq(title, "MOD")) return "MACRO 1";
+    if (str_eq(title, "CLOCK")) return "GLOBAL";
     return title;
 }
 

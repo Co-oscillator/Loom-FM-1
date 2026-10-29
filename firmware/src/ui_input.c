@@ -1431,7 +1431,16 @@ static void act_do(void)
     if (!c--)
         return;
     if (cur_page()->graph == GR_EVENTS) {
-        ev_oct();
+        static uint32_t ev_oct_ms;
+        uint16_t rw[EV_ROWS];
+        uint32_t now = fm1_ms, kind = ev_cur(rw, 0) >> 8;
+        if (now - ev_oct_ms < 400u && kind != EVK_TOP && kind != EVK_QNT && kind != EVK_ADD) {
+            ev_delete();                               /* a second OCT+ on a record deletes it */
+            ev_oct_ms = 0;
+        } else {
+            ev_oct_ms = now;
+            ev_oct();
+        }
         return;
     }
     if (cur_page()->graph == GR_TOOLS) {
@@ -1702,7 +1711,7 @@ static uint32_t ly_bit(uint32_t l);
 static void layer_lock_input(uint32_t pressed);
 
 /* a page button let go (they act on release; a layer's own button: layer_gesture). 1: it acted (EDIT on STEP, USER,
- * PROJECT, AUTOMATION) instead of opening a page */
+ * PROJECT) instead of opening a page */
 static int page_tap(uint32_t b)
 {
     uint32_t f;
@@ -1711,10 +1720,6 @@ static int page_tap(uint32_t b)
             ui_message("STOP TO EDIT");
         else
             sd_reset();
-        return 1;
-    }
-    if (b == B_EDIT && !ui.home && cur_page()->graph == GR_EVENTS) {   /* AUTOMATION: EDIT deletes the row's record */
-        ev_delete();
         return 1;
     }
     if (b == B_EDIT && !ui.home && (cur_page()->graph == GR_USER || cur_page()->graph == GR_SLOTS)) {
