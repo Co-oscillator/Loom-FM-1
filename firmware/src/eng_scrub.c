@@ -20,7 +20,7 @@ typedef struct {
     int16_t last_scrub_param;   /* previous POS knob value */
     uint16_t touch_timer;       /* interaction hangover timer */
     uint8_t last_src;           /* previous sample source */
-    uint8_t pad;
+    uint8_t auto_gate;          /* the voice was started by the auto-play path, not a note */
     int32_t lp_state;           /* tape head low-pass state */
 
     /* PCM Cache Window for 4-point cubic Hermite interpolation */
@@ -168,6 +168,7 @@ static void scrub_note_on(track_t *t, voice_t *v)
     sp->touch_timer = 0;
     sp->velocity = 0;
     sp->prev_step = 0;
+    sp->auto_gate = 0;   /* this voice belongs to the note, not to the auto-play path */
     sp->cache_count = 0; /* force cache refill */
     v->s[6] = 0;
 }
@@ -274,8 +275,9 @@ static void scrub_block(track_t *t)
         sp->prev_step = step_q16;
     }
 
-    /* Auto-activate voice 0 if motor is running or scrubbing, so sound plays */
-    if (!t->v[0].active && (scrb_abs32(sp->velocity) > 32 || sp->touch_timer > 0 || (song.playing && p[P_E1] != 0))) {
+    /* Auto-activate voice 0 for a scrub (touch) or a running transport, so sound plays. A key's own note-on
+     * already has its voice; velocity alone must not keep a voice alive (the motor may run silently). */
+    if (!t->v[0].active && (sp->touch_timer > 0 || (song.playing && p[P_E1] != 0))) {
         voice_t *v = &t->v[0];
         v->active = 1;
         v->gate = 1;
@@ -284,6 +286,15 @@ static void scrub_block(track_t *t)
         v->vel = 127;
         v->env = 1 << 24;
         v->env_out = 32767;
+        sp->auto_gate = 1;
+    }
+    /* The auto-play voice ends with the scrub (a note's release sets its own gate). The motor may keep
+     * moving the tape silently. */
+    if (t->v[0].active && t->v[0].gate && sp->auto_gate && !song.playing && sp->touch_timer == 0) {
+        t->v[0].gate = 0;
+        t->v[0].stage = 3;                              /* release, not simply let go of the gate */
+        t->v[0].fstage = 3;
+        sp->auto_gate = 0;
     }
 }
 
@@ -374,8 +385,10 @@ static int32_t scrb_amp(track_t *t, voice_t *v, int32_t adsr)
 {
     scrb_part_t *sp = scrb_of(t);
     const int16_t *p = t->p;
-    /* In Scrub mode, if motor is running or tape is still moving/scrubbing, sustain sound */
-    if ((p[P_E1] != 0 || song.playing || sp->touch_timer > 0 || scrb_abs32(sp->velocity) > 64) && v->stage == 3u) {
+    /* In Scrub mode, if motor is running or tape is still moving/scrubbing, sustain sound. A note that was
+     * let go (gate 0) keeps its release: only a still-gated voice is held in sustain. */
+    if (v->gate && (p[P_E1] != 0 || song.playing || sp->touch_timer > 0 || scrb_abs32(sp->velocity) > 64) &&
+        v->stage == 3u) {
         v->stage = 2; /* keep sustaining */
     }
     return adsr;
