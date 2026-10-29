@@ -327,8 +327,8 @@ static void wt_note_on(track_t *t, voice_t *v)
     v->ph[0] = 0; /* Reset phase accumulator */
     v->s[0] = 0;  /* Last decimation sample */
     v->s[1] = 0;  /* Decimation counter */
-    v->s[2] = 0;  /* SVF ic1eq */
-    v->s[3] = 0;  /* SVF ic2eq */
+    v->s[2] = 0;  /* the low-pass state */
+    v->s[3] = 0;  /* the DC blocker's state (bit reduction / drive are lopsided) */
 }
 
 /* Render audio block for one voice */
@@ -435,8 +435,12 @@ static void wt_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vm
             v->s[2] = sample;
         }
 
+        /* Bit reduction (and the drive) can leave a DC offset on an asymmetric wave: a ~10 Hz blocker */
+        v->s[3] += (lp - v->s[3]) >> 12;
+        int32_t y = lp - v->s[3];
+
         /* Scale by ADSR amplitude and output level convention matching system */
-        out[i] += voice_amp(lp, m, i) << 1;
+        out[i] += voice_amp(y, m, i) << 1;
     }
 }
 
