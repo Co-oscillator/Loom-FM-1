@@ -63,7 +63,7 @@ static int chain_valid(const chain_config_t *c)
     if (c->count > CHAIN_ROWS)
         return 0;
     for (i = 0; i < c->count; i++) {
-        for (k = 0; k < NTRK; k++)
+        for (k = 0; k < CHAIN_NTRK; k++)
             if (c->row[i].slot[k] > CHAIN_SILENT)
                 return 0;
         if (!c->row[i].repeat || c->row[i].repeat > 16u)
@@ -91,7 +91,7 @@ static int chain_from_v9(chain_config_t *c, const chain_v9_t *o)
 static uint32_t chain_clock(const chain_row_t *r)
 {
     uint32_t k;
-    for (k = 0; k < NTRK; k++)
+    for (k = 0; k < CHAIN_NTRK; k++)
         if (r->slot[k] < CHAIN_SILENT)
             return k;
     return 0;
@@ -115,7 +115,7 @@ static __attribute__((noinline)) void chain_apply(void)
     chain.clk = (uint8_t)chain_clock(r);
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
-        uint32_t s = r->slot[i];
+        uint32_t s = i < CHAIN_NTRK ? r->slot[i] : CHAIN_SILENT;
         chain.lane[i] = (uint8_t)(s < 4u ? s : CHAIN_SILENT);
         seq_release(t);
         motion_restore(t);

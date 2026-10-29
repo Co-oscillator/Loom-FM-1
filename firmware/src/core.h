@@ -322,7 +322,8 @@ _Static_assert(sizeof(motion_store_t) == 388u, "motion disk layout (FUN10)");
  * nothing there) and its repeats (1..16). Up to 1.1 a row was {slot, repeat}, all four tracks on that slot
  * (chain_v9_t, FUN6..FUN9): it loads as a section with the four on it (song_chain.c chain_from_v9) */
 #define CHAIN_SILENT 4u
-typedef struct { uint8_t slot[4], repeat; } chain_row_t;
+#define CHAIN_NTRK 4                             /* the chain's slots: the format; the 5th track is not in SONG yet */
+typedef struct { uint8_t slot[CHAIN_NTRK], repeat; } chain_row_t;
 typedef struct {
     uint8_t count, rsv[3];
     chain_row_t row[CHAIN_ROWS];

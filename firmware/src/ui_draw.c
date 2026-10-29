@@ -968,7 +968,7 @@ static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_SONG) {             /* SECTION, TRACK, its PAT (A..D, -), REPS (the section's) */
-        uint32_t row = ui.song_row < CHAIN_ROWS ? ui.song_row : CHAIN_ROWS - 1u, k = ui.song_trk % NTRK, sl;
+        uint32_t row = ui.song_row < CHAIN_ROWS ? ui.song_row : CHAIN_ROWS - 1u, k = ui.song_trk % CHAIN_NTRK, sl;
         int used = row < chain_config.count;
         fmt_int(val, (int32_t)row + 1);
         draw_column(0, "SEC", val, "", VAL(0u), -1, ICON_X_SONG);

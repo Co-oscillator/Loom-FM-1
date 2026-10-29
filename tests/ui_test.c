@@ -2693,7 +2693,7 @@ static int test_page_cycles(void)
         ok &= f != FAM_SEQ || PAGES[i].graph == GR_ROLL || PAGES[i].graph == GR_EVENTS;
         ok &= f != FAM_GLO || str_eq(PAGES[i].title, "GLOBAL");   /* (GLOBAL is GLO's only page) */
         ok &= f != FAM_TRK || PAGES[i].graph == GR_TRK || PAGES[i].graph == GR_SONG ||
-              str_eq(PAGES[i].title, "CLOCK") || str_eq(PAGES[i].title, "MACROS");   /* HOME's: MIXER CLOCK MACROS SONG */
+              str_eq(PAGES[i].title, "MACROS");   /* HOME's: MIXER MACROS SONG */
         ok &= PAGES[i].graph != GR_TRK || f == FAM_TRK;
         ui_power_on(); ui.home = 0; ui.page = (uint8_t)i; page_entered();
         ok &= FAM_BTN[cur_fam()] == (f == FAM_TRK ? B_HOME : f == FAM_GLO ? B_GLO : f == FAM_SEQ ? B_SEQ :
@@ -2852,7 +2852,7 @@ static int test_product_ux(void)
     turn(EN_K3, 1);
     bad += check("MIXER K3 edits reverb, never sequence length", TSEL->p[P_SLEN] == len && TSEL->p[P_REV] == send + 1);
     press(B_HOME);
-    ok = !ui.home && !ui.menu && str_eq(cur_page()->title, "CLOCK") && cur_fam() == FAM_TRK && FAM_BTN[cur_fam()] == B_HOME;
+    ok = !ui.home && !ui.menu && str_eq(cur_page()->title, "MACROS") && cur_fam() == FAM_TRK && FAM_BTN[cur_fam()] == B_HOME;
     {   /* (CLOCK: HOME's LED lit, as on MIXER; GLO's not) */
         uint8_t pos0[sizeof led_pos];
         ui_leds();                                      /* (its positions made once, then ours) */
@@ -2883,9 +2883,9 @@ static int test_product_ux(void)
     bad += check("1.2: HOME held still opens the menu", ui.menu == 1);
     ui_power_on();
     frames(320);                                       /* (taps further apart than a double tap: #83) */
-    press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "SONG");
-    press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG") && cur_page()->fam == FAM_GLO && !ui.home;
-    go_title("CLOCK"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "SONG");
+    press(B_GLO); frames(320); ok = cur_page()->fam == FAM_GLO && str_eq(cur_page()->title, "GLOBAL");
+    press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "GLOBAL") && cur_page()->fam == FAM_GLO && !ui.home;
+    go_title("CLOCK"); press(B_GLO); frames(320); ok &= str_eq(cur_page()->title, "GLOBAL");
     bad += check("1.2: GLO opens SONG directly, again SONG (no GLOBAL, no SYSTEM, no MIXER)", ok);
     go_home(); btn_down(B_SEQ); frames(500);
     ok = ui.layer == LAYER_SEQ && ui.home;
@@ -6605,19 +6605,21 @@ static int test_seq_tools(void)
     ui_power_on();
     go_page(GR_ROLL); frame();
     press(B_SEQ); frames(320);
-    ok = str_eq(cur_page()->title, "DETAIL") && msg_is("HOLD [SEQ] QUICK");   /* (1.5.1, #199) */
+    ok = str_eq(cur_page()->title, "4x4 PAT");
     press(B_SEQ); frames(320);
-    ok &= cur_page()->graph == GR_EVENTS && str_eq(cur_page()->title, "AUTOMATION");
+    ok &= str_eq(cur_page()->title, "8x8 STEP");
     press(B_SEQ); frames(320);
-    ok &= str_eq(cur_page()->title, "STEP");
+    ok &= str_eq(cur_page()->title, "8x8 PAT");
     press(B_SEQ); frames(320);
+    ok &= str_eq(cur_page()->title, "DETAIL");
     press(B_SEQ); frames(320);
-    ok &= cur_page()->graph == GR_EVENTS;
-    bad += check("1.2: a tap on STEP: DETAIL (1.5.1), AUTOMATION, then STEP again (three SEQ pages; the hint until the layer "
-                 "was opened)", ok);
+    ok &= str_eq(cur_page()->title, "AUTOMATION");
+    press(B_SEQ); frames(320);
+    ok &= str_eq(cur_page()->title, "4x4 STEP");
+    bad += check("1.2: a tap on STEP: 4x4 PAT, 8x8 STEP, 8x8 PAT, DETAIL, AUTOMATION, 4x4 STEP", ok);
     go_title("ENV"); frame();
     press(B_SEQ); frames(320);
-    ok = cur_page()->graph == GR_EVENTS;                /* (the SEQ page shown last) */
+    ok = cur_page()->graph == GR_ROLL;                  /* (the SEQ page shown last: 4x4 STEP) */
     go_home(); frame();
     for (k = 0; k < NPAGES; k++)                        /* a remembered page that is no SEQ page any more: STEP */
         if (PAGES[k].graph == GR_SONG) ui.fam_last[FAM_SEQ] = (uint8_t)k;
@@ -6957,7 +6959,7 @@ static int test_layer_lock(void)
     ui_power_on();
     go_page(GR_TRK); frame();
     press(B_SEQ); frames(400);                          /* (1.2: SEQ, GLO's one page cycles no more) */
-    ok = str_eq(cur_page()->title, "STEP") && !ui.lock;
+    ok = str_eq(cur_page()->title, "4x4 STEP") && !ui.lock;
     press(B_SEQ); frames(400);
     ok &= str_eq(cur_page()->title, "DETAIL") && !ui.lock && !ui.layer;   /* (1.5.1) */
     press(B_SEQ); frames(400);
@@ -6966,7 +6968,7 @@ static int test_layer_lock(void)
     btn_down(B_SEQ); frames(500);
     ok &= ui.layer == LAYER_SEQ && !ui.lock;
     btn_up(B_SEQ); frame();
-    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "STEP");
+    ok &= !ui.layer && !ui.lock && str_eq(cur_page()->title, "4x4 STEP");
     press(B_GLO); frames(400);
     ok &= str_eq(cur_page()->title, "SONG") && !ui.lock;
     press(B_GLO);
@@ -7966,7 +7968,7 @@ static int test_bpm_lock(void)
     go_home(); press(B_HOME); press(B_HOME); frame();   /* (HOME > MIXER > CLOCK) */
     b0 = song.g[G_BPM];
     turn(EN_K1, 1);
-    ok = str_eq(cur_page()->title, "CLOCK") && cur_page()->id[0] == G_BPM && song.g[G_BPM] == b0 + 1;
+    ok = str_eq(cur_page()->title, "GLOBAL") && cur_page()->id[0] == G_BPM && song.g[G_BPM] == b0 + 1;
     bad += check("#58 BPM LOCK ON: HOME > CLOCK KNOB 1 still sets the tempo", ok);
 
     /* ON: GLO + SELECT (a quick turn: a combo, no GLO page), OCT- puts it back, F4 TAP */

@@ -2723,9 +2723,9 @@ static const char *graph_project_name(uint32_t slot)  /* (after graph_project_us
 #define SG_X0 24                                       /* the strip: x 24 .. 234 (the lanes' cushions left of it) */
 #define SG_W 210
 #define SG_Y 3                                         /* the lanes: y 3 .. 88 */
-#define SG_LH 16                                       /* a lane's height (its letter, the pattern's picture), SG_LG between two */
+#define SG_LH 20                                       /* a lane's height (its letter, the pattern's picture), SG_LG between two */
 #define SG_LG 2
-#define SG_H (NTRK * (SG_LH + SG_LG) - SG_LG)
+#define SG_H (CHAIN_NTRK * (SG_LH + SG_LG) - SG_LG)
 #define SG_LY(k) (SG_Y + (int32_t)(k) * (SG_LH + SG_LG))   /* lane k's top */
 #define SG_GAP 2                                       /* between two blocks (in a block's width) */
 #define SG_MINW 16                                     /* a block's least width, its gap included: a letter in it */
@@ -3795,8 +3795,8 @@ static void graph_scope(uint16_t c)
  * section. Playing: the playhead across the lanes down to the ruler (ACCENT; INK on THEME), the playing section's
  * blocks filled up to it (RAISE -> ACCENT). The ruler: a tick a bar, longer every 4 with the bar's number. Under it
  * one line (M: the selected cell's detail): the selected cell's project name (NOT SAVED, SILENT; on + ADD the hint, S as
- * every key hint) and, right, the song's length in bars where it fits. MENU > LARGE keeps the letters and the
- * detail line in S (the five lanes are 16 px) */
+ * every key hint) and, right, the song's length in bars where it fits. MENU > LARGE: the letters in M too (the
+ * ruler's numbers stay S) */
 #define SG_PAD 3                                       /* a block's inner margin: the letter's, the picture's */
 #define SG_PH (SG_LH - 2 * SG_PAD)                     /* the picture's height (14 px: 3 levels) */
 #define SG_TX 5                                        /* the lanes' cushions (16 px) */
@@ -3838,7 +3838,7 @@ static uint16_t sg_fill_at(const sg_fill_t *F, int32_t x)   /* the block's fill 
 /* the slot's letter at x (MENU > LARGE: M), its capitals SG_PAD under the lane's top; 0: no room before x1 */
 static int32_t sg_letter(int32_t x, int32_t x1, int32_t y, uint32_t s, uint16_t ink, uint16_t bg)
 {
-    const aafont_t *f = &AF_S;                       /* (the five lanes are 16 px: LARGE keeps S here) */
+    const aafont_t *f = (ui_prefs & PREF_LARGE) ? &AF_M : &AF_S;
     char a[2] = {(char)('A' + s), 0};
     int32_t w = text_w(f, a);
     if (x + w + SG_PAD > x1)
@@ -3952,9 +3952,9 @@ static void sg_block(const song_lay_t *L, int32_t off, uint32_t k, uint32_t i, u
 static void graph_song(void)
 {
     song_lay_t L;
-    const aafont_t *fl = &AF_S;                       /* the line: the selected cell's detail and the length, S */
-    int32_t off, px, sp, hi = SG_X0 + SG_W, bx, x0, ly = SG_IY - (AF_S_CAP_Y + AF_S_CAP_H);
-    uint32_t i, j, k, c = song_cur(), lane = ui.song_trk % NTRK, total, bars;
+    const aafont_t *fl = &AF_M;                       /* the line: the selected cell's detail and the length, M */
+    int32_t off, px, sp, hi = SG_X0 + SG_W, bx, x0, ly = SG_IY - (AF_M_CAP_Y + AF_M_CAP_H);
+    uint32_t i, j, k, c = song_cur(), lane = ui.song_trk % CHAIN_NTRK, total, bars;
     char b[24], a[12];
     song_layout(&L);
     off = song_follow(&L);
@@ -3962,14 +3962,14 @@ static void graph_song(void)
     sp = px >= 0 ? SG_X0 + px - off : -100;
     total = L.u0[L.n];
     bars = (total + SG_BARU - 1u) / SG_BARU;
-    for (k = 0; k < NTRK; k++)                        /* the lanes' cushions */
+    for (k = 0; k < CHAIN_NTRK; k++)                  /* the lanes' cushions */
         cv_trk(SG_TX, SG_LY(k) + (SG_LH - 16) / 2, 16, k, k == lane ? T_ACCENT : T_MID, T_SURF);
     for (i = 1; i < L.n; i++) {                       /* the sections' boundaries, faint, behind the blocks */
         int32_t x = SG_X0 + L.x[i] - off - 1;
         if (x >= SG_X0 && x < hi)
             cv_rect(x, SG_Y, 1, SG_H, T_LINE);
     }
-    for (k = 0; k < NTRK; k++)                        /* the lanes: a block per run of one slot, "-" a faint line */
+    for (k = 0; k < CHAIN_NTRK; k++)                  /* the lanes: a block per run of one slot, "-" a faint line */
         for (i = 0; i < L.n; i = j) {
             uint32_t s = chain_config.row[i].slot[k];
             for (j = i + 1u; j < L.n && chain_config.row[j].slot[k] == s; j++)
@@ -4007,7 +4007,7 @@ static void graph_song(void)
         r1 = r1 < hi ? r1 : hi;
         if (r1 > r0) cv_rect(r0, SG_RY, r1 - r0, 1, T_LINE);
         if (sp >= SG_X0 && sp < hi - 1) {              /* the playhead, across the lanes (INK on the cell selected) */
-            for (k = 0; k < NTRK; k++) {
+            for (k = 0; k < CHAIN_NTRK; k++) {
                 uint32_t s = c < L.n ? chain_config.row[c].slot[k] : CHAIN_SILENT;
                 int on = k == lane && s < 4u && graph_project_used(s) && sp >= SG_X0 + L.x[c] - off &&
                          sp + 2 <= SG_X0 + L.x[c + 1u] - off - SG_GAP;
@@ -4066,7 +4066,7 @@ static void graph_song(void)
     } else {                                           /* + ADD: how */
         for (i = 0; i < 4u && !graph_project_used(i); i++)
             ;
-        cv_free_hint(SG_X0, ly,   /* (a key hint: S) */
+        cv_free_hint(SG_X0, ly + AF_M_CAP_Y + AF_M_CAP_H - AF_S_CAP_Y - AF_S_CAP_H,   /* (a key hint: S) */
                      i < 4u ? "[K3] ADD SECTION" : "[SAVE] PROJECT A-D", T_MID, T_SURF, x0 - 10 - SG_X0);
     }
 }

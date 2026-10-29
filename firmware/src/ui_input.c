@@ -579,7 +579,7 @@ static void song_keys(uint32_t notes)
             if (chain_config.count == 1u)
                 chain_config.row[0] = chain_row_of((uint32_t)s, 1);
         }
-        chain_config.row[ui.song_row].slot[ui.song_trk % NTRK] = (uint8_t)s;
+        chain_config.row[ui.song_row].slot[ui.song_trk % CHAIN_NTRK] = (uint8_t)s;
         ui.force = 1;
     }
 }
@@ -587,7 +587,7 @@ static void song_keys(uint32_t notes)
 static uint32_t song_leds(void)
 {
     uint32_t k, s;
-    if (ui.song_row >= chain_config.count || (s = chain_config.row[ui.song_row].slot[ui.song_trk % NTRK]) >= 4u)
+    if (ui.song_row >= chain_config.count || (s = chain_config.row[ui.song_row].slot[ui.song_trk % CHAIN_NTRK]) >= 4u)
         return 0;
     for (k = 0; k < 27u; k++)
         if (song_key(k) == (int32_t)s)
@@ -1274,7 +1274,7 @@ static void edit_param(uint32_t slot, int32_t steps)
             return;
         }
         if (slot == 1u) {
-            ui.song_trk = (uint8_t)clamp((int32_t)ui.song_trk + steps, 0, NTRK - 1);
+            ui.song_trk = (uint8_t)clamp((int32_t)ui.song_trk + steps, 0, CHAIN_NTRK - 1);
             return;
         }
         if (chain_busy()) { ui_message("STOP TO EDIT"); return; }
@@ -1284,7 +1284,7 @@ static void edit_param(uint32_t slot, int32_t steps)
         }
         r = &chain_config.row[ui.song_row];
         if (slot == 2u)
-            r->slot[ui.song_trk % NTRK] = (uint8_t)clamp((int32_t)r->slot[ui.song_trk % NTRK] + steps, 0, CHAIN_SILENT);
+            r->slot[ui.song_trk % CHAIN_NTRK] = (uint8_t)clamp((int32_t)r->slot[ui.song_trk % CHAIN_NTRK] + steps, 0, CHAIN_SILENT);
         else
             r->repeat = (uint8_t)clamp((int32_t)r->repeat + steps, 1, 16);
         return;
