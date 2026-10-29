@@ -10,6 +10,11 @@ static const char *const N_LTRIG[] = {"NOTE", "FREE"};
 static const char *const N_LPOL[] = {"BI", "UNI"};
 static const char *const N_AMODE[] = {"OFF", "UP", "DOWN", "UPDN", "STAG+", "STAG-", "RND", "RNDP", "BACH", "BROWN", "CONV", "DIVG",
                                       "PAT"};   /* Loom: the pattern on the ARP PAT page (seq.c arp_fire) */
+/* the same modes spelled out where there is room (the held-ARP panel, the ARP page's graph) */
+static const char *const N_AMODE_FULL[] = {"OFF", "UP", "DOWN", "UP / DOWN", "STAGGER UP", "STAGGER DOWN",
+                                           "RANDOM", "RANDOM PATTERN", "BACH", "BROWNIAN", "CONVERGE", "DIVERGE",
+                                           "PATTERN"};
+_Static_assert(NELEM(N_AMODE_FULL) == NELEM(N_AMODE), "a full ARP mode name per mode");
 static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"};
 /* the delay's TIME (G_DTIME): N_DIV's ten (their values kept), then 1.5.1's dotted ones appended (stored values:
  * append-only). A list of its own: ARP RATE, SEQ DIV and LFO SYNC keep N_DIV's ten (fx.c delay_samples) */

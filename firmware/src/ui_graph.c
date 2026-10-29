@@ -126,7 +126,7 @@ static void graph_arp(const track_t *t, uint16_t c)
 {
     uint32_t n = arp_viz_len, i;
     int32_t lo = 127, hi = 0, top = 16, floor = graph_ht - 4, gap, w;
-    char buf[12];
+    char buf[24];
 
     if (t->p[P_AMODE] == AM_PAT) {                     /* Loom: the 16-step pattern (AREA: the offsets, dots: rests) */
         int32_t mid = graph_ht / 2 + 6;
@@ -177,7 +177,7 @@ static void graph_arp(const track_t *t, uint16_t c)
         }
     }
     cv_rect(PANEL_X0, floor + 1, PANEL_W, 1, T_LINE);
-    str_cpy(buf, N_AMODE[clamp(t->p[P_AMODE], 0, AM_COUNT - 1)], sizeof buf);
+    str_cpy(buf, N_AMODE_FULL[clamp(t->p[P_AMODE], 0, AM_COUNT - 1)], sizeof buf);
     cv_text_in(PANEL_X0 + 4, 2, PANEL_W / 2 - 4, &AF_S, buf, T_MID, T_BG);
     {   /* "pos/len" and the sounding note, right aligned-ish */
         char num[8];

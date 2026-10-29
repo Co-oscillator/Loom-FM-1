@@ -109,6 +109,21 @@
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
 
+## New in 1.8
+
+- **Held-ARP screen:** holding **ARP** now shows its map (the mode in effect, spelled out, and the key hints). The
+  panel used to be blank.
+- **VOIC with CHRD = PROG:** the **VOIC** knob (SCL > CHORD) now voices the generated progression itself, so OPEN,
+  INV1, INV2 and +OCT also change the keys, the CHORD page and the held ARP while PROG is selected. Before, it did
+  nothing there.
+- **Factory presets are dry:** every factory sound now sets its sends explicitly instead of falling back to the old
+  wet defaults (chorus 24, delay 28, reverb 36). Basses, leads, plucks, keys, organs, drums, chip and tape sounds are
+  fully dry. The effect-led sounds keep a light touch (about 8–12 % chorus and 12–20 % reverb): the pads, strings,
+  choir, bells, wind/rain, grain clouds, shimmer, wavetable atmospheres, electric piano and the VINYL scrub;
+  GLITCH, SHIMMER and NEON TAPE keep a delay of about 8 %. DIST is unchanged.
+- **SCRUB position knob:** more torque (a first detent responds at once and a move lands several times faster), and
+  the motor resumes as soon as the move is done instead of waiting out the old ~0.8 s hangover in silence.
+
 ## New in 1.5.1
 
 - **SEQ > DETAIL** (Discussion #199): SEQ now goes STEP, **DETAIL**, AUTOMATION. DETAIL is the STEP page (the same
@@ -371,7 +386,8 @@ the white keys without repeating notes; their roots need not fall on every C key
 Drum kits and incoming MIDI keep their own note mapping.
 
 Press **SCL** again for the **CHORD** page: CHRD picks the chord keys (OFF, the scale's triads or
-sevenths, or a fixed shape) and VOIC the voicing.
+sevenths, or a fixed shape) and VOIC the voicing. With CHRD = PROG, VOIC voices the generated
+progression too (its keys, its chord page and the held ARP).
 
 ## Layout
 
