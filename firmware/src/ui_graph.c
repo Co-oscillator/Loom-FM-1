@@ -425,7 +425,7 @@ static void graph_roll(const track_t *t, uint16_t c)
  * black keys, eng_drum.c drum_mute): its name DIM, the MUTE icon after it, its hits DIM */
 static void graph_grid(const track_t *t, uint16_t c)
 {
-    uint32_t l, i, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u, mute = drum_mute[trk_index(t) % NPART];
+    uint32_t l, i, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u, mute = drum_mute[trk_index(t) % NTRK];
     uint64_t locks = motion_lock_steps(trk_index(t));
     int32_t y0 = 6;
     for (i = 0; i < 16u && base + i < len; i++) {   /* a parameter lock: a mark over the step; CHANCE / RATCH / */
@@ -3052,7 +3052,7 @@ static uint32_t graph_signature(void)
         if (ph / 16u != ui.bank)
             ph = 0xFFFFu;                            /* the roll shows the cursor's bank only */
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u + ui.lane * 104723u + ui.bank * 613u +
-             drum_mute[trk_index(t) % NPART] * 2654435761u;
+             drum_mute[trk_index(t) % NTRK] * 2654435761u;
         {                                            /* the parameter locks' marks (the roll, the grid) */
             uint64_t lk = motion_lock_steps(trk_index(t));
             h = (h ^ (uint32_t)lk ^ (uint32_t)(lk >> 32) * 2654435761u) * 16777619u;
@@ -3068,7 +3068,7 @@ static uint32_t graph_signature(void)
     if (pg->graph == GR_STEPS) {
         uint32_t ph = song.playing ? t->seq_idx : 0xFFFFu;
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u + ui.lane * 104723u +
-             drum_mute[trk_index(t) % NPART] * 2654435761u;
+             drum_mute[trk_index(t) % NTRK] * 2654435761u;
         {
             uint64_t lk = motion_lock_steps(trk_index(t));
             h = (h ^ (uint32_t)lk ^ (uint32_t)(lk >> 32) * 2654435761u) * 16777619u;

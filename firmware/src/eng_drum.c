@@ -274,13 +274,16 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     const int16_t *p = t->p;
     uint32_t i;
     if (t->p[P_E0] < 2) {
-        if ((drum_mute[(uint32_t)(t - trk) % NTRK] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u)
-            return;
         int32_t y[CTL];
         for (i = 0; i < n; i++) y[i] = 0;
         loom_drum_render(y, n, (uint32_t)t->p[P_E0], t->p + P_E0);
-        for (i = 0; i < n; i++) {
-            out[i] += voice_amp(y[i], m, i);
+        {
+            int muted = (drum_mute[(uint32_t)(t - trk) % NTRK] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u;
+            for (i = 0; i < n; i++) {                    /* (a muted lane rings on unheard: its amp ramp runs too) */
+                int32_t s = voice_amp(y[i], m, i);
+                if (!muted)
+                    out[i] += s;
+            }
         }
         return;
     }

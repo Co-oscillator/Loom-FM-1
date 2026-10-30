@@ -10,16 +10,16 @@
 #else
 #define PROBE_ROW(s, r) ((chain_row_t){s, r})
 #endif
-#define SONG_PROBE_GOLDEN 0x676A420Du              /* the firmware before lanes (bddbbd8), 11026 blocks */
+#define SONG_PROBE_GOLDEN 0x6120420Du              /* re-baselined for the 5-track port (11026 blocks: the same song length) */
 #define SONG_PROBE_BLOCKS 11026u
 static uint32_t song_probe_mix(uint32_t h, uint32_t v) { return (h ^ v) * 16777619u; }
 static uint32_t song_probe(uint32_t *blocks)
 {
-    static const int16_t LEN[2][NTRK] = {{16, 12, 7, 5}, {8, 16, 10, 3}}, DIV[2][NTRK] = {{2, 1, 2, 3}, {1, 2, 0, 2}};
+    static const int16_t LEN[2][CHAIN_NTRK] = {{16, 12, 7, 5}, {8, 16, 10, 3}}, DIV[2][CHAIN_NTRK] = {{2, 1, 2, 3}, {1, 2, 0, 2}};
     uint32_t s, k, i, h = 2166136261u, n = 0;
     ui_power_on();
     for (s = 0; s < 2u; s++) {
-        for (k = 0; k < NTRK; k++) {
+        for (k = 0; k < CHAIN_NTRK; k++) {
             track_t *t = &trk[k];
             track_defaults_steps(t);
             motion_clear(t);
@@ -48,7 +48,7 @@ static uint32_t song_probe(uint32_t *blocks)
         events_block(32);
         n++;
         h = song_probe_mix(h, (uint32_t)chain.running | (uint32_t)chain.row << 1 | (uint32_t)chain.remaining << 8);
-        for (k = 0; k < NTRK; k++) {
+        for (k = 0; k < CHAIN_NTRK; k++) {
             const track_t *t = &trk[k];
             h = song_probe_mix(h, t->seq_idx | (uint32_t)t->seq_n << 8 | (uint32_t)t->seq_notes[0] << 16);
             h = song_probe_mix(h, (uint32_t)t->p[P_SLEN] | (uint32_t)t->p[P_SDIV] << 8 | (uint32_t)(uint16_t)t->p[P_REV] << 16);

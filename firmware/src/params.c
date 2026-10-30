@@ -95,10 +95,11 @@ static const char *const N_ENGNAME[] = {"ANALOG", FELUCCA_FM4 ? "DIGITAL" : "-",
 /* Loom: the FILTER envelope's four times and its depth to the cutoff (voice.c). ATK DEC SUS REL keep the
  * operator envelope's defaults, and F AMT is 0, so a patch from before the filter envelope sounds unchanged;
  * ENV SYNC shows the times as note values, as it does for the amplitude envelope */
-static const param_desc_t FILT_DESC[5] = {
+static const param_desc_t FILT_DESC[6] = {
     PD("ATK", F_TIME, 0, 127, 0), PD("DEC", F_TIME, 0, 127, 0),
     PD("SUS", F_PCT, 0, 127, 127), PD("REL", F_TIME, 0, 127, 0),
-    PD("F AMT", F_BIPCT, -64, 63, 0),
+    PD("OP1 LVL", F_PCT, 0, 127, 127),          /* P_FM1_LEVEL: the retired operator level, not the filter's */
+    PD("F AMT", F_BIPCT, -64, 63, 0),           /* P_FAMT = P_FM2_ATK: the filter envelope's depth */
 };
 
 static const param_desc_t TP[P_COUNT] = {

@@ -1271,7 +1271,7 @@ static uint32_t chain_prepare(void)
     if (!chain_valid(&chain_config) || !chain_config.count)
         return 1;
     for (i = 0; i < chain_config.count; i++)            /* the slots the lanes play (not the silent ones) */
-        for (k = 0; k < NTRK; k++) {
+        for (k = 0; k < CHAIN_NTRK; k++) {
             uint32_t s = chain_config.row[i].slot[k];
             if (s >= 4u || ((used >> s) & 1u))
                 continue;

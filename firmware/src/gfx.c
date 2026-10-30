@@ -83,7 +83,7 @@ static uint8_t cv_flip;          /* cv_alpha_hc: the cell mirrored left <-> righ
 static struct {
     uint16_t bg, surf, text, theme, accent;
     uint16_t mid, dim, line, sel, tint, ink, rec, raise, key, lane, grid;
-    uint8_t light, mono;
+    uint8_t light, mono, grey;
     uint8_t style;               /* MENU > STYLE (ui.c style_apply): ST_FLAT, ST_LINE */
     uint32_t gen;                /* bumped by palette_set (the text ramps follow) */
 } ux;
@@ -137,6 +137,7 @@ static void palette_set(uint32_t i)
     const ui_pal_t *p = &UI_PALETTES[i % NPALETTES];
     i %= NPALETTES;
     ux.mono = i == UI_BW_INDEX;
+    ux.grey = i == UI_GREY_INDEX;
     ux.bg = p->bg; ux.surf = ux.style ? p->bg : p->surf; ux.text = p->text; ux.theme = p->theme; ux.accent = p->accent;
     ux.mid = ux_mix(p->bg, p->text, UI_MID_PCT);
     ux.dim = ux_mix(p->bg, p->text, UI_DIM_PCT);
@@ -149,7 +150,7 @@ static void palette_set(uint32_t i)
     ux.lane = ux_mix(ux.surf, p->theme, 10);
     ux.grid = ux_mix(ux.surf, p->text, 6);
     ux.light = ux_luma(p->bg) > 128u;
-    ux.rec = ux.mono ? p->accent : ux.light ? UI_REC_LIGHT : UI_REC_DARK;
+    ux.rec = (ux.mono || ux.grey) ? p->accent : ux.light ? UI_REC_LIGHT : UI_REC_DARK;
     if (i == UI_BW_INDEX) {                      /* MONO: black and white, set, not blended (tools/gen_ui_palettes.py) */
         ux.mid = ux.sel = ux.key = ux.rec = p->text;   /* a selection, a keycap, REC: white, its INK black */
         ux.dim = ux.line = ux.raise = ux.lane = UI_BW_GREY;   /* the one grey: inactive, tracks, wells */
@@ -161,7 +162,7 @@ static void palette_set(uint32_t i)
 /* Update UX theme & accent colors for the active engine (Loom dynamic theming) */
 static void ux_theme_engine(uint16_t theme, uint16_t accent)
 {
-    if (ux.mono || ux.light)
+    if (ux.mono || ux.light || ux.grey)                 /* (GREY stays grey: the engine's neon is for colour palettes) */
         return;
     if (ux.theme == theme && ux.accent == accent)
         return;

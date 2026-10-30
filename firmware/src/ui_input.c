@@ -1659,7 +1659,8 @@ static void presets_turn(int32_t s)
     if (ui.home || g == GR_BROWSE) {
         if (ui.home && list_mode()) list_set(0);
         preset_step(s);
-    } else if (g == GR_ROLL || g == GR_USER || g == GR_SLOTS || g == GR_PATS || g == GR_SONG || g == GR_EVENTS) {
+    } else if (g == GR_ROLL || g == GR_STEPS || g == GR_USER || g == GR_SLOTS || g == GR_PATS || g == GR_SONG ||
+               g == GR_EVENTS) {
         edit_param(0, s);                                 /* KNOB 1's (STEP: STOP TO EDIT while a song plays) */
         ui.hot_col = 0;
         ui.hot_t = 40;
@@ -1729,6 +1730,10 @@ static int page_tap(uint32_t b)
         (void)motion_clear_locks(TSEL, ui.cursor);
         cursor_set(ui.cursor + 1);
         ui_message("STEP CLEARED");
+        return 1;
+    }
+    if (b == B_EDIT && !ui.home && cur_page()->graph == GR_EVENTS) {   /* AUTOMATION: EDIT deletes the row's record */
+        ev_delete();
         return 1;
     }
     if (b == B_EDIT && detail_on()) {                    /* DETAIL (1.5.1): the step's CHANCE RATCH NUDGE VEL back */
@@ -2007,8 +2012,11 @@ static void ui_input(void)
         ui_message("STOP TO UNDO");
     else if (save == BT_HOLD)                                /* SAVE held: undo the last sound load */
         undo_swap();
-    else if (save == BT_TAP && !ui.confirm)             /* SAVE acts on release (a hold is the undo) */
+    else if (save == BT_TAP && !ui.confirm) {           /* SAVE acts on release (a hold is the undo) */
+        if (ui.home)
+            ui.fam_last[FAM_SAVE] = 0;                  /* (from HOME: always USER, not the last SAVE page) */
         open_family(FAM_SAVE);
+    }
     if (ui.confirm) {                                   /* OCT- cancels, OCT+ does it; nothing else reacts */
         if (oct & 2u) {
             uint32_t kind = ui.confirm;
