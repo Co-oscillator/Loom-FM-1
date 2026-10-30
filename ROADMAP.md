@@ -7,11 +7,11 @@ Phase 2 product scope is intentionally left open until it is defined.
 ## Current state
 
 - Device firmware: **v1.8.3**
-- Repository: `main` at the stabilization commits after `67973e0`
+- Repository: `main` at the stabilization commits after `bd93177`
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
-  - `tests/ui_test.c`: **20 visual/animation checks remaining**, all other groups green
+  - `tests/ui_test.c`: **passing**
 - The firmware changes committed after v1.8.3 are **not built or flashed** yet.
 
 ## 1. Finish the visual/test pass (release gate for v1.8.4)
@@ -19,19 +19,19 @@ Phase 2 product scope is intentionally left open until it is defined.
 The remaining `ui_test` failures are all drawing/animation expectations tied to
 pages the port moved or restyled. They are not functional regressions.
 
-- [ ] Roll animation / `ANIM OFF` (7 checks): cards and header BPM roll frames,
+- [x] Roll animation / `ANIM OFF` (7 checks): cards and header BPM roll frames,
       retargeting, snapping on page/track/palette/engine changes.
-- [ ] Piano roll rendering (6 checks): ACID bars, 4-note chords, LEN 32 page 2,
+- [x] Piano roll rendering (6 checks): ACID bars, 4-note chords, LEN 32 page 2,
       follow animation, held-key strip accent.
-- [ ] `HOME > TRACKS` layout (3 checks): step rows, playing-step highlight,
+- [x] `HOME > TRACKS` layout (3 checks): step rows, playing-step highlight,
       LARGE card labels.
-- [ ] HELP hints (2 checks): every page/layer has a hint that fits its row;
+- [x] HELP hints (2 checks): every page/layer has a hint that fits its row;
       HELP ON/OFF timing.
-- [ ] SONG timeline glide (1 check): ANIM ON follows the cursor block, then holds.
-- [ ] `#181` redraw (1 check): PRESETS / ALGORITHM on MIXER, HOME, HOME > TRACKS,
+- [x] SONG timeline glide (1 check): ANIM ON follows the cursor block, then holds.
+- [x] `#181` redraw (1 check): PRESETS / ALGORITHM on MIXER, HOME, HOME > TRACKS,
       ENV in FLAT / LINE / LARGE with no blank frame.
 
-Acceptance: `./build/host/ui_test` exits 0, with `project_test` and `regress`
+Acceptance met: `./build/host/ui_test` exits 0, with `project_test` and `regress`
 still green.
 
 ## 2. Release v1.8.4
