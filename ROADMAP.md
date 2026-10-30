@@ -45,7 +45,7 @@ still green.
   - GREY palette, drum-lane mute behavior.
 - [x] Update `README.md` “New in 1.8.4”.
 - [x] Rebuild the web workbench/emulator package and publish `gh-pages`.
-- [ ] Verify the live workbench shows the new version and updater line (Pages deployment may lag the push).
+- [x] Verify the live workbench shows the new version and updater line (live: v1.8.4).
 
 ## 3. FUN11 — the fifth track joins SONG
 
