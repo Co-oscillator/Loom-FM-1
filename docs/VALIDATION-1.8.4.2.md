@@ -34,6 +34,11 @@ Or use the web installer at <https://co-oscillator.github.io/Loom-FM-1/>.
 GitHub Pages can lag a push by a minute; hard-refresh if it still says
 v1.8.4.1.
 
+If `fm1_install.py --info` says **FM-1 not found**: the FM-1 introduces itself
+at boot, not when the cable is plugged into an already-running unit. Power-cycle
+the FM-1 with the USB cable connected, close any app holding the `Felucca` MIDI
+port, then run `--info` again.
+
 ## 1. Boot and version
 
 - [ ] The splash / MENU > INFO shows **v1.8.4.2**.

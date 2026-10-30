@@ -6,13 +6,13 @@ Phase 2 product scope is intentionally left open until it is defined.
 
 ## Current state
 
-- Device firmware: **v1.8.4.1** (v1.8.4.2 built; reflash pending)
+- Device firmware: **v1.8.4.2** (flashed; hardware checklist pending)
 - Repository: `main` at `a99b49b` (v1.8.4.2 package built)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- v1.8.4.2 package: **built** (`build/loom-groovebox-1.8.4.2.fswc`); **not flashed** (FM-1 not visible over USB MIDI).
+- v1.8.4.2 package: **built and flashed** (`build/loom-groovebox-1.8.4.2.fswc`).
 - Web workbench/updater: **v1.8.4.2 published to `gh-pages`**.
 - Hardware validation: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
 - Legacy suites still red: `fun10_test` (aborts on FUN7/FUN9 retained slots), `motion_test` (compile: `AM_ORD`), `upreset_test` (failing), `drum_test` (compile: `DK_STD`, `DK_10`).
@@ -50,7 +50,8 @@ still green.
 
 ## 3. FUN11 readiness (do before the format change)
 
-- [ ] Flash and validate **v1.8.4.2** on the device (currently v1.8.4.1); checklist: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
+- [x] Flash **v1.8.4.2** on the device.
+- [ ] Run the hardware checklist: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
 - [ ] Repair `fun10_test` (FUN7/FUN9 retained-slot expectations; 5-track format).
 - [ ] Repair `motion_test` (ARP mode names / `AM_ORD`).
 - [ ] Repair `upreset_test` (user preset format/migration).
