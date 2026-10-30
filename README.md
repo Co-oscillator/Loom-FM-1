@@ -19,7 +19,7 @@
 - **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor — the SEQUENCER tab has an interactive step grid (click or drag to paint steps, enter up to four notes per step on the keys, hit the eight DRUM lanes, and set time / accent / slide / velocity / chance / ratchet / nudge for each step) — and a real-time WebAssembly emulator with `.mid` / `.midi` multi-track import, `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`), and Loom / Helm / Surge preset import into the librarian (see [`web/LOOM_IMPORT.md`](web/LOOM_IMPORT.md)).
 - **Firmware Package:** [`loom-groovebox.fwsc`](loom-groovebox.fwsc) / [`loom-groovebox.fswc`](loom-groovebox.fswc) (Package Identity: `FM-1_985`, License: [`GPL-3.0-only`](LICENSE), full details in [`LICENSING.md`](LICENSING.md)).
 
-Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md).
+Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware validation for v1.8.4.2: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
 
 ---
 
