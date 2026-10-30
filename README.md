@@ -13,7 +13,7 @@
 ### Loom FM-1 Highlights
 - **5-Track Architecture (`1–4` + `D`):** 4 polyphonic synth/sampler tracks plus a dedicated 5th synthesized Drum track (`DRUM` with Analog & FM kits, choke groups, and per-lane mixing), each with its own color-coded neon UI theme.
 - **14 Synthesis & Sampling Engines:** Subtractive (`SUBTRACT`), Wavetable (`WAVETBL` with 3D terrain visualizer), 6-Op FM (`FM6`), Physical Tape-Platter Scrubbing (`SCRUB`), Granular (`GRAIN`), Sample Slicer (`SLICE`), Multisample (`SAMPLE`), Physical Modeling (`PHYS`), Phase Distortion (`PHASE`), Formant (`VOICE`), Organ (`WHEEL`), Chiptune (`LOFI`), Noise (`NOISE`), and Drum (`DRUM`).
-- **64-Step Dual-View Sequencer:** Switch between `4x4 STEP` / `4x4 PAT` piano roll and `8x8 STEP` / `8x8 PAT` 64-step matrix views with humanize, swing, parameter locks, and instant pattern clear.
+- **64-Step Dual-View Sequencer:** Switch between `4x4 STEP` / `4x4 PAT` 4x4 sequencer grid and `8x8 STEP` / `8x8 PAT` 64-step matrix views with humanize, swing, parameter locks, and instant pattern clear.
 - **Chord Progression Generator & Bipolar Arpeggiator:** Generative mood/complexity chord progression engine (`CHRD: PROG`) with real-time voicing display, plus a 10-mode arpeggiator with bipolar `-3` to `+3` octave range and Euclidean gating.
 - **Performance Macros & Sidechain Ducking:** 4 assignable multi-destination performance macro knobs (`HOME > MACROS`) and drum-triggered sidechain compression across synth tracks and master send FX.
 - **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor — the SEQUENCER tab has an interactive step grid (click or drag to paint steps, enter up to four notes per step on the keys, hit the eight DRUM lanes, and set time / accent / slide / velocity / chance / ratchet / nudge for each step) — and a real-time WebAssembly emulator with `.mid` / `.midi` multi-track import, `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`), and Loom / Helm / Surge preset import into the librarian (see [`web/LOOM_IMPORT.md`](web/LOOM_IMPORT.md)).
@@ -32,7 +32,7 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md).
 - **Four tracks**, one synth part each with its own engine and sound (drums are the DRUM engine);
   8 voices shared between them. ALGORITHM selects the track on every page
 - **Sequencer:** 64 steps per track with chords, ties, accent, slide, per-step chance, velocity and ratchets
-  (a step played 2, 3 or 4 times in its length); a piano roll of the steps, where KNOB 3 sets a note's length; a drum grid (white keys =
+  (a step played 2, 3 or 4 times in its length); a 4x4 step grid and an 8x8 matrix, where KNOB 3 sets a note's length; a drum grid (white keys =
   steps, black keys = lanes); **SEQ > DETAIL**: the cursor step's chance, ratchet, nudge and velocity on the four
   knobs, drawn as lanes over the steps; automation: recording of knob moves per step (an automation icon marks the cards it
   drives); live loop recording with overdub; step recording at the cursor (REC on SEQ > STEP while stopped), one
@@ -114,10 +114,10 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md).
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
 
-## New in 1.8.4.1
+## New in 1.8.4.2
 
-- **4x4 STEP is the piano roll again** (4x4 PAT keeps the pad grid): notes at their rows, ties carried, slides, accents, the cursor and the play head.
-- **Engine colours in GREY (v1.8.4.1 rebuild):** the v1.8.4 package shipped the GREY palette monochrome; this rebuild restores the loaded engine's theme/accent. The theme is applied once, so rolling values and `MENU > ANIM` still work. MONO stays neutral.
+- **4x4 STEP / 4x4 PAT are the 4x4 sequencer grid again** (the intended Loom view): 16 large cells per bank, notes filled, rests ringed, ties carried, the cursor and the play head; the piano-roll experiment is reverted. 8x8 remains the 64-step matrix.
+- **Engine colours in GREY (v1.8.4.2 rebuild):** the v1.8.4 package shipped the GREY palette monochrome; this rebuild restores the loaded engine's theme/accent. The theme is applied once, so rolling values and `MENU > ANIM` still work. MONO stays neutral.
 - **No blank MIXER frame:** PRESETS and ALGORITHM redraw the tracks over the old frame instead of clearing the panel first (#181).
 - **HELP:** hints for MACROS and the ARP layer; the existing hints fit their row again.
 - **Legacy projects:** old four-track projects with a GM drum part or SAMPLE PERC load onto the dedicated DRUM track, keeping their steps, level, reverb and automation.
@@ -316,9 +316,9 @@ way as from the menu, in the same tabs.
   (black and white)
 - **STYLE:** FLAT (filled cards) or LINE (areas divided by thin lines)
 - **LARGE:** OFF or ON: on HOME and the value pages the four knob cards grow tall, marked K1–K4, with
-  larger labels and values about twice the size; the graph below becomes a strip. Lists, the piano roll,
+  larger labels and values about twice the size; the graph below becomes a strip. Lists, the step grid,
   the drum grid and the quick layers keep their layout with larger labels
-- **ANIM:** ON, OFF or IDLE. OFF shows every change at once, without rolling digits, a gliding piano roll or
+- **ANIM:** ON, OFF or IDLE. OFF shows every change at once, without rolling digits, a gliding view or
   the LED sweep at power-on. IDLE is ON plus a gentle LED animation after a minute without input: a soft light drifts
   over the keys and the buttons breathe; any key, button or knob ends it and does what it always does. It never runs
   while playing, with a track armed, in a layer, the menu or a dialog

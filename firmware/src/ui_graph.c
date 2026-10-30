@@ -4134,9 +4134,7 @@ static void draw_graph(void)
             cv_oy = 0;
             if (detail_on())                          /* 1.5.1 (#199) */
                 graph_detail(t, c);
-            else if (pg->scope == SC_STEP)            /* 4x4 STEP: the piano roll */
-                graph_roll(t, c);
-            else                                      /* 4x4 PAT: the 4x4 pad grid */
+            else                                      /* 4x4 STEP / PAT: the 4x4 sequencer grid */
                 graph_loom_seq_grid(t, c);
             break;
         case GR_STEPS:

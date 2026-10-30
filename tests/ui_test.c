@@ -4748,61 +4748,53 @@ static int test_step_preview_chord_entry(void)
     return bad;
 }
 
-static int test_piano_roll(void)
+static int test_loom_grid(void)
 {
-    int bad = 0, ok;
-    uint32_t i, nb = 0, lo0, steps = 0;
+    int bad = 0, ok = 1;
     track_t *t;
+    uint32_t row, col, si;
+#define LG_PX(x, y) swap16(host_screen[(uint32_t)(Y_GRAPH + (y)) * 240u + (uint32_t)(x)])
     ui_power_on();
     t = TSEL;
-    load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);               /* ACID: A2..A3, ties, accents, slides */
-    t->p[P_ROOT] = 9; t->p[P_SCALE] = 2;
+    load_pat16(t, PATTERNS[0].note, PATTERNS[0].flags);               /* ACID: notes, ties, accents */
     go_page(GR_ROLL); ui.cursor = 0; ui.bank = 0;
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    ok = pr_columns_match(t, &nb);
-    bad += check("piano roll: ACID's bars drawn at their notes' rows, ties carried, rests empty", ok && nb >= 10u);
-    settings.palette = UI_BW_INDEX; palette_set(UI_BW_INDEX); ui.force = 1; ui_draw();
-    ok = proll.lo <= 45 && proll.lo + PR_ROWS - 1 >= 57 && screen_neutral();
-    settings.palette = UI_GREY_INDEX; palette_set(UI_GREY_INDEX); ui.force = 1; ui_draw();
-    bad += check("  the view holds the page's notes (A2..A3 in 21 rows), MONO neutral", ok);
-    t->p[P_VOICE] = V_POLY;                                           /* chords: up to 4 bars in a column */
-    for (i = 0; i < 16u; i += 4u) {
-        step_t *s = &t->step[i];
-        s->time = ST_NOTE; s->n = 4; s->note[0] = 57; s->note[1] = 60; s->note[2] = 64; s->note[3] = 67;
-        t->step[i + 1u].time = ST_TIE;
-    }
-    nb = 0;
+    for (row = 0; row < 4u; row++)
+        for (col = 0; col < 4u; col++) {
+            int32_t xc = 42 + (int32_t)col * 52, yc = 20 + (int32_t)row * 27;
+            uint16_t centre = LG_PX(xc, yc), ring = LG_PX(xc, yc - 12);
+            int note = t->step[row * 4u + col].time == ST_NOTE && t->step[row * 4u + col].n;
+            int tie = t->step[row * 4u + col].time == ST_TIE;
+            if (note || tie)
+                ok &= centre != T_SURF && centre != T_BG;            /* a filled cell */
+            else
+                ok &= (centre == T_SURF || centre == T_BG) && ring == T_RAISE;   /* a rest: the ring */
+            if (row * 4u + col == 0u)                                  /* the cursor's corner marks */
+                ok &= LG_PX(xc - 15, yc - 15) == T_TEXT;
+        }
+    bad += check("4x4 STEP: the 16-step sequencer grid (notes filled, rests rings, the cursor)", ok);
+
+    for (si = 0; si < NSTEP; si++) step_clear(&t->step[si]);
+    t->step[16] = (step_t){{60}, 1, ST_NOTE, 0, 100};
+    t->p[P_SLEN] = 32; cursor_set(16);
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    bad += check("  4-note chords stacked, their ties carry all four", pr_columns_match(t, &nb));
-    for (i = 0; i < NSTEP; i++) {                                     /* LEN 32, page 2 */
-        step_clear(&t->step[i]);
-        if (i >= 16u && i % 2u == 0u) { t->step[i].time = ST_NOTE; t->step[i].n = 1; t->step[i].note[0] = (uint8_t)(72 + i % 7u); }
-    }
-    t->p[P_SLEN] = 32; cursor_set(18);
-    nb = 0;
+    ok = ui.bank == 1u && LG_PX(42, 20) != T_SURF && LG_PX(42, 20) != T_BG &&
+         (LG_PX(42 + 3 * 52, 20 + 3 * 27) == T_SURF || LG_PX(42 + 3 * 52, 20 + 3 * 27) == T_BG);
+    bad += check("4x4 STEP: LEN 32 page 2 shows steps 16..31", ok);
+
+    song.playing = 1; t->seq_idx = 4;                         /* step 5: row 2, first cell */
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
-    bad += check("  LEN 32, the cursor on page 2: its 16 steps drawn", ui.bank == 1u && pr_columns_match(t, &nb) && nb == 8u);
-    lo0 = proll.lo;                                                   /* two octaves up: the view follows in steps */
-    for (i = 16; i < 32u; i++) if (t->step[i].n) t->step[i].note[0] += 24;
-    for (i = 0; i < 20u && proll.lo != lo0 + 24u; i++) { frame(); steps++; }
-    bad += check("  notes moved two octaves: the view follows over frames (not at once), then rests",
-                 proll.lo == lo0 + 24u && steps >= 3u && steps < 20u);
-    {
-        uint32_t sig = ui.graph_sig;
-        frame(); frame();
-        bad += check("  nothing changed: the graph is not drawn again", ui.graph_sig == sig);
-    }
-    nb = 0;
-    bad += check("  after the follow the bars match again", pr_columns_match(t, &nb));
-    song.rec = 1;                                                     /* (#133: armed, the key writes the step) */
-    key_down(7); frames(200);                                         /* a key held: its row lit on the strip */
-    {
-        int32_t r = (int32_t)proll.lo + PR_ROWS - 1 - (int32_t)kb_chord[7][0];
-        uint16_t c = r >= 0 && r < PR_ROWS ? swap16(host_screen[(Y_GRAPH + PR_Y0 + (uint32_t)r * PR_RH + 1u) * 240u + PR_KX + 7]) : 0;
-        bad += check("  a key held: its row on the keyboard strip is the accent", kb_chn[7] && c == T_ACCENT);
-    }
-    key_up(7); frames(100);
-    song.rec = 0;
+    ok = LG_PX(42, 20 + 27 - 15) != T_RAISE && LG_PX(42, 20 + 27 - 15) != T_SURF &&
+         LG_PX(42, 20 + 27 - 15) != T_BG;
+    song.playing = 0;
+    bad += check("4x4 STEP: the playing step is marked", ok);
+
+    settings.palette = UI_BW_INDEX; palette_set(UI_BW_INDEX);
+    memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
+    ok = screen_neutral();
+    settings.palette = UI_GREY_INDEX; palette_set(UI_GREY_INDEX);
+    bad += check("4x4 STEP: MONO neutral", ok);
+#undef LG_PX
     return bad;
 }
 
@@ -9730,7 +9722,7 @@ int main(void)
     RUN(test_chord_page);
     RUN(test_bughunt_ui);
     RUN(test_bughunt_ui2);
-    RUN(test_piano_roll);
+    RUN(test_loom_grid);
     RUN(test_play_leds);
     RUN(test_cursor_step_leds);
     RUN(test_midi_leds);
