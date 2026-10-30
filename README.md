@@ -114,6 +114,17 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md).
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
 
+## New in 1.8.4
+
+- **4x4 STEP is the piano roll again** (4x4 PAT keeps the pad grid): notes at their rows, ties carried, slides, accents, the cursor and the play head.
+- **GREY and MONO stay still:** the engine's neon theme no longer forces a full redraw every frame, so rolling values and `MENU > ANIM` work in the grayscale palettes.
+- **No blank MIXER frame:** PRESETS and ALGORITHM redraw the tracks over the old frame instead of clearing the panel first (#181).
+- **HELP:** hints for MACROS and the ARP layer; the existing hints fit their row again.
+- **Legacy projects:** old four-track projects with a GM drum part or SAMPLE PERC load onto the dedicated DRUM track, keeping their steps, level, reverb and automation.
+- **SAVE from HOME** returns to USER; **PRESETS on 8x8 STEP** moves the step cursor; **EDIT on AUTOMATION** deletes/resets the selected row.
+- **DRUM lane mutes:** the grid and the sound agree on the dedicated track, and a muted lane keeps ringing on unheard (channel mute).
+- **Filter envelope / project load:** the OP1 level and F AMT no longer share one clamped value, so old and new projects load their sound unchanged.
+
 ## New in 1.8.3
 
 - **HOME > CLOCK is gone:** it repeated GLOBAL (BPM, SWING, CLOCK, TUNE); GLO has them. HOME now goes round HOME,

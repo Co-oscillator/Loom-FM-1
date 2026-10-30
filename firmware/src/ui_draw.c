@@ -1838,7 +1838,7 @@ static void ui_draw_page(uint32_t counting)
         return;
     }
     /* Apply Loom engine-themed neon colors */
-    if (!ux.mono && !ux.light) {
+    if (!ux.mono && !ux.light && !ux.grey) {
         uint8_t cur_eng = eng_idx(TSEL->eng_req);
         uint16_t eth = (cur_eng < NENGINES) ? ENG_NEON[cur_eng].theme : 0xFA20;
         uint16_t eacc = (cur_eng < NENGINES) ? ENG_NEON[cur_eng].accent : 0x07FF;

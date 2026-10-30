@@ -3536,8 +3536,7 @@ static void draw_tracks(void)
 {
     uint32_t c, sk = strip_kind() == SK_TRK;
     if (ui.force) {
-        lcd_fill(0, graph_y(), 240, graph_h(), T_BG);
-        for (c = 0; c < NTRK; c++)
+        for (c = 0; c < NTRK; c++)                    /* (the columns cover the graph: no BG flash, #181) */
             ts.meter[c] = 0;
     }
     /* Visible vertical divider line between tracks 1-4 and drum track */
@@ -4135,7 +4134,9 @@ static void draw_graph(void)
             cv_oy = 0;
             if (detail_on())                          /* 1.5.1 (#199) */
                 graph_detail(t, c);
-            else
+            else if (pg->scope == SC_STEP)            /* 4x4 STEP: the piano roll */
+                graph_roll(t, c);
+            else                                      /* 4x4 PAT: the 4x4 pad grid */
                 graph_loom_seq_grid(t, c);
             break;
         case GR_STEPS:

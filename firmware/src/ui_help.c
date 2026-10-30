@@ -25,16 +25,16 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
     {"MACRO 2", "[K1]SLOT[K2]SOURCE[K3]DEST"},
     {"MACRO 3", "[K1]SLOT[K2]SOURCE[K3]DEST"},
     {"MACRO 4", "[K1]SLOT[K2]SOURCE[K3]DEST"},
-    {"FX", "[K1]DUCK[K2-4]SENDS[FX]HOLD"},
+    {"FX", "[K1]DUCK[K2]SENDS[FX]HOLD"},
     {"SLICER", "[K1]ON[K2]PATTERN[FX]INSERT"},
     {"INSERT", "[K1]TYPE[FX]DRY / WET"},
     {"INSERT 2", "[K1]DRY / WET[FX]TAPE DLY"},
     {"TAPE DELAY", "[K1-4]ALL TRACKS[FX]REVERB"},
     {"REVERB", "[K1]ROOM SPRING HALL[FX]CHORUS"},
     {"CHORUS", "[K1-4]ALL TRACKS[FX]SIDECHAIN"},
-    {"SIDECHAIN", "[K1-2]ENV[K3]FX[K4]SRC"},
+    {"SIDECHAIN", "[K1]ENV[K3]FX[K4]SRC"},
     {"SCALE", "[K2]SCALE[K3]QUANTIZE[SCL]CHORDS"},
-    {"CHORD", "[K1]CHORD[KEYS]ONE FINGER[SCL]SCALE"},
+    {"CHORD", "[KEYS]ONE FINGER[SCL]SCALE"},
     {"PROG", "[K1]RATE[K2]INV[K3]OCT[K4]TRIG"},
     {"EDIT 1", H_EDIT},
     {"EDIT 2", H_EDIT},
@@ -64,7 +64,8 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
     {"DETAIL", "[PRESETS]STEP[K1]CHANCE[K2]RATCH"},
     {"AUTOMATION", "[K1]ROW[OCT+]DO x2[STEP]NOTES"},
     {"MIXER", "[K4]MUTE[ALGO]TRACK[HOME]MACROS"},
-    {"GLOBAL", "[K1-4]BPM SWING CLOCK TUNE[GLO]HOLD: TAP"},
+    {"MACROS", "[K1-4]MACRO[ALGO]TRACK[HOME]MIXER"},
+    {"GLOBAL", "[K1]BPM[GLO]HOLD: TAP"},
 };
 #define H_HOME "[PRESETS]SOUND[HOME]HOLD: MENU"
 #define H_LEVELS "[K1-4]T1-T4 LEVEL[HOME]MIXER"
@@ -73,6 +74,7 @@ static const struct { const char *title, *hint; } HELP_PAGE[] = {
 static const char *const HELP_LAYER[LAYER_N] = {
     "", "[KEYS]BLACK: MUTES[FX]2 TAPS: LOCK", "[KEYS]SOLO MUTE TAP[K1-4]LEVELS", "[KEYS]ROOT[K1-4]ROOT SCL CHORD",
     "[K1]ENGINE[K2]SOUND[K3]FAV", "[K1]LENGTH[K3]SWING[K4]GATE", "[K1]CLICK[K2]COUNT-IN[K3]LEVEL",
+    "[KEYS]MODE[ARP]HOLD",
 };
 
 /* the hint of the page shown, 0 = none */
