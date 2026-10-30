@@ -7,7 +7,7 @@ Phase 2 product scope is intentionally left open until it is defined.
 ## Current state
 
 - Device firmware: **v1.8.3**
-- Repository: `main` at the stabilization commits after `8cb6d03`
+- Repository: `main` at the stabilization commits after `67973e0`
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
@@ -62,10 +62,63 @@ format.” That is the FUN11 gate.
       round trips and migration; rebaseline goldens/CPU where needed.
 - [ ] Update README and the manual pages for SONG’s fifth lane.
 
-## 4. Phase 2 — product features
+### FUN11 scope carried from the v1.7 planning notes
+
+- [ ] **Persist ARP patterns with the project** (currently RAM only; `arp_pat`
+      is not in `project.c` / `upreset.c`).
+- [ ] **Pattern bank:** 32–64 patterns, SONG rows beyond 16, and a
+      “queue pattern at next bar” operation, so the device performs while the
+      phone composes.
+- [ ] **New INFO capability tags**, migration from FUN10, and a decision on the
+      backup format.
+- [ ] Keep the existing FUN10/older reads and the dedicated fifth track’s
+      migration rules.
+
+## 4. Web editor (`web/editor.html`)
+
+- [ ] Teach the editor this firmware’s 114-parameter table so its grouped pages
+      (ENV, ARP, …) return instead of one flat list; add the new ENV pages and
+      ARP PAT.
+- [ ] CSS: fix the overlapping step-table headers (“Chance %” / “Ratchet”) and
+      the right-edge overflow; widen the main area on large screens and stack or
+      scroll the two step tables.
+- [ ] Installer: the progress bar is fixed; the “device did not come back”
+      false failure after a successful flash is still unfixed.
+
+## 5. Loom Groovebox / Android (separate repository)
+
+Status from the v1.7 notes; re-check the separate repository before starting.
+
+- [ ] FM-1 XY pad screen and macro assignment over SysEx.
+- [ ] Gesture → automation.
+- [ ] Preset / backup library.
+- [ ] On-phone firmware updater.
+- [ ] Launchkey testing.
+- [ ] Pitch-tracker melody sequencer.
+
+## 6. Phase 2 — product features
 
 Not yet specified in this repository. Add the agreed phase-2 scope here before
 starting implementation so the test/release gates stay explicit.
+
+## Appendix — reconciled v1.7 planning notes
+
+These were captured from the earlier conversation and checked against the current
+tree. The notes’ `97efcd4` / v1.7 state is stale; current `main` is `67973e0`
+and the device is on v1.8.3.
+
+- **Held-ARP overlay:** the current tree has `LAYER_ARP` (`ui_layer.c`) and the
+  ARP note/pattern graph (`graph_arp` in `ui_graph.c`). Verify the card visually
+  in the step-1 pass; it is no longer obviously blank.
+- **VOIC under PROG:** fixed — `chord.c` passes `P_VOIC` into
+  `loom_chord_generate` for `CH_PROG`.
+- **Factory presets too wet:** mostly addressed in the current preset tables
+  (many are fully dry; pads use light CHOR/REV). Remaining work is a taste audit
+  across every engine, not a structural fix.
+- **Dead code:** the disabled `if (0 && …)` label block is gone.
+- **FUN11:** the four scoped items are in section 3.
+- **Web editor:** in section 4.
+- **Loom Groovebox / Android:** in section 5.
 
 ## Verification commands
 
