@@ -117,7 +117,7 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md).
 ## New in 1.8.4
 
 - **4x4 STEP is the piano roll again** (4x4 PAT keeps the pad grid): notes at their rows, ties carried, slides, accents, the cursor and the play head.
-- **GREY and MONO stay still:** the engine's neon theme no longer forces a full redraw every frame, so rolling values and `MENU > ANIM` work in the grayscale palettes.
+- **Engine colours in GREY:** the GREY palette keeps its grey base but shows the loaded engine's theme/accent again; the theme is applied once, so rolling values and `MENU > ANIM` still work. MONO stays neutral.
 - **No blank MIXER frame:** PRESETS and ALGORITHM redraw the tracks over the old frame instead of clearing the panel first (#181).
 - **HELP:** hints for MACROS and the ARP layer; the existing hints fit their row again.
 - **Legacy projects:** old four-track projects with a GM drum part or SAMPLE PERC load onto the dedicated DRUM track, keeping their steps, level, reverb and automation.

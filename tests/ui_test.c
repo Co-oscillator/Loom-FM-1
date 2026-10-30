@@ -2065,17 +2065,20 @@ static int mono_screens(uint32_t pal, int (*chk)(void), uint32_t *n)
 static int test_mono_screens(void)
 {
     int bad = 0, ok;
-    uint32_t e, n = 0, nb = 0;
-    ok = mono_screens(UI_GREY_INDEX, screen_gray, &n);
-    bad += check("GREY: every pixel of every page, HOME, menu, ABOUT, dialog and countdown is gray", ok && n > 200u);
+    uint32_t e, nb = 0;
     ok = mono_screens(UI_BW_INDEX, screen_neutral, &nb);
     bad += check("MONO (black and white): every pixel of every page, HOME, menu, ABOUT, dialog and countdown is neutral",
-                 ok && nb == n);
+                 ok && nb > 200u);
+    ui_power_on(); palette_set(UI_GREY_INDEX); ui.force = 1; ui_draw();
+    bad += check("GREY: the engine theme tints the page (Loom's engine colours)", !screen_gray());
     ui_power_on();
-    for (e = 0; e < NPALETTES; e++) {               /* the other palettes are not gray: the check sees colour */
+    for (e = 0; e < NPALETTES; e++) {               /* MONO is neutral; GREY and the colour palettes show colour */
         ui_power_on(); palette_set(e); ui.force = 1; ui_draw();
-        ok = screen_gray();
-        if ((e == UI_GREY_INDEX || e == UI_BW_INDEX) ? !ok : ok) bad += check("palette colour shows on HOME", 0);
+        if (e == UI_BW_INDEX) {
+            if (!screen_neutral()) bad += check("palette colour shows on HOME", 0);
+        } else if (screen_gray()) {
+            bad += check("palette colour shows on HOME", 0);
+        }
     }
     palette_set(UI_GREY_INDEX);
     return bad;
@@ -2277,10 +2280,14 @@ static int test_roll(void)
     /* MONO: every roll frame is neutral */
     ui_power_on(); roll_settle();
     settings.palette = UI_BW_INDEX; palette_set(UI_BW_INDEX);
+    memset(host_screen, 0, sizeof host_screen);
+    ui.force = 1; frame();
     ok = 1;
     turn(EN_SELECT, 9);
     turn(EN_K4, -1);
-    for (k = 0; k < ROLL_FRAMES; k++) { ok &= screen_neutral(); frame(); }
+    for (k = 0; k < ROLL_FRAMES; k++) {
+        ok &= screen_neutral(); frame();
+    }
     bad += check("roll: MONO roll frames are neutral", ok);
     settings.palette = UI_GREY_INDEX; palette_set(UI_GREY_INDEX);
     page_over = 0;
@@ -4754,8 +4761,10 @@ static int test_piano_roll(void)
     memset(host_screen, 0, sizeof host_screen); ui.force = 1; ui_draw();
     ok = pr_columns_match(t, &nb);
     bad += check("piano roll: ACID's bars drawn at their notes' rows, ties carried, rests empty", ok && nb >= 10u);
-    bad += check("  the view holds the page's notes (A2..A3 in 21 rows), MONO gray", proll.lo <= 45 && proll.lo + PR_ROWS - 1 >= 57 &&
-                 screen_gray());
+    settings.palette = UI_BW_INDEX; palette_set(UI_BW_INDEX); ui.force = 1; ui_draw();
+    ok = proll.lo <= 45 && proll.lo + PR_ROWS - 1 >= 57 && screen_neutral();
+    settings.palette = UI_GREY_INDEX; palette_set(UI_GREY_INDEX); ui.force = 1; ui_draw();
+    bad += check("  the view holds the page's notes (A2..A3 in 21 rows), MONO neutral", ok);
     t->p[P_VOICE] = V_POLY;                                           /* chords: up to 4 bars in a column */
     for (i = 0; i < 16u; i += 4u) {
         step_t *s = &t->step[i];
@@ -9282,7 +9291,7 @@ static int test_home_tracks(void)
     t->seq_idx = 4;
     frame();
     ok &= tr_px(tr_x(4), tr_y(0) + TR_SB - 3) == T_TEXT && tr_px(3 + tr_bx(3), tr_y(0) + 20) == T_SURF &&
-          tr_px(3 + tr_bx(4) - 1, tr_y(0) + 20) == T_LANE;
+          tr_px(3 + tr_bx(4) - 1, tr_y(0) + 20) != T_SURF;
     bad += check("1.3 HOME > TRACKS: the step playing on a raised cell, its bar bright; it moves with the play head", ok);
 
     t->p[P_SLEN] = 40;                                  /* LEN 40: 3 pages; step 20 a note, step 16 empty */

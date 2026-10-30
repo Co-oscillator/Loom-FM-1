@@ -162,7 +162,7 @@ static void palette_set(uint32_t i)
 /* Update UX theme & accent colors for the active engine (Loom dynamic theming) */
 static void ux_theme_engine(uint16_t theme, uint16_t accent)
 {
-    if (ux.mono || ux.light || ux.grey)                 /* (GREY stays grey: the engine's neon is for colour palettes) */
+    if (ux.mono || ux.light)                            /* (GREY keeps its grey base but shows the engine's theme) */
         return;
     if (ux.theme == theme && ux.accent == accent)
         return;
