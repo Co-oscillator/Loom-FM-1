@@ -7,12 +7,13 @@ Phase 2 product scope is intentionally left open until it is defined.
 ## Current state
 
 - Device firmware: **v1.8.3**
-- Repository: `main` at the stabilization commits after `bd93177`
+- Repository: `main` at `be58bfd` (v1.8.4 package built)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- The firmware changes committed after v1.8.3 are **not built or flashed** yet.
+- v1.8.4 package: **built** (`build/loom-groovebox-1.8.4.fswc`); **not flashed** (no FM-1 USB MIDI device was connected).
+- Web workbench/updater: **v1.8.4 published to `gh-pages`**.
 
 ## 1. Finish the visual/test pass (release gate for v1.8.4)
 
@@ -36,15 +37,15 @@ still green.
 
 ## 2. Release v1.8.4
 
-- [ ] Build the firmware and package (`./build.sh` / `tools/build.py`).
+- [x] Build the firmware and package (`./build.sh --release 1.8.4`).
 - [ ] Flash the device and smoke-test the fixes:
   - legacy projects with old drum tracks migrate to the dedicated DRUM track;
   - SONG four-slot chain behavior and SAVE → USER from HOME;
   - EDIT on AUTOMATION, EDIT on STEP, PRESETS on 8x8 STEP;
   - GREY palette, drum-lane mute behavior.
-- [ ] Update `README.md` “New in 1.8.4”.
-- [ ] Rebuild the web workbench/emulator package and publish `gh-pages`.
-- [ ] Verify the live workbench shows the new version and updater line.
+- [x] Update `README.md` “New in 1.8.4”.
+- [x] Rebuild the web workbench/emulator package and publish `gh-pages`.
+- [ ] Verify the live workbench shows the new version and updater line (Pages deployment may lag the push).
 
 ## 3. FUN11 — the fifth track joins SONG
 
