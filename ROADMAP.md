@@ -6,14 +6,15 @@ Phase 2 product scope is intentionally left open until it is defined.
 
 ## Current state
 
-- Device firmware: **v1.8.3**
-- Repository: `main` at `be58bfd` (v1.8.4 package built)
+- Device firmware: **v1.8.4.1** (v1.8.4.2 built; reflash pending)
+- Repository: `main` at `a99b49b` (v1.8.4.2 package built)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- v1.8.4 package: **built** (`build/loom-groovebox-1.8.4.fswc`); **not flashed** (no FM-1 USB MIDI device was connected).
-- Web workbench/updater: **v1.8.4 published to `gh-pages`**.
+- v1.8.4.2 package: **built** (`build/loom-groovebox-1.8.4.2.fswc`); **not flashed** (FM-1 not visible over USB MIDI).
+- Web workbench/updater: **v1.8.4.2 published to `gh-pages`**.
+- Legacy suites still red: `fun10_test` (aborts on FUN7/FUN9 retained slots), `motion_test` (compile: `AM_ORD`), `upreset_test` (failing), `drum_test` (compile: `DK_STD`, `DK_10`).
 
 ## 1. Finish the visual/test pass (release gate for v1.8.4)
 
@@ -22,8 +23,7 @@ pages the port moved or restyled. They are not functional regressions.
 
 - [x] Roll animation / `ANIM OFF` (7 checks): cards and header BPM roll frames,
       retargeting, snapping on page/track/palette/engine changes.
-- [x] Piano roll rendering (6 checks): ACID bars, 4-note chords, LEN 32 page 2,
-      follow animation, held-key strip accent.
+- [x] 4x4 sequencer grid (the intended Loom view; the piano-roll experiment is reverted).
 - [x] `HOME > TRACKS` layout (3 checks): step rows, playing-step highlight,
       LARGE card labels.
 - [x] HELP hints (2 checks): every page/layer has a hint that fits its row;
@@ -47,7 +47,17 @@ still green.
 - [x] Rebuild the web workbench/emulator package and publish `gh-pages`.
 - [x] Verify the live workbench shows the new version and updater line (live: v1.8.4).
 
-## 3. FUN11 — the fifth track joins SONG
+## 3. FUN11 readiness (do before the format change)
+
+- [ ] Flash and validate **v1.8.4.2** on the device (currently v1.8.4.1).
+- [ ] Repair `fun10_test` (FUN7/FUN9 retained-slot expectations; 5-track format).
+- [ ] Repair `motion_test` (ARP mode names / `AM_ORD`).
+- [ ] Repair `upreset_test` (user preset format/migration).
+- [ ] Repair `drum_test` (`DK_STD` / `DK_10` kit names).
+- [ ] Write the FUN11 format/migration spec (FUN10 four-slot → FUN11 five-slot,
+      ARP persistence, pattern bank, INFO tags, backup format).
+
+## 4. FUN11 — the fifth track joins SONG
 
 The README’s SONG section states: “The DRUM track joins SONG with the next chain
 format.” That is the FUN11 gate.
@@ -75,7 +85,7 @@ format.” That is the FUN11 gate.
 - [ ] Keep the existing FUN10/older reads and the dedicated fifth track’s
       migration rules.
 
-## 4. Web editor (`web/editor.html`)
+## 5. Web editor (`web/editor.html`)
 
 - [ ] Teach the editor this firmware’s 114-parameter table so its grouped pages
       (ENV, ARP, …) return instead of one flat list; add the new ENV pages and
@@ -86,7 +96,7 @@ format.” That is the FUN11 gate.
 - [ ] Installer: the progress bar is fixed; the “device did not come back”
       false failure after a successful flash is still unfixed.
 
-## 5. Loom Groovebox / Android (separate repository)
+## 6. Loom Groovebox / Android (separate repository)
 
 Status from the v1.7 notes; re-check the separate repository before starting.
 
@@ -97,7 +107,7 @@ Status from the v1.7 notes; re-check the separate repository before starting.
 - [ ] Launchkey testing.
 - [ ] Pitch-tracker melody sequencer.
 
-## 6. Phase 2 — product features
+## 7. Phase 2 — product features
 
 Not yet specified in this repository. Add the agreed phase-2 scope here before
 starting implementation so the test/release gates stay explicit.
