@@ -1,80 +1,106 @@
-# Loom FM-1 Roadmap
+# Loom FM-1 Roadmap — archived
 
-This is the working roadmap for the Loom FM-1 firmware. It records the current
-stabilization state, the release gate, and the next format change (FUN11).
-Phase 2 product scope is intentionally left open until it is defined.
+> **Status: paused / archived (2026-10-31).** There is no working FM-1. The unit
+> was lost during the v1.8.4.4 flash: the USB cable was disturbed during the
+> write, the loader stopped enumerating, and the power switch was torn off while
+> attempting the documented recovery. The owner cannot justify another FM-1
+> while the platform has no hardware recovery button. See
+> [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
+>
+> The source, releases, tests, web emulator and format notes are preserved. This
+> roadmap is kept so the work can resume if a suitable device or a hardware
+> test rig becomes available.
 
-## Current state
+## Why this is archived
 
-- Device firmware: **none** — the FM-1 was lost during the v1.8.4.4 flash (interrupted write, then the power switch was torn off during the recovery attempt). Hardware validation is paused; see [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
-- Repository: `main` at `c3f6f25` (v1.8.4.4 published; hardware caution added)
-- Host tests:
-  - `tests/project_test.c`: **passing**
-  - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
-  - `tests/ui_test.c`: **passing**
-- v1.8.4.4 package: **built and published** (`build/loom-groovebox-1.8.4.4.fswc`); not flashed (the unit failed during the attempt).
-- Web workbench/updater: **v1.8.4.4 published to `gh-pages`**.
-- Hardware validation: **paused** (no working unit). The checklist remains at [`docs/VALIDATION-1.8.4.4.md`](docs/VALIDATION-1.8.4.4.md).
-- Legacy suites: **green** — `fun10_test`, `motion_test`, `upreset_test`, `drum_test`.
+- The FM-1 can be left black and non-enumerating by an interrupted write; there
+  is no recovery button.
+- Recovery needs the [FM-1 Transporter](https://github.com/kurogedelic/FM-1-transporter)
+  wired to the USB data lines, which requires opening a case that is not
+  designed to be opened.
+- Opening the case tore the small SMD power switch off the board. The switch is
+  a commodity part, but a bench repair costs more than the device.
+- A replacement FM-1 has the same recovery limitation, so another unit is not a
+  justified risk for this project.
+- No alternative device with a hardware recovery button was available at the
+  time of archiving.
 
-## 1. Finish the visual/test pass (release gate for v1.8.4)
+## Preserved work
 
-The remaining `ui_test` failures are all drawing/animation expectations tied to
-pages the port moved or restyled. They are not functional regressions.
+- Firmware source: `firmware/` (application, HAL, update loader).
+- Releases: v1.8.4.4 package and web updater on `gh-pages`.
+- Host gates: `ui_test`, `project_test`, `regress`, `fun10_test`,
+  `motion_test`, `upreset_test`, `drum_test` — all green at archive time.
+- Web emulator: `web/emu/` (browser build, v1.8.4.4).
+- FUN11 format/migration spec: [`docs/FUN11-FORMAT.md`](docs/FUN11-FORMAT.md).
+- Modulator-learn design note: [`docs/MIDI-LEARN.md`](docs/MIDI-LEARN.md).
+- Hardware failure postmortem and photos: [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
+- Validation checklists: [`docs/VALIDATION-1.8.4.4.md`](docs/VALIDATION-1.8.4.4.md),
+  [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md),
+  [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
 
-- [x] Roll animation / `ANIM OFF` (7 checks): cards and header BPM roll frames,
-      retargeting, snapping on page/track/palette/engine changes.
-- [x] 4x4 sequencer grid (the intended Loom view; the piano-roll experiment is reverted).
-- [x] `HOME > TRACKS` layout (3 checks): step rows, playing-step highlight,
-      LARGE card labels.
-- [x] HELP hints (2 checks): every page/layer has a hint that fits its row;
-      HELP ON/OFF timing.
-- [x] SONG timeline glide (1 check): ANIM ON follows the cursor block, then holds.
-- [x] `#181` redraw (1 check): PRESETS / ALGORITHM on MIXER, HOME, HOME > TRACKS,
-      ENV in FLAT / LINE / LARGE with no blank frame.
+## Why the emulator cannot replace hardware
 
-Acceptance met: `./build/host/ui_test` exits 0, with `project_test` and `regress`
-still green.
+The browser emulator is useful for the UI, audio engine and most page logic, but
+it cannot cover the parts that need real panel input:
 
-## 2. Release v1.8.4
+- key **long presses** (holds that open layers or the menu),
+- **key combos** (two or more keys held together),
+- **key + knob combos** (hold a step/key and turn a knob),
+- **menu-button + keyboard combos** (e.g. hold EDIT and press a key),
+- timing-sensitive gestures (tap vs hold, double taps, release actions),
+- real USB enumeration/recovery and the bootloader path.
 
-- [x] Build the firmware and package (`./build.sh --release 1.8.4`).
-- [ ] Flash the device and smoke-test the fixes:
-  - legacy projects with old drum tracks migrate to the dedicated DRUM track;
-  - SONG four-slot chain behavior and SAVE → USER from HOME;
-  - EDIT on AUTOMATION, EDIT on STEP, PRESETS on 8x8 STEP;
-  - GREY palette, drum-lane mute behavior.
-- [x] Update `README.md` “New in 1.8.4”.
-- [x] Rebuild the web workbench/emulator package and publish `gh-pages`.
-- [x] Verify the live workbench shows the new version and updater line (live: v1.8.4).
+Firmware development therefore needs either a physical unit or a
+hardware-in-the-loop rig that can drive the panel matrix and knobs. The host
+tests remain valuable, but they are not a substitute for the panel.
 
-## 3. FUN11 readiness (do before the format change)
+## What would revive this
 
-- [x] Flash **v1.8.4.2** on the device.
-- [ ] Run the v1.8.4.3 delta checklist and the v1.8.4.2 sections: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md).
-- [x] Repair `fun10_test` (FUN7/FUN9 retained-slot expectations; 5-track format).
-- [x] Repair `motion_test` (current ARP modes; roll/DRUM-grid locks; project migration).
+- A working FM-1 (or a donor board) plus a stable flashing setup.
+- A future device with a **USB DFU/recovery button** or a documented ROM boot
+  mode that always enumerates.
+- A hardware-in-the-loop test rig for the FM-1 panel (key matrix, encoders,
+  long presses/combos) so the firmware can be developed without risking the only
+  unit.
+- A port target with a similar display/panel/audio architecture, using the
+  preserved format spec and host tests.
+
+## Archive: completed stabilization and releases
+
+- [x] `ui_test` green (4x4 grid, HOME > TRACKS, HELP hints, SONG glide, #181
+      redraw, palette/theme handling).
+- [x] `project_test`, `regress` (goldens, health, voices/routing, CPU) green.
+- [x] v1.8.4.2: 4x4 STEP/PAT restored, GREY engine colours, SAVE/EDIT/PRESETS,
+      legacy drum migration, DRUM lane mutes.
+- [x] v1.8.4.3: DRUM ANLG/FM one-lane-per-voice fix, exact five-track project
+      round trips, legacy suites green, FUN11 format spec.
+- [x] v1.8.4.4: EDIT is a page button; CLR STEP / OCT- shortcuts; one DRUM picker
+      cell; published but **not flashed** (the unit failed during the attempt).
+- [x] Web workbench/updater v1.8.4.4 published to `gh-pages`.
+- [ ] Hardware validation of v1.8.4.4 — **paused** (no working unit).
+
+## Archive: FUN11 readiness (host work done, hardware gate paused)
+
+- [x] Repair `fun10_test` (FUN7/FUN9 retained slots; five-track format).
+- [x] Repair `motion_test` (current ARP modes; roll/DRUM-grid locks; migration).
 - [x] Repair `upreset_test` (user preset format/migration).
-- [x] Repair `drum_test` (`DK_STD` / `DK_10` kit names; the Loom ANLG/FM kit path).
-- [x] Write the FUN11 format/migration spec: [`docs/FUN11-FORMAT.md`](docs/FUN11-FORMAT.md).
-- [ ] Widen the motion record to five tracks (FUN11: the place byte has two track bits today).
+- [x] Repair `drum_test` (`DK_STD` / `DK_10` kit names; ANLG/FM path).
+- [x] Write the FUN11 format/migration spec.
+- [ ] Widen the motion record to five tracks (FUN11).
+- [ ] Run the v1.8.4.4 hardware checklist.
 
-## 4. Backlog (after FUN11)
-
-- **Modulator learn (LFO / ENV):** hold LFO or ENV, turn the knob of the parameter on the active page, release to assign that parameter as the modulator's destination. It replaces the fixed destination list and works for any knob-bearing page (FX, engine, etc.). Design note: [`docs/MIDI-LEARN.md`](docs/MIDI-LEARN.md).
-- **ANLG kit character:** tune the default punch/snap/brightness after the next listening pass.
-- **Remaining red suites:** `midi_control_test`, `fm4_test` / `fm4_div0_test`, `fm_sample`, `theme_test` (gfx include).
-
-## 5. FUN11 — the fifth track joins SONG
+## Archive: FUN11 — the fifth track joins SONG
 
 The README’s SONG section states: “The DRUM track joins SONG with the next chain
-format.” That is the FUN11 gate.
+format.” That is the FUN11 gate. None of the hardware-facing FUN11 work was
+started; the format spec is ready.
 
 - [ ] Extend `CHAIN_NTRK` from 4 to 5 and `chain_row_t.slot[]` to five lanes.
 - [ ] Add the fifth SONG lane in the timeline UI (draw, cursor, KNOB 2 track
       selection, keys A–D + DRUM).
-- [ ] Bump the project format (FUN11) and keep FUN10/older reads:
-      old 4-slot chains load with the DRUM lane silent.
+- [ ] Bump the project format (FUN11) and keep FUN10/older reads: old four-slot
+      chains load with the DRUM lane silent.
 - [ ] Update `chain_prepare` / `chain_apply` / `chain_clock` for five lanes and
       the DRUM track’s patterns.
 - [ ] Extend tests: chain, song lanes, song pictures, SONG timeline, project
@@ -86,16 +112,27 @@ format.” That is the FUN11 gate.
 - [ ] **Persist ARP patterns with the project** (currently RAM only; `arp_pat`
       is not in `project.c` / `upreset.c`).
 - [ ] **Pattern bank:** 32–64 patterns, SONG rows beyond 16, and a
-      “queue pattern at next bar” operation, so the device performs while the
-      phone composes.
+      “queue pattern at next bar” operation.
 - [ ] **New INFO capability tags**, migration from FUN10, and a decision on the
       backup format.
 - [ ] Keep the existing FUN10/older reads and the dedicated fifth track’s
       migration rules.
 
-## 6. Web editor (`web/editor.html`)
+## Archive: backlog after FUN11
 
-- [ ] Teach the editor this firmware’s 114-parameter table so its grouped pages
+- **Modulator learn (LFO / ENV):** hold LFO or ENV, turn the knob of the
+  parameter on the active page, release to assign it. It replaces the fixed
+  destination list and works for any knob-bearing page. Design note:
+  [`docs/MIDI-LEARN.md`](docs/MIDI-LEARN.md).
+- **ANLG kit character:** tune the default punch/snap/brightness after a
+  listening pass.
+- **Remaining red suites:** `midi_control_test`, `fm4_test` / `fm4_div0_test`,
+  `fm_sample`, `theme_test` (gfx include). These predate the archive and are not
+  part of the main gate.
+
+## Archive: web editor (`web/editor.html`)
+
+- [ ] Teach the editor the firmware’s 114-parameter table so its grouped pages
       (ENV, ARP, …) return instead of one flat list; add the new ENV pages and
       ARP PAT.
 - [ ] CSS: fix the overlapping step-table headers (“Chance %” / “Ratchet”) and
@@ -104,7 +141,7 @@ format.” That is the FUN11 gate.
 - [ ] Installer: the progress bar is fixed; the “device did not come back”
       false failure after a successful flash is still unfixed.
 
-## 7. Loom Groovebox / Android (separate repository)
+## Archive: Loom Groovebox / Android (separate repository)
 
 Status from the v1.7 notes; re-check the separate repository before starting.
 
@@ -115,53 +152,47 @@ Status from the v1.7 notes; re-check the separate repository before starting.
 - [ ] Launchkey testing.
 - [ ] Pitch-tracker melody sequencer.
 
-## 8. Phase 2 — product features
+## Archive: Phase 2 — product features
 
-Not yet specified in this repository. Add the agreed phase-2 scope here before
-starting implementation so the test/release gates stay explicit.
+Not specified. Add the agreed phase-2 scope here before starting, so the
+test/release gates stay explicit.
 
-## Appendix — reconciled v1.7 planning notes
+## Archive: appendix — reconciled v1.7 planning notes
 
-These were captured from the earlier conversation and checked against the current
-tree. The notes’ `97efcd4` / v1.7 state is stale; current `main` is `67973e0`
-and the device is on v1.8.3.
+These were captured from earlier conversations and checked against the tree.
+The notes’ `97efcd4` / v1.7 state is stale.
 
-- **Held-ARP overlay:** the current tree has `LAYER_ARP` (`ui_layer.c`) and the
-  ARP note/pattern graph (`graph_arp` in `ui_graph.c`). Verify the card visually
-  in the step-1 pass; it is no longer obviously blank.
+- **Held-ARP overlay:** `LAYER_ARP` and `graph_arp` exist; the card was verified
+  visually in the step-1 pass.
 - **VOIC under PROG:** fixed — `chord.c` passes `P_VOIC` into
-  `loom_chord_generate` for `CH_PROG`.
-- **Factory presets too wet:** mostly addressed in the current preset tables
-  (many are fully dry; pads use light CHOR/REV). Remaining work is a taste audit
-  across every engine, not a structural fix.
-- **Dead code:** the disabled `if (0 && …)` label block is gone.
-- **FUN11:** the four scoped items are in section 3.
-- **Web editor:** in section 4.
-- **Loom Groovebox / Android:** in section 5.
+  `loom_chord_generate`.
+- **Factory presets too wet:** mostly addressed; a taste audit remains.
+- **Dead code:** the `if (0 && …)` label block is gone.
+- **FUN11 / web editor / Android:** moved to the archive sections above.
 
-## Verification commands
+## Archive: verification commands
 
 ```sh
-# UI suite (current 20 visual failures until step 1 is done)
 cc -w -Ibuild/gen -Ifirmware/src -o build/host/ui_test tests/ui_test.c -lm
 ./build/host/ui_test
 
-# Focused groups while working
 UI_TEST_ONLY=sound_loads ./build/host/ui_test
 UI_TEST_ONLY=grid ./build/host/ui_test
 UI_TEST_ONLY=song_lanes ./build/host/ui_test
 
-# Project formats and regression
 cc -w -Ibuild/gen -Ifirmware/src -o build/host/project_test tests/project_test.c -lm
 ./build/host/project_test
 cc -O2 -w -Ibuild/gen -Ifirmware/src -o build/host/regress tests/regress.c -lm
 ./build/host/regress tests/golden.txt tests/cpu_baseline.txt
 ```
 
-## References
+## Archive: references
 
-- `README.md` — feature list, “New in …” release notes, SONG limitations.
+- `README.md` — feature list and hardware caution.
 - `firmware/src/core.h` — `CHAIN_NTRK`, `chain_row_t`, `NPART` / `NTRK`.
 - `firmware/src/song_chain.c` — SONG lanes and playback.
 - `firmware/src/project.c` — project formats and legacy migration.
 - `tests/ui_test.c`, `tests/project_test.c`, `tests/regress.c` — the gates.
+- `docs/HARDWARE-FAILURE.md` — the failure that paused the project.
+- `docs/FUN11-FORMAT.md` — the next format change.
+- `docs/MIDI-LEARN.md` — modulator learn backlog.

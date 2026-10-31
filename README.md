@@ -10,6 +10,8 @@
 
 **Loom FM-1** is a 5-track polyphonic synthesizer, sampler, and groovebox firmware for the **M-VAVE FM-1**, built on the open-source [Felucca](https://github.com/hugelton/Felucca) platform (`GPL-3.0-only`).
 
+> **Project status: paused / archived (2026-10-31).** There is no working FM-1. The unit was lost during the v1.8.4.4 flash, and the platform has no hardware recovery button. The source, releases, tests, web emulator and format notes are preserved; the roadmap is archived at [`ROADMAP.md`](ROADMAP.md). The browser emulator cannot cover long presses, key combos, key/knob combos or menu-button/keyboard combos, so firmware development needs a physical unit or a hardware-in-the-loop rig. See [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
+
 ### Loom FM-1 Highlights
 - **5-Track Architecture (`1–4` + `D`):** 4 polyphonic synth/sampler tracks plus a dedicated 5th synthesized Drum track (`DRUM` with Analog & FM kits, choke groups, and per-lane mixing), each with its own color-coded neon UI theme.
 - **14 Synthesis & Sampling Engines:** Subtractive (`SUBTRACT`), Wavetable (`WAVETBL` with 3D terrain visualizer), 6-Op FM (`FM6`), Physical Tape-Platter Scrubbing (`SCRUB`), Granular (`GRAIN`), Sample Slicer (`SLICE`), Multisample (`SAMPLE`), Physical Modeling (`PHYS`), Phase Distortion (`PHASE`), Formant (`VOICE`), Organ (`WHEEL`), Chiptune (`LOFI`), Noise (`NOISE`), and Drum (`DRUM`).
@@ -19,7 +21,7 @@
 - **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor — the SEQUENCER tab has an interactive step grid (click or drag to paint steps, enter up to four notes per step on the keys, hit the eight DRUM lanes, and set time / accent / slide / velocity / chance / ratchet / nudge for each step) — and a real-time WebAssembly emulator with `.mid` / `.midi` multi-track import, `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`), and Loom / Helm / Surge preset import into the librarian (see [`web/LOOM_IMPORT.md`](web/LOOM_IMPORT.md)).
 - **Firmware Package:** [`loom-groovebox.fwsc`](loom-groovebox.fwsc) / [`loom-groovebox.fswc`](loom-groovebox.fswc) (Package Identity: `FM-1_985`, License: [`GPL-3.0-only`](LICENSE), full details in [`LICENSING.md`](LICENSING.md)).
 
-Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware validation for v1.8.4.4: [`docs/VALIDATION-1.8.4.4.md`](docs/VALIDATION-1.8.4.4.md).
+Archived roadmap and future-hardware notes: [`ROADMAP.md`](ROADMAP.md). Hardware validation (paused): [`docs/VALIDATION-1.8.4.4.md`](docs/VALIDATION-1.8.4.4.md).
 
 > **Hardware caution — read before flashing.** The FM-1 has **no recovery button**. A normal reboot is safe, but **do not move the laptop, the FM-1, or the USB cable during a flash**. An interrupted write can leave the unit black and absent from USB (`Felucca`, `WL80UBOOT` and `4C4A:8057` all missing); software cannot recover that state, and the documented recovery needs the [FM-1 Transporter](https://github.com/kurogedelic/FM-1-transporter) wired to the USB data lines. **Opening the case can tear the small SMD power switch off the board** — the external slider engages it directly. Back up projects first, and keep the unit still until the install says done. A real failure and photos are documented in [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
 
