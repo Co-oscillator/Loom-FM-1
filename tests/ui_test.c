@@ -9491,7 +9491,10 @@ static int test_edit_quick_actions(void)
 
     /* DRUM (T4): EDIT held, a black key toggles its lane's mute (SET, latched); LEDs lit = sounding, dark = muted */
     ui_power_on();
+    track_select(0); go_home(); frame();
+    bad += check("  a melodic track's EDIT picker: the engine cells", edit_eng_n() > 1u);
     track_select(4); go_home(); frame();
+    bad += check("  the DRUM track's EDIT picker: one DRUM cell (track 5 is DRUM-only)", edit_eng_n() == 1u);
     ok = drum_track(TSEL) && !drum_mute[4];
     btn_down(B_EDIT); frames(500);
     a = leds_at(0); b2 = leds_at(250);

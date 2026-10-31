@@ -671,8 +671,8 @@ static void layer_key(uint32_t l, uint32_t k)
         if (key_black(k))
             TSEL->p[P_ROOT] = (int16_t)((k + 5u) % 12u);    /* black keys: ROOT note; white keys: chords 1..8 */
     } else if (l == LAYER_EDIT && !key_black(k)) {
-        if (p < NENG_SHOWN && p < LY_INIT)
-            edit_load(eng_vis(p), 0);
+        if (p < NENG_SHOWN && p < LY_INIT && (song.sel < NPART || p == 0u))
+            edit_load(eng_vis(p), 0);                   /* (track 5 is DRUM only: one engine cell) */
         else if (p == LY_INIT && chain_busy())
             ui_message("STOP TO EDIT");
         else if (p == LY_INIT)
@@ -1064,9 +1064,14 @@ static void eqa_row(uint32_t n)
             cv_rect(x + (int32_t)w - 7 + j, 102 + j, 4 - j, 1, ink);
     }
 }
+/* the engine cells: every engine on a melodic track, only DRUM on the dedicated fifth track */
+static uint32_t edit_eng_n(void)
+{
+    return song.sel >= NPART ? 1u : (NENG_SHOWN < LY_INIT ? NENG_SHOWN : LY_INIT);
+}
 static void layer_edit(void)                            /* the engines from F3, INIT next (LY_INIT), the sound under them */
 {                                                        /* (cells show the engine's icon, not the key's note) */
-    uint32_t n = NENG_SHOWN < LY_INIT ? NENG_SHOWN : LY_INIT, cells = n + 1u, i, h = cells > 12u ? 20u : 28u;   /* 4 rows of 20: 8 px clear above the sound row */
+    uint32_t n = edit_eng_n(), cells = n + 1u, i, h = cells > 12u ? 20u : 28u;   /* 4 rows of 20: 8 px clear above the sound row */
     uint32_t na = eqa_count(TSEL);
     for (i = 0; i < cells; i++) {
         int32_t x = LC_X(i % 4u), y = 4 + (int32_t)(h + 4u) * (int32_t)(i / 4u);
