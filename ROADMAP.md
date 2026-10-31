@@ -6,16 +6,16 @@ Phase 2 product scope is intentionally left open until it is defined.
 
 ## Current state
 
-- Device firmware: **v1.8.4.2** (flashed; hardware checklist pending)
+- Device firmware: **v1.8.4.3** (built; flash + hardware checklist pending)
 - Repository: `main` at `a99b49b` (v1.8.4.2 package built)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- v1.8.4.2 package: **built and flashed** (`build/loom-groovebox-1.8.4.2.fswc`).
+- v1.8.4.3 package: **built** (`build/loom-groovebox-1.8.4.3.fswc`); v1.8.4.2 was flashed.
 - Web workbench/updater: **v1.8.4.2 published to `gh-pages`**.
-- Hardware validation: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
-- Legacy suites still red: `fun10_test` (aborts on FUN7/FUN9 retained slots), `motion_test` (compile: `AM_ORD`), `upreset_test` (failing), `drum_test` (compile: `DK_STD`, `DK_10`).
+- Hardware validation: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md) (delta; v1.8.4.2 still applies).
+- Legacy suites: **green** — `fun10_test`, `motion_test`, `upreset_test`, `drum_test`.
 
 ## 1. Finish the visual/test pass (release gate for v1.8.4)
 
@@ -51,13 +51,13 @@ still green.
 ## 3. FUN11 readiness (do before the format change)
 
 - [x] Flash **v1.8.4.2** on the device.
-- [ ] Run the hardware checklist: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
-- [ ] Repair `fun10_test` (FUN7/FUN9 retained-slot expectations; 5-track format).
-- [ ] Repair `motion_test` (ARP mode names / `AM_ORD`).
-- [ ] Repair `upreset_test` (user preset format/migration).
-- [ ] Repair `drum_test` (`DK_STD` / `DK_10` kit names).
-- [ ] Write the FUN11 format/migration spec (FUN10 four-slot → FUN11 five-slot,
-      ARP persistence, pattern bank, INFO tags, backup format).
+- [ ] Run the v1.8.4.3 delta checklist and the v1.8.4.2 sections: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md).
+- [x] Repair `fun10_test` (FUN7/FUN9 retained-slot expectations; 5-track format).
+- [x] Repair `motion_test` (current ARP modes; roll/DRUM-grid locks; project migration).
+- [x] Repair `upreset_test` (user preset format/migration).
+- [x] Repair `drum_test` (`DK_STD` / `DK_10` kit names; the Loom ANLG/FM kit path).
+- [x] Write the FUN11 format/migration spec: [`docs/FUN11-FORMAT.md`](docs/FUN11-FORMAT.md).
+- [ ] Widen the motion record to five tracks (FUN11: the place byte has two track bits today).
 
 ## 4. FUN11 — the fifth track joins SONG
 

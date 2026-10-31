@@ -97,7 +97,7 @@ static void to_v4(project_v4_t *v, const project_t *q)
     v->size = sizeof *v;
     memcpy(v->g, q->g, sizeof v->g);
     v->sel = q->sel;
-    v->parts = q->parts;
+    v->parts = NPART;                              /* a FUN4 image is the four-part format */
     v->phys = q->phys;
     for (t = 0; t < NPART; t++) {
         for (k = 0; k < 61u; k++) v->t[t].p[k] = q->t[t].p[k];
@@ -219,7 +219,7 @@ int main(void)
                  q.t[0].engine == 7 && q.t[1].engine == 0 && q.t[2].engine == 6 &&
                  str_eq(ENGINES[7]->name, "WHEEL") && str_eq(ENGINES[6]->name, "SCRUB") && NENGINES > 8);
     bad += check("FUN2 -> FUN6: the old drum track -> the dedicated DRUM track, steps kept (lanes as hits)",
-                 q.parts == NPART && q.t[4].engine == ENGI_DRUM && str_eq(ENGINES[ENGI_DRUM]->name, "DRUM") &&
+                 q.parts == NTRK && q.t[4].engine == ENGI_DRUM && str_eq(ENGINES[ENGI_DRUM]->name, "DRUM") &&
                  TRK_DEF[4][0] == ENGI_DRUM && q.t[4].preset == PROJ_DEF_KEEP &&
                  steps_grid_same(q.t[4].step, v2.t[3].step));
 
@@ -237,7 +237,7 @@ int main(void)
     bad += check("FUN3 image is 2584 bytes (as stored)", sizeof v3 == 2584u);
     memcpy(&buf, &v3, sizeof v3);
     ok = proj_import(&q, &buf, (int)sizeof v3) && proj_ok(&q) && q.magic == PROJ_MAGIC && q.sel == 3 &&
-         q.parts == NPART;
+         q.parts == NTRK;
     for (i = 0; i < G_COUNT; i++)
         ok &= q.g[i] == (i == G_RTYPE ? 0 : (int16_t)(600 + i));
     for (t = 0; t < NPART; t++)
@@ -254,7 +254,7 @@ int main(void)
     v3.g[G_DRREV] = 20;
     v3.sum = proj_hash(&v3, sizeof v3 - 4u);
     memcpy(&buf, &v3, sizeof v3);
-    ok = proj_import(&q2, &buf, (int)sizeof v3) && proj_ok(&q2) && q2.parts == NPART && q2.t[4].engine == ENGI_DRUM &&
+    ok = proj_import(&q2, &buf, (int)sizeof v3) && proj_ok(&q2) && q2.parts == NTRK && q2.t[4].engine == ENGI_DRUM &&
          q2.t[4].preset == PROJ_DEF_KEEP && q2.t[4].p[P_LEVEL] == 90 && q2.t[4].p[P_REV] == 20 &&
          q2.t[4].p[P_PAN] == oldv3(0, P_PAN) && q2.t[4].p[P_SLEN] == oldv3(0, P_SLEN) &&
          q2.t[4].p[P_SLCR] == oldv3(0, P_SLCR) && q2.t[4].p[P_M1SRC] == 0 &&
@@ -281,7 +281,7 @@ int main(void)
     {
         project_v5_t old;
         memset(&old, 0, sizeof old);
-        memcpy(old.g, q.g, sizeof old.g); old.sel = q.sel; old.parts = q.parts; old.phys = q.phys;
+        memcpy(old.g, q.g, sizeof old.g); old.sel = q.sel; old.parts = NPART; old.phys = q.phys;
         for (uint32_t k = 0; k < NPART; k++) {
             for (uint32_t j = 0; j < 61u; j++) old.t[k].p[j] = q.t[k].p[j];
             for (uint32_t j = 0; j < 8u; j++) old.t[k].p[61u + j] = q.t[k].p[P_E0 + j];
@@ -373,7 +373,7 @@ int main(void)
     v1.sum = proj_hash(&v1, sizeof v1 - 4u);
     memcpy(&buf, &v1, sizeof v1);
     ok = proj_import(&q, &buf, (int)sizeof v1) && proj_ok(&q) && track_ok(&q.t[0], &v1.t, 0, 0, 0, 0) && q.g[5] == 705 &&
-         q.parts == NPART;
+         q.parts == NTRK;
     for (t = 1; t < NTRK; t++)
         ok &= q.t[t].preset == PROJ_DEF_SOUND && q.t[t].engine == trk_def_engine(t) && q.t[t].p[P_SLCR] == 0 && q.t[t].p[P_LEVEL] == TP[P_LEVEL].def &&
               q.t[t].p[P_E0] == ENGINES[trk_def_engine(t)]->edit[0].def && q.t[t].step[0].time == ST_REST;

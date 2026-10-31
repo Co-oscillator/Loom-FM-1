@@ -19,7 +19,7 @@
 - **Integrated Web Workbench & Live Browser Emulator:** Full browser-based patch/sequence editor — the SEQUENCER tab has an interactive step grid (click or drag to paint steps, enter up to four notes per step on the keys, hit the eight DRUM lanes, and set time / accent / slide / velocity / chance / ratchet / nudge for each step) — and a real-time WebAssembly emulator with `.mid` / `.midi` multi-track import, `.mp3` / `.wav` / `.flac` user sample conversion (`USR1–USR3`), and Loom / Helm / Surge preset import into the librarian (see [`web/LOOM_IMPORT.md`](web/LOOM_IMPORT.md)).
 - **Firmware Package:** [`loom-groovebox.fwsc`](loom-groovebox.fwsc) / [`loom-groovebox.fswc`](loom-groovebox.fswc) (Package Identity: `FM-1_985`, License: [`GPL-3.0-only`](LICENSE), full details in [`LICENSING.md`](LICENSING.md)).
 
-Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware validation for v1.8.4.2: [`docs/VALIDATION-1.8.4.2.md`](docs/VALIDATION-1.8.4.2.md).
+Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware validation for v1.8.4.3: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md).
 
 ---
 
@@ -113,6 +113,13 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware v
   step grid, mixer, preset library, sample upload and recording with trim, the MENU settings; full backup and restore
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
+
+## New in 1.8.4.3
+
+- **DRUM kits ANLG / FM render one lane per voice.** The Loom drum voices used to render the whole kit once per sounding voice, so eight lanes played eight copies, the envelopes ran eight times too fast and a muted lane silenced the whole kit. Each voice now renders its own lane; the kit's level, decay and lane mutes are correct.
+- **The dedicated DRUM track refuses automation / parameter locks** with `NO LOCKS ON DRUM` until FUN11. The motion record's place byte holds two track bits (tracks 0..3); the old code silently aliased a track-5 lock onto track 1.
+- **Project round trips are exact for the dedicated DRUM track.** Capture stores the same compact 33-parameter drum block a load restores, old four-track stores load into the five-track project, and the project's `parts` marker is normalised after import.
+- **The legacy host suites are green again:** `fun10_test`, `motion_test`, `upreset_test` and `drum_test` (ARP modes, kits, 89/91/99/103/104-parameter migrations, FUN7/8/9 retained slots, DRUM voice budgets). The goldens were refreshed for the DRUM lane fix.
 
 ## New in 1.8.4.2
 

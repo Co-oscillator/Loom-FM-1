@@ -216,6 +216,13 @@ static void drum_note_on(track_t *t, voice_t *v)
     lane = drum_lane(v->note);
     fx_sidechain_trigger(lane, v->vel);
     if (t->p[P_E0] < 2) {
+        uint32_t k;
+        for (k = 0; k < NVOICE; k++)                     /* a lane is mono: its last voice ends */
+            if (k != i && t->v[k].active && (uint32_t)t->v[k].s[0] == lane) {
+                t->v[k].active = t->v[k].gate = 0;
+                t->v[k].stage = 0;
+                t->v[k].env = 0;
+            }
         loom_drum_trigger(lane, v->vel, t->p + P_E0);
         v->s[0] = (int32_t)lane;
         v->env_out = v->vel * 258;
@@ -249,7 +256,7 @@ static int32_t drum_amp(track_t *t, voice_t *v, int32_t adsr)
     if (!v->active)                                      /* (taken for another part: env_tick ended it) */
         return 0;
     if (t->p[P_E0] < 2) {
-        if (!loom_drum_active((uint32_t)t->p[P_E0])) {
+        if (!loom_drum_lane_active((uint32_t)t->p[P_E0], (uint32_t)v->s[0] & (DV_NLANE - 1u))) {
             v->active = v->gate = 0;
             v->stage = 0;
             v->env = 0;
@@ -276,7 +283,7 @@ static void drum_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (t->p[P_E0] < 2) {
         int32_t y[CTL];
         for (i = 0; i < n; i++) y[i] = 0;
-        loom_drum_render(y, n, (uint32_t)t->p[P_E0], t->p + P_E0);
+        loom_drum_render_lane(y, n, (uint32_t)t->p[P_E0], t->p + P_E0, (uint32_t)v->s[0] & (DV_NLANE - 1u));
         {
             int muted = (drum_mute[(uint32_t)(t - trk) % NTRK] >> ((uint32_t)v->s[0] & (DV_NLANE - 1u))) & 1u;
             for (i = 0; i < n; i++) {                    /* (a muted lane rings on unheard: its amp ramp runs too) */

@@ -52,8 +52,8 @@ preset/PHYS/05_HAND_DRUM 9c9fdf98e947d76c
 preset/PHYS/06_TOMS 5cca4641b4feedf4
 preset/PHYS/07_DRONE_STRING e8d3b770f93d0130
 preset/PHYS/08_HARP 35c05b6120413780
-preset/DRUM/00_ANLG d876a4e35ee8b54c
-preset/DRUM/01_FM_DRUM 213154e8fc7aba8c
+preset/DRUM/00_ANLG d50367c4dc26f834
+preset/DRUM/01_FM_DRUM 34d874ae93f0806c
 preset/DRUM/02_808_KIT 76adb341a1a25198
 preset/DRUM/03_909_KIT 1368a43df39824d0
 preset/NOISE/00_WIND d4fed0eefc8d8dd4
@@ -78,7 +78,7 @@ preset/WAVETABLE/04_NEON_TAPE cab3c1b163ff3434
 preset/WAVETABLE/05_DIGI_BITS f31f883f61d9d278
 preset/WAVETABLE/06_CYBERVOX 2ec03e94f2c4dacc
 preset/WAVETABLE/07_SUB_BASS e99cc1d885d16de8
-drums/drum_gm_kit c4c299e8619c067c
+drums/drum_gm_kit f31eaeb83ec58d8c
 drums/kit_808 499f85d403497afc
 drums/kit_909 479f6d9d04207994
 drums/kit_606 9e8ba8c0424d05d0
@@ -98,6 +98,6 @@ sends/SUBTRACT/delay 329b2c68cf74ef2c
 sends/SUBTRACT/reverb e27d96053469a9d8
 sends/SUBTRACT/all d67ffa832e751988
 sends/SUBTRACT/dist 84f3b76b0e85d0d8
-song/4track_mix e1ba40f9e5dca1ac
+song/4track_mix 8f8d35a4591ea704
 slicer/gate/ANALOG_ACID a89f1e42164b11c4
-slicer/song_gate_stut 00e2f4efa38f0a00
+slicer/song_gate_stut 97a381306fed0fc0

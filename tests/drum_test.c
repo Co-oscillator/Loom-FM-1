@@ -40,6 +40,11 @@
 #include <sys/resource.h>
 #endif
 
+/* The kit enum is private to eng_drum.c (included through hostsim). The test was written with the retired
+ * names STD / 10; the current kits are ANLG (0) and 909 (3). */
+#define DK_STD DK_ANALOG
+#define DK_10  DK_90
+
 static int fails;
 static const char *const TN[DVT_COUNT] = {"KICK PUNCH", "KICK ROUND", "SNARE", "CLAP", "HAT CL", "HAT OP",
                                           "TOM", "CONGA", "RIM", "CLAVE", "BELL", "CYM"};
@@ -530,6 +535,7 @@ static void choke(void)
     /* the DRUM engine: a closed hat chokes the open hat's lane */
     host_tracks_init();
     host_preset(&trk[0], ENGI_DRUM, 0);
+    trk[0].p[P_E0] = DK_80;                              /* a model kit: its lanes are drum_lane_t */
     trk[0].p[P_SUS] = 127;
     trk_note_on(&trk[0], 46, 100);
     for (i = 0; i < 20u; i++) {
@@ -541,8 +547,12 @@ static void choke(void)
         int32_t o[2 * CTL];
         mix_block(o, CTL);
     }
-    ok = drum_kit_of(&trk[0])[DV_HATO].role == DVT_HATO && drum_kit_of(&trk[0])[DV_HATO].v.choke && drum_kit_of(&trk[0])[DV_HATO].v.q[0] < DV_QUIET &&
-         drum_kit_of(&trk[0])[DV_HATC].v.live;
+    {   /* the model kit's role is DV_KTYPE (kit, lane), not DVT_*: compare with what note 46 maps to */
+        int32_t st;
+        uint32_t want = drum_gm(trk[0].p, 46, &st);
+        ok = drum_kit_of(&trk[0])[DV_HATO].role == want && drum_kit_of(&trk[0])[DV_HATO].v.choke &&
+             drum_kit_of(&trk[0])[DV_HATO].v.q[0] < DV_QUIET && drum_kit_of(&trk[0])[DV_HATC].v.live;
+    }
     printf("drum_test: choke in the DRUM engine (note 42 after 46): the open hat's lane choked and silent: %s\n",
            ok ? "ok" : "FAIL");
     fails += !ok;
@@ -619,13 +629,15 @@ static int32_t blocks_peak(uint32_t nb)          /* nb blocks of the mix, its pe
     return pk;
 }
 
-/* part 1 on the DRUM engine's first kit, nothing sounding (host_tracks_init keeps the voices) */
+/* part 1 on the DRUM engine's model kit 808, nothing sounding (host_tracks_init keeps the voices). The
+ * lane-owned tests use a model kit: kits 0..1 are the loom_drum voices, which have no drum_lane_t state. */
 static void kit_fresh(void)
 {
     host_tracks_init();
     memset(trk[0].v, 0, sizeof trk[0].v);
     memset(eng_mem, 0, sizeof eng_mem);
     host_preset(&trk[0], ENGI_DRUM, 0);
+    trk[0].p[P_E0] = DK_80;
 }
 
 /* one lane struck alone through the engine: the peak of its first nb blocks */
@@ -647,6 +659,7 @@ static void lane_budget(void)
     for (p = 0; p < NPART; p++)
         memset(trk[p].v, 0, sizeof trk[p].v);
     host_preset(&trk[0], ENGI_DRUM, 0);
+    trk[0].p[P_E0] = DK_80;                              /* a model kit: the lane owns its voice */
     host_preset(&trk[1], 0, 0);
     trk[1].p[P_VOICE] = V_POLY;
     trk[1].p[P_SUS] = 127;
@@ -672,7 +685,7 @@ static void lane_budget(void)
     trk[2].p[P_VOICE] = V_MONO;
     trk_note_off(&trk[0], TOM[3]);
     trk_note_on(&trk[2], 72, 100);
-    bad = trk[0].v[owner - 1u].stage != 4u;
+    bad = !owner || trk[0].v[owner - 1u].stage != 4u;
     /* Retrigger before the stolen voice's fade block must acquire room again. */
     trk_note_on(&trk[0], TOM[0], 110);
     bad += voices_busy() != NVOICE || drum_kit_of(&trk[0])[DV_TOM].owner != owner;
@@ -769,6 +782,7 @@ static void engine(void)
     bad += !k;
     /* a released key does not end the hit (ADSR at SUS 0, REL 0); the voice frees itself once the drum has rung out */
     kit_fresh();
+    trk[0].p[P_E0] = DK_90;                              /* 909: its BELL rings for seconds */
     trk[0].p[P_SUS] = 0;
     trk[0].p[P_REL] = 0;
     trk[0].p[P_DEC] = 0;
@@ -890,7 +904,7 @@ static void cost(void)
 }
 
 /* --------------------------------------------------------- the model kits --- */
-static const char *const KITN[DV_NKIT] = {"80", "10", "66", "55", "77"};
+static const char *const KITN[DV_NKIT] = {"808", "909", "606", "505", "707"};
 static const char *const LANEN[DV_NLANE] = {"KICK", "SNARE", "CLAP", "HATCL", "HATOP", "TOM", "RIM", "BELL"};
 #define KLEN (FS * 6u)
 
@@ -1063,7 +1077,8 @@ static void kit_keys(void)
     bad += strcmp(drum_lane_name(&trk[0], DV_RIM), "CLAVE") != 0 || strcmp(drum_lane_abbr(&trk[0], DV_BELL), "CY") != 0;
     trk[0].p[P_E0] = DK_STD;
     bad += strcmp(drum_lane_name(&trk[0], DV_TOM), "TOM") != 0 || strcmp(drum_lane_name(&trk[0], DV_BELL), "BELL") != 0;
-    bad += ENG_DRUM.edit[0].max != DK_COUNT - 1 || strcmp(ENG_DRUM.edit[0].names[DK_77], "77") != 0;
+    bad += ENG_DRUM.edit[0].max != DK_COUNT - 1 || strcmp(ENG_DRUM.edit[0].names[DK_77], "707") != 0 ||
+           strcmp(ENG_DRUM.edit[0].names[DK_ANALOG], "ANLG") != 0;
     printf("drum_test: kits 80 10 66 55 77: every GM note on its lane's piece, the 8 lanes alone and together through the "
            "engine, the lanes' names: %s\n", bad ? "FAIL" : "ok");
     fails += bad != 0;
@@ -1241,89 +1256,100 @@ static uint64_t seq_hash(const uint8_t (*ev)[3], uint32_t nev, uint32_t frames, 
     _exit(0);
 }
 
-/* KIT 1..3 (HAND CYM H+CYM until 1.0.4) play 66 10 77: every note the same piece, the same lane names, a beat through
- * the engine the same samples (either KICK); the knob steps STD 80 10 66 55 77 and never lands on 1..3; DESC names
- * them as the kit they play; a stored value (param_fit: projects, user presets) and a motion event land on that kit;
- * KIT moved by the matrix over its whole range plays only the six kits */
-static void retired(void)
+/* KIT's seven kits: the knob steps ANLG FM 808 909 606 505 707 and stops at the ends, a stored value
+ * (param_fit: projects, user presets) lands inside, a motion event keeps the kit, the names are the kits */
+static void kit_range(void)
 {
-    static const uint8_t MAP[4] = {DK_STD, DK_66, DK_10, DK_77};
-    static const uint8_t ORDER[6] = {DK_STD, DK_80, DK_10, DK_66, DK_55, DK_77};
     const param_desc_t *d = &ENG_DRUM.edit[0];
-    uint32_t r, n, k, bad = 0, same = 0;
-    int16_t kick;
-    for (r = 1; r < 4u; r++)
-        for (kick = 0; kick < 2; kick++) {
-            int32_t pa, pb, st, s2;
-            uint64_t ha, hb;
-            int16_t pr[P_COUNT], pm[P_COUNT];
-            host_tracks_init();
-            host_preset(&trk[0], ENGI_DRUM, 0);
-            memcpy(pr, trk[0].p, sizeof pr);
-            memcpy(pm, trk[0].p, sizeof pm);
-            pr[P_E0] = (int16_t)r, pm[P_E0] = MAP[r];
-            pr[P_E6] = pm[P_E6] = kick;
-            for (n = 0; n < 128u; n++)
-                bad += drum_gm(pr, n, &st) != drum_gm(pm, n, &s2) || st != s2;
-            for (n = 0; n < DV_NLANE; n++) {
-                const char *a, *b;
-                trk[0].p[P_E0] = (int16_t)r;
-                a = drum_lane_name(&trk[0], n), b = drum_lane_abbr(&trk[0], n);
-                trk[0].p[P_E0] = MAP[r];
-                bad += strcmp(a, drum_lane_name(&trk[0], n)) != 0 || strcmp(b, drum_lane_abbr(&trk[0], n)) != 0;
-            }
-            ha = seq_hash(BEAT, NELEM(BEAT), 64u * (FS / 8u) + FS / 2u, kick, (int16_t)r, &pa);
-            hb = seq_hash(BEAT, NELEM(BEAT), 64u * (FS / 8u) + FS / 2u, kick, MAP[r], &pb);
-            same += ha == hb && pa == pb && pa > 1000;
-            if (ha != hb || pa != pb)
-                printf("drum_test: RETIRED FAIL KIT %u (KICK %d) renders %016llx (peak %d), KIT %u %016llx (peak %d)\n", r,
-                       kick, (unsigned long long)ha, pa, MAP[r], (unsigned long long)hb, pb);
-        }
-    bad += same != 6u;
-    for (r = 0; r < DK_COUNT; r++) {                    /* the knob: from every value, both ways */
-        int32_t v = (int32_t)r;
-        for (k = 0; k < 12u; k++) {
-            v = param_turn(d, v, k < 6u ? 1 : -1);
-            bad += v >= DK_HAND && v <= DK_HCYM;
-        }
+    int32_t v = DK_ANALOG;
+    uint32_t k, n, bad = 0;
+    for (k = 0; k + 1u < DK_COUNT; k++) {               /* ANLG .. 707, then held at the end */
+        bad += v != (int32_t)k;
+        v = param_turn(d, v, 1);
     }
-    {
-        int32_t v = DK_STD, i;
-        for (i = 0; i < 6; i++) {                       /* STD 80 10 66 55 77, then held at the end */
-            bad += v != ORDER[i];
-            v = param_turn(d, v, 1);
-        }
-        bad += v != DK_77 || param_turn(d, DK_80, -1) != DK_STD || param_turn(d, DK_STD, -1) != DK_STD;
-    }
-    for (r = 1; r < 4u; r++)
-        bad += strcmp(d->names[r], d->names[MAP[r]]) != 0 || enum_orig(d, (int32_t)r) != MAP[r] ||
-               param_fit(d, (int32_t)r) != MAP[r];
-    bad += param_fit(d, 99) != DK_77 || param_fit(d, -5) != DK_STD || enum_orig(d, DK_55) != DK_55;
+    bad += v != DK_77 || param_turn(d, DK_77, 1) != DK_77 || param_turn(d, DK_ANALOG, -1) != DK_ANALOG;
+    for (k = 0; k < DK_COUNT; k++)
+        bad += param_fit(d, (int32_t)k) != (int32_t)k || enum_orig(d, (int32_t)k) != (int32_t)k;
+    bad += param_fit(d, 99) != DK_77 || param_fit(d, -5) != DK_ANALOG;
+    bad += d->max != DK_COUNT - 1 || strcmp(d->names[DK_ANALOG], "ANLG") != 0 ||
+           strcmp(d->names[DK_77], "707") != 0;
     bad += param_fit(&TP[P_LEVEL], 77) != 77;
-    {   /* a motion event of KIT 2 (CYM): stored and played as 10 */
+    {   /* a motion event of KIT 909 is stored and played as it is */
         host_tracks_init();
         host_preset(&trk[0], ENGI_DRUM, 0);
         motion_clear(&trk[0]);
-        bad += motion_set_event(&trk[0], 0, P_E0, DK_CYM) != 0;
+        bad += motion_set_event(&trk[0], 0, P_E0, DK_90) != 0;
         for (k = n = 0; k < motion.count; k++)
             if (motion.event[k].param == P_E0)
-                n++, bad += motion.event[k].value != DK_10;
+                n++, bad += motion.event[k].value != DK_90;
         bad += n != 1u;
         motion_clear(&trk[0]);
     }
-    {   /* KIT anywhere in its range (the matrix moves it per block): a crash plays a model kit's BELL on 1..3 */
-        int16_t p[P_COUNT];
-        host_tracks_init();
-        host_preset(&trk[0], ENGI_DRUM, 0);
-        memcpy(p, trk[0].p, sizeof p);
-        for (r = 1; r < 4u; r++) {
-            int32_t st;
-            p[P_E0] = (int16_t)r;
-            bad += drum_gm(p, 49, &st) != DV_KTYPE(MAP[r] - DK_80 + 1u, DV_BELL);
-        }
+    printf("drum_test: KIT's seven kits: the knob steps ANLG..707 and stops, a stored value and motion land on a kit: %s\n",
+           bad ? "FAIL" : "ok");
+    fails += bad != 0;
+}
+
+/* Kits 0..1 (ANLG / FM): the loom_drum voices, one voice per lane, each voice rendering its own lane.
+ * Every lane sounds alone, eight at once take eight voices, a lane is mono, a muted lane is silent.
+ * track_render (the part, no sends) keeps the FX tail of earlier hits out of the measurement. */
+static int32_t track_peak(uint32_t nb)
+{
+    int32_t o[CTL], pk = 0;
+    uint32_t i, k;
+    for (i = 0; i < nb; i++) {
+        track_render(&trk[0], o, CTL);
+        for (k = 0; k < CTL; k++)
+            pk = abs(o[k]) > pk ? abs(o[k]) : pk;
     }
-    printf("drum_test: KIT 1..3 (HAND CYM H+CYM until 1.0.4) play 66 10 77 (the same samples), the knob skips them, "
-           "a stored value and motion land on the kit: %s\n", bad ? "FAIL" : "ok");
+    return pk;
+}
+
+static void loom_kits(void)
+{
+    static const uint8_t KIT[8] = {36, 38, 39, 42, 46, 45, 37, 56};
+    uint32_t kit, i, bad = 0;
+    for (kit = 0; kit < 2u; kit++) {
+        uint32_t tr;
+        host_tracks_init();
+        for (tr = 0; tr < NTRK; tr++)
+            memset(trk[tr].v, 0, sizeof trk[tr].v);
+        host_preset(&trk[0], ENGI_DRUM, 0);
+        trk[0].p[P_E0] = (int16_t)kit;
+        for (i = 0; i < 8u; i++) {
+            memset(trk[0].v, 0, sizeof trk[0].v);
+            loom_drum_all_off();
+            trk_note_on(&trk[0], KIT[i], 110);
+            if (track_peak(8) < 100) {
+                printf("drum_test: loom kit %u lane %u silent alone\n", kit, i);
+                bad++;
+            }
+        }
+        memset(trk[0].v, 0, sizeof trk[0].v);
+        loom_drum_all_off();
+        for (i = 0; i < 8u; i++)
+            trk_note_on(&trk[0], KIT[i], 110);
+        bad += voices_on(&trk[0]) != 8u || track_peak(2) < 500;
+        trk_note_on(&trk[0], 36, 110);                   /* the kick again: its lane is mono */
+        {
+            uint32_t n = 0, k;
+            for (k = 0; k < NVOICE; k++)
+                n += trk[0].v[k].active && trk[0].v[k].s[0] == 0;
+            bad += n != 1u;
+        }
+        memset(trk[0].v, 0, sizeof trk[0].v);
+        loom_drum_all_off();
+        drum_mute[0] = 1u << 0;                          /* the kick's lane muted */
+        trk_note_on(&trk[0], 36, 110);
+        bad += track_peak(2) > 50;
+        drum_mute[0] = 0;
+        memset(trk[0].v, 0, sizeof trk[0].v);
+        loom_drum_all_off();
+        trk_note_on(&trk[0], 36, 110);
+        bad += track_peak(2) < 500;                      /* (unmuted it sounds) */
+    }
+    printf("drum_test: loom kits ANLG / FM: every lane sounds, eight voices, a lane is mono, a muted lane is silent: %s\n",
+           bad ? "FAIL" : "ok");
     fails += bad != 0;
 }
 
@@ -1369,7 +1395,8 @@ int main(int argc, char **argv)
     keys();
     kits();
     kit_keys();
-    retired();
+    kit_range();
+    loom_kits();
     lane_budget();
     lane_levels();
     engine();

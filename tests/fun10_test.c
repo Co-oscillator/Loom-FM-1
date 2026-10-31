@@ -142,30 +142,20 @@ static int lfo(void)
         bad += check("POL UNI: 0..+1 (0..32767), BI -1..+1 as before", lo[0] < -32000 && hi[0] > 32000 && lo[1] >= 0 &&
                      lo[1] < 300 && hi[1] <= 32767 && hi[1] > 32400);
     }
-    {   /* the matrix's AMP from the LFO: BI takes it as 0..1 ((x + 1) / 2), UNI as it is (as ENV) */
-        int32_t g[4];
-        t->p[P_M1SRC] = MS_LFO; t->p[P_M1DST] = MD_AMP; t->p[P_M1AMT] = 63;
-        t->lfo_fade = 32767;
-        t->p[P_LPOL] = 0; t->lfo_val = 0; mod_begin(t); g[0] = mod.gain; mod_end(t);
-        t->p[P_LPOL] = 1; t->lfo_val = 0; mod_begin(t); g[1] = mod.gain; mod_end(t);
-        t->lfo_val = 16384; mod_begin(t); g[2] = mod.gain; mod_end(t);
-        t->p[P_LPOL] = 0; t->lfo_val = -32768; mod_begin(t); g[3] = mod.gain; mod_end(t);
-        bad += check("  the matrix's LFO > AMP: UNI 0 = BI -1 (closed), UNI 0.5 = BI 0", g[1] == g[3] && abs(g[2] - g[0]) < 64 &&
-                     g[1] < 1000);
-        t->p[P_M1SRC] = t->p[P_M1DST] = t->p[P_M1AMT] = 0;
-        t->p[P_LPOL] = 0;
-    }
-    bad += check("LFO 2 is no automation (motion_param), its page SYNC TRIG POL after LFO (LFO's family)",
+    /* The classic 4-slot matrix (P_M1SRC..M4AMT) is kept in the formats for old projects, but Loom's
+     * HOME > MACROS pages are the modulation surface now; their own test covers the routing. */
+    bad += check("LFO 2 is no automation (motion_param), its page TRIG POL PHS after LFO (LFO's family)",
                  !motion_param(P_LSYNC) && !motion_param(P_LTRIG) && !motion_param(P_LPOL) && !motion_param(P_SQNT) &&
-                 motion_param(P_LN7) && motion_param(P_E0) && PAGES[3].id[0] == P_LSYNC && !strcmp(PAGES[3].title, "LFO 2") &&
-                 PAGES[3].fam == FAM_LFO && PAGES[2].graph == GR_LFO && !strcmp(PAGES[4].title, "LFO DEST"));
-    go_page(GR_LFO);
-    ui.page++;                                       /* LFO 2 */
+                 motion_param(P_LN7) && motion_param(P_E0) && PAGES[5].id[0] == P_LTRIG && PAGES[5].id[1] == P_LPOL &&
+                 !strcmp(PAGES[5].title, "LFO 2") && PAGES[5].fam == FAM_LFO && PAGES[4].graph == GR_LFO &&
+                 !strcmp(PAGES[6].title, "LFO DEST"));
+    go_page(GR_LFO);                                 /* LFO: K3 is SYNC */
+    turn(EN_K3, 3);
+    ui.page++;                                       /* LFO 2: K2 is POL */
     page_entered();
     frame();
-    turn(EN_K1, 3);
-    turn(EN_K3, 1);
-    bad += check("  LFO 2's knobs: SYNC (4BAR 2BAR 1/1 ..), POL", t->p[P_LSYNC] == 3 && t->p[P_LPOL] == 1 &&
+    turn(EN_K2, 1);
+    bad += check("  LFO's SYNC (4BAR 2BAR 1/1 ..) and LFO 2's POL", t->p[P_LSYNC] == 3 && t->p[P_LPOL] == 1 &&
                  !strcmp(N_LSYNC[3], "1/1"));
     return bad;
 }
@@ -423,8 +413,8 @@ static int nudge(void)
     }
     {   /* the DRUM grid on STEP: a step key held + the PRESETS knob; let go: the hit stays */
         uint32_t k4;
-        song.sel = 3;
-        t = &trk[3];
+        song.sel = 4;
+        t = &trk[4];
         track_defaults_steps(t);
         t->p[P_SLEN] = 16;
         t->p[P_SQNT] = 0;
@@ -489,6 +479,8 @@ static int formats(void)
         motion_set_event(&trk[i % 4u], (i / 4u) % NSTEP, i / 4u < NSTEP ? P_REV : P_PAN, (int16_t)(i / 4u < NSTEP ? i / 4u : -(int32_t)(i % 60u)));
     motion_set_lock(&trk[2], 9, P_E0 + 3, 7);
     project_capture(&a);
+    a.sc[0] = 48; a.sc[1] = 1; a.sc[2] = 64; a.sc[3] = 0;   /* (main's power-on ducker defaults) */
+    a.sum = proj_sum(&a);
     ok = motion.count == MOTION_MAX && proj_pack(&st, &a) && ((uint32_t *)st.raw)[0] == 0x46554E41u &&
          ((uint32_t *)st.raw)[1] == 3840u && st.raw[66] == P_COUNT && proj_import(&b, &st, sizeof st) && !memcmp(&a, &b, sizeof a);
     ok &= step_nudge(&b.t[0].step[0]) == -8 && step_nudge(&b.t[0].step[1]) == 7 && step_nudge(&b.t[0].step[2]) == -1 &&
@@ -502,32 +494,44 @@ static int formats(void)
      * load by count: SPREAD 0, the INSERT OFF (its defaults), TYPE LP, ENV SYNC OFF, the rest as written */
     for (uint32_t from = P_SPRD; from <= P_ITYPE; from += P_ITYPE - P_SPRD) {
         static project_store_t so;
-        uint32_t pi = 68u, po = 68u, tr, m0, drop = P_E0 - from;
+        uint32_t tr, m0, drop = P_E0 - from, np = P_COUNT - drop, pos = 68u, sum;
         memset(&so, 0, sizeof so);
-        ok = proj_pack(&st, &a) && !a.t[0].p[P_SPRD] && !a.t[0].p[P_ITYPE] && !a.t[0].p[P_FTYPE] && !a.t[0].p[P_ESYNC];
-        memcpy(so.raw, st.raw, 68u);
-        so.raw[66] = (uint8_t)(P_COUNT - drop);
-        for (tr = 0; tr < NTRK; tr++) {
-            for (i = 0; i < P_COUNT; i++, pi++)
-                if (i < from || i >= P_E0)
-                    so.raw[po++] = st.raw[pi];
-            memcpy(so.raw + po, st.raw + pi, 2u + NSTEP * 9u);
-            pi += 2u + NSTEP * 9u;
-            po += 2u + NSTEP * 9u;
+        ok = !a.t[0].p[P_SPRD] && !a.t[0].p[P_ITYPE] && !a.t[0].p[P_FTYPE] && !a.t[0].p[P_ESYNC];
+        memcpy(so.raw, st.raw, 8u);                   /* magic, size */
+        memcpy(so.raw + 8, a.g, sizeof a.g);
+        so.raw[62] = a.sel; so.raw[63] = NPART; so.raw[64] = a.phys; so.raw[66] = (uint8_t)np;
+        for (tr = 0; tr < NPART; tr++) {               /* the four tracks an old FUN10 stored */
+            for (i = 0; i < np; i++)
+                so.raw[pos++] = (uint8_t)(a.t[tr].p[i < from ? i : P_E0 + i - from] + 64);
+            so.raw[pos++] = a.t[tr].engine;
+            so.raw[pos++] = a.t[tr].preset;
+            for (i = 0; i < NSTEP; i++) {
+                const step_t *sp = &a.t[tr].step[i];
+                uint32_t r = step_ratchet(sp) - 1u, nd = (uint32_t)step_nudge(sp) & 15u, j;
+                for (j = 0; j < 4u; j++)               /* FUN10's nudge: bit j in bit 7 of note j */
+                    so.raw[pos++] = (uint8_t)((sp->note[j] & 127u) | (nd >> j & 1u) << 7);
+                so.raw[pos++] = (uint8_t)(sp->n | sp->time << 3 | (sp->flags & 3u) << 5);
+                so.raw[pos++] = (uint8_t)((sp->vel & 127u) | (r & 1u) << 7);
+                so.raw[pos++] = sp->hit;
+                so.raw[pos++] = sp->acc & sp->hit;
+                so.raw[pos++] = (uint8_t)(sp->probability | (r >> 1) << 7);
+            }
         }
-        memcpy(so.raw + po, st.raw + pi, sizeof(chain_config_t) + sizeof(motion_store_t));
-        m0 = po + sizeof(chain_config_t);
-        for (i = 0; i < so.raw[m0]; i++) {
+        memcpy(so.raw + pos, &a.chain, sizeof a.chain); pos += sizeof a.chain;
+        memcpy(so.raw + pos, &a.motion, sizeof a.motion); pos += sizeof a.motion;
+        m0 = pos - sizeof a.motion;
+        for (i = 0; i < so.raw[m0]; i++) {             /* the ids from P_E0 on move down with the count */
             uint8_t *id = &so.raw[m0 + 4u + 3u * i + 1u];
             if ((*id & 0x7Fu) >= P_E0)
-                *id = (uint8_t)(*id - drop);            /* (the lock bit kept) */
+                *id = (uint8_t)(*id - drop);
         }
-        memcpy(so.raw + PROJ_FM6_OFF, st.raw + PROJ_FM6_OFF, PROJ_STORE_SIZE - 4u - PROJ_FM6_OFF);
-        i = proj_hash(so.raw, PROJ_STORE_SIZE - 4u);
-        memcpy(so.raw + PROJ_STORE_SIZE - 4u, &i, 4);
-        ok &= so.raw[66] == (from == P_SPRD ? 103u : 104u) && proj_import(&b, &so, sizeof so) && !memcmp(&a, &b, sizeof a) &&
-              b.t[2].p[P_E0 + 3] == 5 && b.t[1].p[P_ITYPE] == 0 && b.t[1].p[P_IMIX] == 127 && b.t[1].p[P_FTYPE] == 0 &&
-              b.t[1].p[P_ESYNC] == 0;
+        memcpy(so.raw + PROJ_FM6_OFF, a.fm6, sizeof a.fm6);   /* the patches at the format's fixed offset */
+        memcpy(so.raw + PROJ_NAME_OFF, a.name, PROJ_NAME_LEN);
+        sum = proj_hash(so.raw, PROJ_STORE_SIZE - 4u);
+        memcpy(so.raw + PROJ_STORE_SIZE - 4u, &sum, 4);
+        ok &= so.raw[66] == (from == P_SPRD ? 103u : 104u) && proj_import(&b, &so, sizeof so) &&
+              !memcmp(&a, &b, sizeof a) && b.t[2].p[P_E0 + 3] == 5 && b.t[1].p[P_ITYPE] == 0 &&
+              b.t[1].p[P_IMIX] == 127 && b.t[1].p[P_FTYPE] == 0 && b.t[1].p[P_ESYNC] == 0;
         bad += check(from == P_SPRD ? "a FUN10 of 103 parameters (1.2 before SPREAD): SPREAD 0, the INSERT OFF, TYPE LP, ENV SYNC OFF, "
                                       "engine values and motion in place"
                                     : "a FUN10 of 104 parameters (1.2 .. 1.4): the INSERT OFF, TYPE LP, ENV SYNC OFF, engine values and motion "
@@ -536,7 +540,7 @@ static int formats(void)
     }
     {   /* the song's sections (1.2): a slot per track, "-" silent, 5 bytes a row, 84 in all, right after the steps */
         project_t c = a, d;
-        uint32_t at = 68u + NTRK * (P_COUNT + 2u + NSTEP * 9u);
+        uint32_t at = 68u + NPART * (P_COUNT + 2u + NSTEP * 7u) + (33u + 2u + NSTEP * 4u);
         c.chain.count = CHAIN_ROWS;
         for (i = 0; i < CHAIN_ROWS; i++)
             c.chain.row[i] = (chain_row_t){{(uint8_t)(i % 5u), (uint8_t)((i + 1u) % 5u), (uint8_t)((i + 2u) % 5u),
@@ -579,7 +583,7 @@ static int formats(void)
     bad += check("FUN9 (1.1, 64 records of 4 bytes): exactly the project (LFO 2 / QUANTIZE defaults, nudges 0)", ok);
     {
         uint8_t c9[3648];
-        uint32_t sum, at = 68u + NTRK * (99u + 2u + NSTEP * 9u);
+        uint32_t sum, at = 68u + NPART * (99u + 2u + NSTEP * 9u);
         ok = b.chain.count == 3u && !memcmp(&b.chain.row[1], &(chain_row_t){{3, 3, 3, 3}, 16}, sizeof(chain_row_t)) &&
              v9[at] == 3 && v9[at + 4u] == 0 && v9[at + 5u] == 4 && v9[at + 6u] == 3 && v9[at + 7u] == 16;
         memcpy(c9, v9, sizeof c9);
@@ -591,7 +595,7 @@ static int formats(void)
     }
     {
         uint8_t c9[3648];
-        uint32_t sum, mo = 68u + NTRK * (99u + 2u + NSTEP * 9u) + sizeof(chain_v9_t);
+        uint32_t sum, mo = 68u + NPART * (99u + 2u + NSTEP * 9u) + sizeof(chain_v9_t);
         memcpy(c9, v9, sizeof c9);
         c9[mo] = 65;                                  /* 65 records: never in a FUN9 */
         sum = proj_hash(c9, 3644u); memcpy(c9 + 3644u, &sum, 4);
@@ -613,7 +617,7 @@ static int formats(void)
     a.sum = proj_sum(&a);
     ok = old_pack(v8, &a, OLD_FUN8, 91u) == sizeof v8 && proj_import(&b, v8, sizeof v8) && !memcmp(&a, &b, sizeof a);
     bad += check("FUN8 (1.0.x, 91 parameters): exactly the project", ok);
-    for (k = 0; k < NTRK; k++)
+    for (k = 0; k < NPART; k++)                      /* (the dedicated DRUM track stores no FM6 patch) */
         memcpy(a.fm6[k], FM6_INIT, FM6_PACKED);
     a.g[G_RTYPE] = 1;                                /* (a FUN7 knew ROOM and SPRING: above, the old drum channel) */
     a.sum = proj_sum(&a);

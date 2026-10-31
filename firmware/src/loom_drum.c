@@ -349,15 +349,19 @@ void loom_drum_trigger(uint32_t lane, uint32_t vel, const int16_t *p)
         fv->active = 0;
 }
 
-/* Render block of N samples */
-void loom_drum_render(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p)
+/* Render one lane's block of N samples. The DRUM engine gives every sounding lane its own voice; rendering
+ * the whole kit per voice would advance its envelopes once per voice and sum the kit once per voice. */
+void loom_drum_render_lane(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p, uint32_t lane)
 {
     (void)p;
+    if (lane >= LOOM_DRUM_LANES)
+        return;
     if (kit == LOOM_KIT_FM) {
         /* ---------------- Render Loom FM Drums ---------------- */
-        for (uint32_t l = 0; l < LOOM_DRUM_LANES; l++) {
+        {
+            uint32_t l = lane;
             fm_voice_t *v = &f_voice[l];
-            if (!v->active) continue;
+            if (!v->active) return;
 
             int32_t vel_scale = (int32_t)v->vel; /* 1..127 */
             for (uint32_t i = 0; i < n; i++) {
@@ -399,9 +403,10 @@ void loom_drum_render(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p)
         }
     } else {
         /* ---------------- Render Loom Analog Drums ---------------- */
-        for (uint32_t l = 0; l < LOOM_DRUM_LANES; l++) {
+        {
+            uint32_t l = lane;
             analog_voice_t *v = &a_voice[l];
-            if (!v->active) continue;
+            if (!v->active) return;
 
             int32_t vel_scale = (int32_t)v->vel; /* 1..127 */
             for (uint32_t i = 0; i < n; i++) {
@@ -543,4 +548,19 @@ void loom_drum_render(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p)
             }
         }
     }
+}
+
+/* Render the whole kit (the voices of every active lane). */
+void loom_drum_render(int32_t *out, uint32_t n, uint32_t kit, const int16_t *p)
+{
+    for (uint32_t l = 0; l < LOOM_DRUM_LANES; l++)
+        loom_drum_render_lane(out, n, kit, p, l);
+}
+
+/* Is the lane's voice still sounding? (the DRUM engine frees the lane's voice when its hit has rung out) */
+int loom_drum_lane_active(uint32_t kit, uint32_t lane)
+{
+    if (lane >= LOOM_DRUM_LANES)
+        return 0;
+    return kit == LOOM_KIT_FM ? f_voice[lane].active : a_voice[lane].active;
 }

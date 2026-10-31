@@ -539,7 +539,9 @@ static int proj_import(project_t *q, const void *b, int n)
         return 0;
     proj_fm4(q);
     proj_perc(q);
-    proj_drum_home(q);
+    proj_drum_home(q);                         /* (before parts is set to 5: an old store has no dedicated track) */
+    q->parts = NTRK;                           /* the loaded project has the dedicated DRUM track */
+    q->sum = proj_sum(q);
     return 1;
 }
 static int proj_import_any(project_t *q, const void *b, int n)
@@ -620,6 +622,16 @@ static uint32_t proj_name_get(char *d, const uint8_t *s)   /* its length */
     return i;
 }
 
+/* The dedicated DRUM track's stored parameters: the rest of its P_COUNT are inert for the DRUM engine (its
+ * hits are the envelope) and load at their defaults, so a captured project holds the same values a load gives. */
+static const uint8_t PROJ_DRUM_PARAMS[] = {
+    P_LEVEL, P_PAN, P_MUTE, P_DIST, P_REV, P_DLY, P_CHOR,
+    P_SLEN, P_SDIV, P_SSWING, P_SGATE, P_SHUMAN,
+    P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
+    P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,
+    P_ITYPE, P_IA, P_IB, P_IC, P_IMIX
+};
+
 /* A stable serialized schema: first header retains FUN6's fields; at byte66
  * np, format flags, then four byte-param tracks and nine-byte steps; FUN8: the patches at PROJ_FM6_OFF. */
 static int proj_pack(project_store_t *out, const project_t *q)
@@ -651,16 +663,9 @@ static int proj_pack(project_store_t *out, const project_t *q)
         }
     }
     {   /* Dedicated Drum Track (Track 4) */
-        static const uint8_t DRUM_PARAMS[33] = {
-            P_LEVEL, P_PAN, P_MUTE, P_DIST, P_REV, P_DLY, P_CHOR,
-            P_SLEN, P_SDIV, P_SSWING, P_SGATE, P_SHUMAN,
-            P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
-            P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,
-            P_ITYPE, P_IA, P_IB, P_IC, P_IMIX
-        };
         t = 4;
-        for (i = 0; i < sizeof(DRUM_PARAMS); i++) {
-            int16_t v = q->t[t].p[DRUM_PARAMS[i]];
+        for (i = 0; i < sizeof(PROJ_DRUM_PARAMS); i++) {
+            int16_t v = q->t[t].p[PROJ_DRUM_PARAMS[i]];
             b[pos++] = (uint8_t)(clamp(v, -64, 127) + 64);
         }
         b[pos++] = q->t[t].engine;
@@ -771,18 +776,11 @@ static int proj_unpack(project_t *q, const uint8_t *b, uint32_t st)
         }
         /* Unpack Dedicated Drum Track (Track 4) */
         {
-            static const uint8_t DRUM_PARAMS[33] = {
-                P_LEVEL, P_PAN, P_MUTE, P_DIST, P_REV, P_DLY, P_CHOR,
-                P_SLEN, P_SDIV, P_SSWING, P_SGATE, P_SHUMAN,
-                P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
-                P_LN0, P_LN1, P_LN2, P_LN3, P_LN4, P_LN5, P_LN6, P_LN7,
-                P_ITYPE, P_IA, P_IB, P_IC, P_IMIX
-            };
             t = 4;
             for (i = 0; i < P_COUNT; i++) q->t[t].p[i] = param_desc_of(ENGI_DRUM, i)->def;
-            for (i = 0; i < sizeof(DRUM_PARAMS); i++) {
+            for (i = 0; i < sizeof(PROJ_DRUM_PARAMS); i++) {
                 if (b[pos] > 191u) return 0;
-                q->t[t].p[DRUM_PARAMS[i]] = (int16_t)b[pos++] - 64;
+                q->t[t].p[PROJ_DRUM_PARAMS[i]] = (int16_t)b[pos++] - 64;
             }
             q->t[t].engine = b[pos++];
             q->t[t].preset = b[pos++];
@@ -829,7 +827,7 @@ static int proj_unpack(project_t *q, const uint8_t *b, uint32_t st)
         for (i = 0; i < P_COUNT; i++) q->t[4].p[i] = param_desc_of(ENGI_DRUM, i)->def;
         for (i = 0; i < NSTEP; i++) {
             q->t[4].step[i].time = ST_REST;
-            q->t[4].step[i].probability = 100;
+            q->t[4].step[i].probability = 0;   /* (0 = 100 %, the canonical value) */
         }
     }
 
@@ -961,6 +959,28 @@ static void proj_fetch(uint32_t slot)
 }
 #endif
 
+/* A captured project holds what a save stores: the DRUM track's inert parameters at the defaults a load gives,
+ * and its steps as the hit grid (notes, ties and nudge are not stored for the dedicated track). */
+static void proj_drum_normalize(project_t *p)
+{
+    uint32_t i, k;
+    for (i = 0; i < P_COUNT; i++) {
+        int keep = 0;
+        for (k = 0; k < sizeof(PROJ_DRUM_PARAMS); k++)
+            keep |= PROJ_DRUM_PARAMS[k] == i;
+        if (!keep)
+            p->t[NPART].p[i] = param_desc_of(ENGI_DRUM, i)->def;
+    }
+    for (i = 0; i < NSTEP; i++) {
+        step_t *s = &p->t[NPART].step[i];
+        uint32_t r = step_ratchet(s);
+        s->n = 0;
+        s->time = s->hit ? ST_NOTE : ST_REST;
+        s->flags = 0;
+        step_set_ratchet(s, r);
+    }
+}
+
 static void project_capture(project_t *p)
 {
     uint32_t i;
@@ -988,6 +1008,7 @@ static void project_capture(project_t *p)
     p->sc[2] = song.sc[2];
     p->sc[3] = song.sc[3];
     memcpy(p->name, proj_name, str_len(proj_name));
+    proj_drum_normalize(p);
     p->sum = proj_sum(p);
 }
 

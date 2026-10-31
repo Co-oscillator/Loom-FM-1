@@ -917,6 +917,10 @@ static void lock_turn(uint32_t k, int32_t s, uint64_t held)
     track_t *t = TSEL;
     uint32_t id = lock_id(k), i;
     const param_desc_t *d;
+    if (trk_index(t) >= NPART) {                        /* (FUN11: the motion record has two track bits) */
+        ui_message("NO LOCKS ON DRUM");
+        return;
+    }
     if (chain_busy()) {
         ui_message("STOP TO EDIT");
         return;

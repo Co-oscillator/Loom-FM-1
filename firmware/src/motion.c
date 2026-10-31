@@ -168,7 +168,9 @@ static int motion_put(track_t *t, uint32_t step, uint32_t id, int16_t value, uin
 {
     uint32_t k = trk_index(t), i, f;
     const param_desc_t *d;
-    if (k >= NTRK || step >= NSTEP || !motion_param(id)) return 1;
+    /* The place byte holds the track in its top two bits: tracks 0..3. The dedicated DRUM track (4) needs
+     * FUN11's wider record; until then it has no automation or locks (refused, not aliased onto track 1). */
+    if (k >= NPART || step >= NSTEP || !motion_param(id)) return 1;
     d = param_desc_of(eng_idx(t->eng_req), id);
     if (value < d->min || value > d->max || value < -64 || value > 127) return 1;
     value = (int16_t)param_fit(d, value);                    /* (a retired KIT: the kit it plays) */

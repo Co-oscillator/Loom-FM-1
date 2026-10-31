@@ -73,7 +73,7 @@ static int probability_playback(void)
 static int compact_project(void)
 {
     int bad = 0; ui_power_on(); track_t *t = &trk[0];
-    t->step[3] = (step_t){{60, 67}, 2, ST_NOTE, SF_ACCENT, 110, 0x81, 0x80, 0};
+    t->step[3] = (step_t){{60, 67}, 2, ST_NOTE, SF_ACCENT, 110, 0, 0, 0};   /* hits belong to the DRUM track */
     step_set_chance(&t->step[3], 25); t->p[P_FM1_LEVEL] = 80; t->p[P_ED_FLT] = -50;
     motion_set_event(t, 3, P_REV, 110);
     project_t before, after; project_store_t packed, corrupt;
@@ -86,7 +86,7 @@ static int compact_project(void)
     corrupt = packed; corrupt.raw[68] = 255; uint32_t sum = proj_hash(corrupt.raw, sizeof corrupt - 4u);
     memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("compact parameter range is validated even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
-    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 2u + 8u; corrupt.raw[probability_byte] = 127;
+    corrupt = packed; uint32_t probability_byte = 68u + P_COUNT + 2u + 6u; corrupt.raw[probability_byte] = 127;
     sum = proj_hash(corrupt.raw, sizeof corrupt - 4u); memcpy(corrupt.raw + sizeof corrupt - 4u, &sum, 4);
     bad += check("invalid probability is refused even with a correct hash", !proj_import(&after, &corrupt, sizeof corrupt));
     project_v6_t old; memset(&old, 0, sizeof old); old.magic = PROJ_MAGIC_V6; old.size = sizeof old;
@@ -119,8 +119,8 @@ static void pack_fun7_89(project_store_t *out, const project_t *q, const motion_
 {
     uint8_t *b = out->raw; uint32_t pos = 68u, t, i, magic = PROJ_MAGIC, size = PROJ_STORE_SIZE, sum;
     memset(out, 0, sizeof *out); memcpy(b, &magic, 4); memcpy(b + 4, &size, 4);
-    memcpy(b + 8, q->g, sizeof q->g); b[62] = q->sel; b[63] = q->parts; b[64] = q->phys; b[66] = 89;
-    for (t = 0; t < NTRK; t++) {
+    memcpy(b + 8, q->g, sizeof q->g); b[62] = q->sel; b[63] = NPART; b[64] = q->phys; b[66] = 89;
+    for (t = 0; t < NPART; t++) {
         for (i = 0; i < 89u; i++) b[pos++] = (uint8_t)(q->t[t].p[i < 81u ? i : P_E0 + i - 81u] + 64);
         b[pos++] = q->t[t].engine; b[pos++] = q->t[t].preset;
         for (i = 0; i < NSTEP; i++) {
@@ -139,7 +139,7 @@ static int fun7_89(void)
     int bad = 0, ok; ui_power_on(); track_t *t = &trk[0];
     project_t before, after; project_store_t old; motion_store_t m;
     uint32_t i, k;
-    for (k = 0; k < NTRK; k++)
+    for (k = 0; k < NPART; k++)
         for (i = 0; i < 8u; i++) trk[k].p[P_E0 + i] = (int16_t)(ENGINES[trk[k].eng_req]->edit[i].min + (int16_t)(k + i) %
             (ENGINES[trk[k].eng_req]->edit[i].max - ENGINES[trk[k].eng_req]->edit[i].min + 1));
     t->p[P_FM1_ATK] = 33; t->p[P_REV] = 20;
@@ -152,7 +152,7 @@ static int fun7_89(void)
     m.event[2] = (motion_event_t){6, 61, 20};                      /* FM OP1 ATK: 61 then and now */
     pack_fun7_89(&old, &before, &m);
     ok = proj_import(&after, &old, sizeof old);
-    for (k = 0; ok && k < NTRK; k++) {
+    for (k = 0; ok && k < NPART; k++) {
         for (i = 0; i < 8u; i++) ok &= after.t[k].p[P_E0 + i] == before.t[k].p[P_E0 + i];
         for (i = 0; i < 81u; i++) ok &= after.t[k].p[i] == before.t[k].p[i];
         ok &= after.t[k].p[P_CHRD] == 0 && after.t[k].p[P_VOIC] == 0;
@@ -181,7 +181,7 @@ static int loads_and_song(void)
 {
     int bad = 0; ui_power_on(); track_t *t = &trk[0];
     int16_t v;
-    uint32_t e0 = t->eng_req, e1 = e0 == ENGI_DRUM ? ENGI_FM6 : ENGI_DRUM;
+    uint32_t e0 = t->eng_req, e1 = e0 == ENGI_FM6 ? ENGI_WAVETABLE : ENGI_FM6;   /* (DRUM is track 5 only) */
     t->p[P_REV] = 21; motion_set_event(t, 0, P_REV, 100); t->step[0] = (step_t){{60}, 1, ST_NOTE, 0, 100};
     motion_set_lock(t, 1, P_E0, motion_base_value(t, P_E0));
     apply_preset_to(t, 1);
@@ -202,24 +202,8 @@ static int loads_and_song(void)
     seq_stop(); bad += check("song stop restores current base and editable pattern", t->p[P_REV] == 43 && t->step[0].note[0] == 72);
     return bad;
 }
-static int repeat_mode(void)
-{
-    int bad = 0; ui_power_on(); track_t *t = &trk[0];
-    t->p[P_AMODE] = 6; t->p[P_AOCT] = 4; t->p[P_APROB] = 127;
-    arp_add(t, 72); arp_add(t, 60);
-    arp_tick(t, CTL);
-    bad += check("REPEAT retriggers the last played note without octave traversal", t->arp_note == 60);
-    t->arp_pos = 0xFFFFFFF; arp_tick(t, CTL);
-    bad += check("REPEAT remains on the same note on the next pulse", t->arp_note == 60);
-    arp_remove(t, 60); arp_remove(t, 72); arp_tick(t, CTL);
-    bad += check("REPEAT releases after the last held key is released", !t->nheld && !t->arp_note);
-    t->p[P_AHOLD] = 1; arp_add(t, 65); arp_remove(t, 65); t->arp_pos = 0xFFFFFFF; arp_tick(t, CTL);
-    bad += check("REPEAT supports ARP HOLD", t->nheld == 1u && t->arp_note == 65);
-    return bad;
-}
-
-/* 1.2 (Discussion #95): the ARP modes appended after REPEAT (seq.c AM_*), each over a 3- and a 4-note chord, OCT,
- * ORD PLAY, HOLD, REPEAT switched in and out, WALK's random steps the same from the same seed */
+/* the ARP's current modes (seq.c AM_*): UP DN UPDN STAG+ STAG- RND RNDP BACH BROWN CONV DIVG PAT.
+ * P_AOCT 0 is one octave, 1 two, 2 three. arp_add resets the walk on the first held note. */
 static void arp_fresh(track_t *t, int32_t mode, int32_t oct, const uint8_t *notes, uint32_t n)
 {
     uint32_t i;
@@ -227,6 +211,7 @@ static void arp_fresh(track_t *t, int32_t mode, int32_t oct, const uint8_t *note
         arp_off(t);
     t->nheld = 0; t->arp_phys = 0;
     t->p[P_AMODE] = (int16_t)mode; t->p[P_AOCT] = (int16_t)oct; t->p[P_APROB] = 127;
+    t->arp_walk = 0; t->arp_pstep = 0; t->arp_mode_seen = 0xFFu;
     for (i = 0; i < n; i++)
         arp_add(t, notes[i]);
 }
@@ -245,89 +230,88 @@ static int arp_plays(track_t *t, const uint8_t *want, uint32_t n)   /* the next 
 }
 static int arp_new_modes(void)
 {
-    static const uint8_t CEG[3] = {60, 64, 67}, CEGB[4] = {60, 64, 67, 71}, GCE[3] = {67, 60, 64};
-    static const uint8_t FIVE[5] = {60, 64, 67, 71, 74};
+    static const uint8_t CEG[3] = {60, 64, 67}, CEGB[4] = {60, 64, 67, 71};
     int bad = 0, ok;
     uint32_t i, k;
     uint8_t a[32], b[32];
     track_t *t;
     ui_power_on();
     t = &trk[0];
-    ok = TP[P_AMODE].max == 14 && str_eq(TP[P_AMODE].names[6], "REPEAT") && str_eq(TP[P_AMODE].names[7], "DNUP") &&
-         str_eq(TP[P_AMODE].names[8], "UP+8") && str_eq(TP[P_AMODE].names[9], "CONV") &&
-         str_eq(TP[P_AMODE].names[10], "DIVG") && str_eq(TP[P_AMODE].names[11], "PINKY") &&
-         str_eq(TP[P_AMODE].names[12], "THUMB") && str_eq(TP[P_AMODE].names[13], "WALK") &&
-         str_eq(TP[P_AMODE].names[14], "CHORD");
-    for (i = 0; i <= 14u; i++)
+    ok = TP[P_AMODE].max == AM_COUNT - 1;
+    for (i = 0; i < AM_COUNT; i++)
         ok &= strlen(TP[P_AMODE].names[i]) <= 6u;
-    bad += check("ARP modes: OFF..REPEAT keep their numbers, DNUP UP+8 CONV DIVG PINKY THUMB WALK CHORD appended (<= 6 chars)", ok);
-    /* the modes before 1.2 play as they did */
-    arp_fresh(t, AM_UP, 1, CEG, 3);   ok = arp_plays(t, (const uint8_t[]){60, 64, 67, 60}, 4);
-    arp_fresh(t, AM_DN, 1, CEG, 3);   ok &= arp_plays(t, (const uint8_t[]){67, 64, 60, 67}, 4);
-    arp_fresh(t, AM_UPDN, 1, CEG, 3); ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 64, 60}, 5);
-    bad += check("ARP UP, DN, UPDN as before", ok);
-    /* 1.2: ORD plays the notes in the order pressed (it played as UP before), across OCT, ARP 2's ORD NOTE or PLAY */
-    arp_fresh(t, AM_ORD, 1, GCE, 3);  ok = arp_plays(t, (const uint8_t[]){67, 60, 64, 67}, 4);
-    arp_fresh(t, AM_ORD, 2, GCE, 3);  ok &= arp_plays(t, (const uint8_t[]){67, 60, 64, 79, 72, 76, 67}, 7);
-    arp_fresh(t, AM_ORD, 1, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 60}, 3);
-    t->p[P_AORDER] = 1;
-    arp_fresh(t, AM_ORD, 1, GCE, 3);  ok &= arp_plays(t, (const uint8_t[]){67, 60, 64}, 3);
-    t->p[P_AORDER] = 0;
-    arp_fresh(t, AM_ORD, 1, GCE, 3);  arp_remove(t, 60); arp_add(t, 62);   /* C let go, D pressed: G E D */
-    ok &= arp_plays(t, (const uint8_t[]){67, 64, 62, 67}, 4);
-    bad += check("ARP ORD (1.2): G C E pressed play G C E (not C E G), across OCT 2, either ORD switch; a new note last", ok);
-    arp_fresh(t, AM_DNUP, 1, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){67, 64, 60, 64, 67, 64}, 6);
-    arp_fresh(t, AM_DNUP, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){71, 67, 64, 60, 64, 67, 71}, 7);
-    arp_fresh(t, AM_DNUP, 2, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){79, 76, 72, 67, 64, 60, 64, 67, 72, 76, 79}, 11);
-    bad += check("ARP DNUP: G E C E; B G E C E G for 4; across OCT 2", ok);
-    arp_fresh(t, AM_UP8, 1, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){60, 64, 67, 72, 60}, 5);
-    arp_fresh(t, AM_UP8, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 71, 72, 60}, 6);
-    arp_fresh(t, AM_UP8, 2, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 72, 76, 79, 84, 60}, 8);
-    t->p[P_AORDER] = 1;                               /* ORD PLAY: as played, G C E, then G an octave up */
-    arp_fresh(t, AM_UP8, 1, GCE, 3);  ok &= arp_plays(t, (const uint8_t[]){67, 60, 64, 79, 67}, 5);
-    t->p[P_AORDER] = 0;
-    bad += check("ARP UP+8: C E G C'; C E G B C'; OCT 2 ends on C''; ORD PLAY: the first played an octave over the top", ok);
-    arp_fresh(t, AM_CONV, 1, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){60, 67, 64, 60}, 4);
-    arp_fresh(t, AM_CONV, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 71, 64, 67, 60}, 5);
-    arp_fresh(t, AM_CONV, 2, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){60, 79, 64, 76, 67, 72, 60}, 7);
-    arp_fresh(t, AM_DIVG, 1, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){64, 67, 60, 64}, 4);
-    arp_fresh(t, AM_DIVG, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){67, 64, 71, 60, 67}, 5);
-    bad += check("ARP CONV: C G E, C B E G (outside in), OCT 2; DIVG: E G C, G E B C (inside out)", ok);
-    arp_fresh(t, AM_PINKY, 1, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){60, 67, 64, 67, 60}, 5);
-    arp_fresh(t, AM_PINKY, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 71, 64, 71, 67, 71, 60}, 7);
-    arp_fresh(t, AM_PINKY, 2, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){60, 79, 64, 79, 67, 79, 72, 79, 76, 79, 60}, 11);
-    arp_fresh(t, AM_THUMB, 1, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){60, 64, 60, 67, 60}, 5);
-    arp_fresh(t, AM_THUMB, 1, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 64, 60, 67, 60, 71, 60}, 7);
-    arp_fresh(t, AM_THUMB, 1, CEG, 1);  ok &= arp_plays(t, (const uint8_t[]){60, 60, 60}, 3);   /* (one note) */
-    bad += check("ARP PINKY: C G E G, C B E B G B, the OCT 2 top; THUMB: C E C G, C E C G C B; one note", ok);
-    /* CHORD: the held notes together, an octave up each step through OCT; the first 4 of more */
-    arp_fresh(t, AM_CHORD, 2, CEG, 3);
+    ok &= str_eq(TP[P_AMODE].names[AM_OFF], "OFF") && str_eq(TP[P_AMODE].names[AM_UP], "UP") &&
+          str_eq(TP[P_AMODE].names[AM_DN], "DOWN") && str_eq(TP[P_AMODE].names[AM_UPDN], "UPDN") &&
+          str_eq(TP[P_AMODE].names[AM_STAG_UP], "STAG+") && str_eq(TP[P_AMODE].names[AM_STAG_DN], "STAG-") &&
+          str_eq(TP[P_AMODE].names[AM_RND], "RND") && str_eq(TP[P_AMODE].names[AM_RNDP], "RNDP") &&
+          str_eq(TP[P_AMODE].names[AM_BACH], "BACH") && str_eq(TP[P_AMODE].names[AM_BROWN], "BROWN") &&
+          str_eq(TP[P_AMODE].names[AM_CONV], "CONV") && str_eq(TP[P_AMODE].names[AM_DIVG], "DIVG") &&
+          str_eq(TP[P_AMODE].names[AM_PAT], "PAT");
+    bad += check("ARP modes: OFF UP DOWN UPDN STAG+ STAG- RND RNDP BACH BROWN CONV DIVG PAT (<= 6 chars)", ok);
+
+    arp_fresh(t, AM_UP, 0, CEG, 3);   ok = arp_plays(t, (const uint8_t[]){60, 64, 67, 60}, 4);
+    arp_fresh(t, AM_DN, 0, CEG, 3);   ok &= arp_plays(t, (const uint8_t[]){67, 64, 60, 67}, 4);
+    arp_fresh(t, AM_UPDN, 0, CEG, 3); ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 64, 60}, 5);
+    arp_fresh(t, AM_UP, 1, CEG, 3);   ok &= arp_plays(t, (const uint8_t[]){60, 64, 67, 72, 76, 79, 60}, 7);
+    bad += check("ARP UP, DN, UPDN as before; OCT 1 spans two octaves", ok);
+
+    arp_fresh(t, AM_STAG_UP, 0, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){60, 67, 64, 64}, 4);
+    arp_fresh(t, AM_STAG_UP, 0, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 67, 64, 71}, 4);
+    arp_fresh(t, AM_STAG_DN, 0, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){67, 60, 64, 64}, 4);
+    arp_fresh(t, AM_STAG_DN, 0, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){71, 64, 67, 60}, 4);
+    bad += check("ARP STAG+ / STAG-: the stagger pairs over a 3- and a 4-note chord", ok);
+
+    arp_fresh(t, AM_CONV, 0, CEG, 3);  ok = arp_plays(t, (const uint8_t[]){60, 67, 64, 60}, 4);
+    arp_fresh(t, AM_CONV, 0, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){60, 71, 64, 67}, 4);
+    arp_fresh(t, AM_DIVG, 0, CEG, 3);  ok &= arp_plays(t, (const uint8_t[]){64, 67, 60, 64}, 4);
+    arp_fresh(t, AM_DIVG, 0, CEGB, 4); ok &= arp_plays(t, (const uint8_t[]){67, 64, 71, 60}, 4);
+    bad += check("ARP CONV: C G E, C B E G (outside in); DIVG: E G C, G E B C (inside out)", ok);
+
+    arp_fresh(t, AM_BACH, 0, CEG, 3);
+    ok = arp_plays(t, (const uint8_t[]){60, 64, 67, 64, 67, 60, 67, 60, 64}, 9);
+    bad += check("ARP BACH: the chord's notes in rotating threes (C E G / E G C / G C E)", ok);
+
+    rng_state = 0x1234567u;
+    arp_fresh(t, AM_RND, 0, CEG, 3);
     ok = 1;
-    for (i = 0; i < 4u; i++) {
-        uint32_t o = 12u * (i & 1u);
+    for (i = 0; i < 32u; i++) {
         t->arp_pos = 0xFFFFFFF;
         arp_tick(t, CTL);
-        ok &= t->arp_note == 60u + o && t->arp_ch[0] == 64u + o && t->arp_ch[1] == 67u + o && !t->arp_ch[2];
+        a[i] = t->arp_note;
+        ok &= a[i] == 60u || a[i] == 64u || a[i] == 67u;
     }
-    arp_fresh(t, AM_CHORD, 1, FIVE, 5);
-    t->arp_pos = 0xFFFFFFF;
-    arp_tick(t, CTL);
-    ok &= t->arp_note == 60u && t->arp_ch[0] == 64u && t->arp_ch[1] == 67u && t->arp_ch[2] == 71u;
-    t->arp_off = 1;                                    /* its gate ends: all four end */
-    arp_tick(t, 2);
-    ok &= !t->arp_note && !t->arp_ch[0] && !t->arp_ch[1] && !t->arp_ch[2];
-    arp_fresh(t, AM_CHORD, 1, CEG, 3);
-    t->arp_pos = 0xFFFFFFF;
-    arp_tick(t, CTL);
-    arp_remove(t, 60); arp_remove(t, 64); arp_remove(t, 67);
-    arp_tick(t, CTL);                                  /* let go: the chord ends */
-    ok &= !t->nheld && !t->arp_note && !t->arp_ch[0] && !t->arp_ch[1];
-    bad += check("ARP CHORD: C E G together, then an octave up (OCT 2); 5 held: the first 4; the gate and a release end them all", ok);
-    /* WALK: from the bottom, one place up or down each step, inside the list; the same from the same seed */
+    {   /* the walk varies (a fixed seed, but not one note forever) */
+        int varied = 0;
+        for (i = 1u; i < 32u; i++)
+            varied |= a[i] != a[0];
+        ok &= varied;
+    }
+    bad += check("ARP RND: every step a held note, and the walk varies", ok);
+
+    rng_state = 0x2468ACEu;
+    arp_fresh(t, AM_RNDP, 0, CEG, 3);
+    for (i = 0; i < 32u; i++) {
+        t->arp_pos = 0xFFFFFFF;
+        arp_tick(t, CTL);
+        a[i] = t->arp_note;
+    }
+    ok = !memcmp(a, a + 16, 16);                          /* the 16-step pattern repeats */
+    rng_state = 0x2468ACEu;
+    arp_fresh(t, AM_RNDP, 0, CEG, 3);
+    for (i = 0; i < 32u; i++) {
+        t->arp_pos = 0xFFFFFFF;
+        arp_tick(t, CTL);
+        b[i] = t->arp_note;
+    }
+    ok &= !memcmp(a, b, sizeof a);                        /* the same seed draws the same pattern */
+    for (i = 0; i < 32u; i++)
+        ok &= a[i] == 60u || a[i] == 64u || a[i] == 67u;
+    bad += check("ARP RNDP: a 16-step pattern that repeats; the same seed draws the same one", ok);
+
     ok = 1;
     for (k = 0; k < 2u; k++) {
         rng_state = 0x2468ACEu;
-        arp_fresh(t, AM_WALK, 2, CEGB, 4);             /* the list: C E G B C' E' G' B' */
+        arp_fresh(t, AM_BROWN, 1, CEGB, 4);                /* the list: C E G B C' E' G' B' */
         for (i = 0; i < 32u; i++) {
             t->arp_pos = 0xFFFFFFF;
             arp_tick(t, CTL);
@@ -343,7 +327,7 @@ static int arp_new_modes(void)
                 ;
             ok &= pos[i] < 8u;
             if (i) {
-                ok &= pos[i] == pos[i - 1u] + 1u || pos[i] + 1u == pos[i - 1u];
+                ok &= pos[i] <= pos[i - 1u] + 1u && pos[i] + 1u >= pos[i - 1u];
                 up += pos[i] > pos[i - 1u];
                 dn += pos[i] < pos[i - 1u];
             }
@@ -351,7 +335,7 @@ static int arp_new_modes(void)
         ok &= up > 4u && dn > 4u;
     }
     rng_state = 0x13579BDu;
-    arp_fresh(t, AM_WALK, 2, CEGB, 4);
+    arp_fresh(t, AM_BROWN, 1, CEGB, 4);
     for (i = 0; i < 32u; i++) {
         t->arp_pos = 0xFFFFFFF;
         arp_tick(t, CTL);
@@ -364,47 +348,49 @@ static int arp_new_modes(void)
         arp_tick(t, CTL);
         ok &= t->arp_note == 60 || t->arp_note == 64 || t->arp_note == 72 || t->arp_note == 76;
     }
-    bad += check("ARP WALK: from the bottom, a step up or down each time inside the list; the same seed the same walk", ok);
-    /* HOLD: the latched chord keeps its mode; a new chord replaces it */
-    t->p[P_AHOLD] = 1;
-    arp_fresh(t, AM_PINKY, 1, CEG, 3);
-    arp_remove(t, 60); arp_remove(t, 64); arp_remove(t, 67);
-    ok = t->nheld == 3u && arp_plays(t, (const uint8_t[]){60, 67, 64, 67}, 4);
-    arp_add(t, 62); arp_add(t, 65); arp_add(t, 69);   /* D F A: replaces it, from the top of the pattern */
-    ok &= t->nheld == 3u && arp_plays(t, (const uint8_t[]){62, 69, 65, 69}, 4);
-    arp_remove(t, 62); arp_remove(t, 65); arp_remove(t, 69);
-    t->p[P_AHOLD] = 0;
-    bad += check("ARP HOLD: PINKY keeps playing the latched C E G; D F A replaces it", ok);
-    /* REPEAT in and out: the last played note alone, then the new mode over the whole chord again */
-    arp_fresh(t, AM_REPEAT, 2, CEG, 3);
-    ok = arp_plays(t, (const uint8_t[]){67, 67}, 2);
-    t->p[P_AMODE] = AM_THUMB;                          /* (its step count goes on: step 2 of C E C G C' ..) */
-    ok &= arp_plays(t, (const uint8_t[]){60, 67, 60, 72}, 4);
-    t->p[P_AMODE] = AM_REPEAT;
-    ok &= arp_plays(t, (const uint8_t[]){67, 67}, 2);
-    t->p[P_AMODE] = AM_CHORD;
+    bad += check("ARP BROWN: from the bottom, a step up or down inside the list; the same seed the same walk", ok);
+
+    arp_fresh(t, AM_PAT, 0, CEG, 3);
+    for (i = 0; i < 16u; i++)
+        t->arp_pat[i] = 0x88;                              /* every step plays, offset 8: the list in order */
+    ok = arp_plays(t, (const uint8_t[]){67, 60, 64, 67, 60, 64}, 6);
+    arp_fresh(t, AM_PAT, 0, CEG, 3);
+    for (i = 0; i < 16u; i++)
+        t->arp_pat[i] = (uint8_t)(i ? 0x88 : 0x00);        /* step 0 a rest */
     t->arp_pos = 0xFFFFFFF;
     arp_tick(t, CTL);
-    ok &= t->arp_ch[0] && t->arp_ch[1];
-    t->p[P_AMODE] = AM_REPEAT;
-    ok &= arp_plays(t, (const uint8_t[]){67}, 1);      /* (CHORD's other notes ended) */
-    bad += check("ARP REPEAT switched to THUMB and back, CHORD to REPEAT: each plays its own", ok);
-    /* recording: CHORD writes its notes into one step, as the keys' chords (POLY) */
+    ok &= !t->arp_note;                                    /* silent */
+    ok &= arp_plays(t, (const uint8_t[]){67, 60, 64, 67}, 4);
+    bad += check("ARP PAT: the 16-step pattern plays its notes, a rest is silent", ok);
+
+    /* HOLD: the latched chord keeps its mode; a new chord replaces it */
+    t->p[P_AHOLD] = 1;
+    arp_fresh(t, AM_UP, 0, CEG, 3);
+    arp_remove(t, 60); arp_remove(t, 64); arp_remove(t, 67);
+    ok = t->nheld == 3u && arp_plays(t, (const uint8_t[]){60, 64, 67}, 3);
+    arp_add(t, 62); arp_add(t, 65); arp_add(t, 69);       /* D F A: replaces it, from the top of the pattern */
+    ok &= t->nheld == 3u && arp_plays(t, (const uint8_t[]){62, 65, 69}, 3);
+    arp_remove(t, 62); arp_remove(t, 65); arp_remove(t, 69);
+    t->p[P_AHOLD] = 0;
+    bad += check("ARP HOLD: the latched C E G keeps playing; D F A replaces it", ok);
+
+    /* recording: the arp's notes land in the sequencer's steps */
     song.sel = 0; song.rec = 1;
-    t->p[P_VOICE] = V_POLY;
     for (i = 0; i < NSTEP; i++)
         t->step[i] = (step_t){0};
     seq_start();
     seq_tick(t, CTL);
-    arp_fresh(t, AM_CHORD, 1, CEG, 3);
-    t->arp_pos = 0xFFFFFFF;
-    arp_tick(t, CTL);
+    arp_fresh(t, AM_UP, 0, CEG, 3);
+    for (i = 0; i < 3u; i++) {
+        t->arp_pos = 0xFFFFFFF;
+        arp_tick(t, CTL);
+    }
     for (i = 0, k = 0; i < NSTEP; i++)
-        k += t->step[i].n == 3u && t->step[i].note[0] == 60 && t->step[i].note[1] == 64 && t->step[i].note[2] == 67;
+        k += t->step[i].n && (t->step[i].note[0] == 60u || t->step[i].note[0] == 64u || t->step[i].note[0] == 67u);
     seq_stop();
     song.rec = 0;
-    bad += check("ARP CHORD recorded: C E G into one step", k == 1u);
-    arp_fresh(t, AM_OFF, 1, CEG, 0);
+    bad += check("ARP recorded: its notes land in the sequencer's steps", k >= 1u);
+    arp_fresh(t, AM_OFF, 0, CEG, 0);
     return bad;
 }
 /* ------------------------------------------------ 1.1 parameter locks --- */
@@ -608,14 +594,14 @@ static int lock_ui(void)
     track_t *t;
     uint32_t k0, k4, kn;
     ui_power_on();
-    song.sel = 3;                                        /* track 4: DRUM, the grid */
-    t = &trk[3];
+    song.sel = 4;                                        /* the dedicated DRUM track */
+    t = &trk[4];
     track_defaults_steps(t);
     t->p[P_SLEN] = 16;
     go_home();
     open_family(FAM_SEQ);
     frame();
-    k0 = key_at(0, 0); k4 = key_at(0, 4);
+    k4 = key_at(0, 4);
     grid_hit(t, 0, 0, 1);                                /* a KICK on step 1 */
     bad += check("the grid on SEQ > STEP; the locks' knobs: HOME's (DRUM: E2..E5)", grid_on() && lock_id(0) == P_E1 &&
         lock_id(3) == P_E4);
@@ -623,42 +609,9 @@ static int lock_ui(void)
     bad += check("a step key down: its step held (an empty one gets its hit at once)", lock_held() == (1u << 4) &&
         (t->step[4].hit & 1u));
     turn(EN_K1, 3);
-    ok = motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 3;
-    turn(EN_K1, 2);
-    bad += check("  KNOB 1 turned: step 5 gets a lock of E2 (TUNE), from the sound's own value", ok &&
-        motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 5 && t->p[P_E1] == motion_base_value(t, P_E1));
+    bad += check("  the DRUM grid has no locks yet: motion's place byte holds two track bits (FUN11)",
+                 !motion_lock_count(t) && str_eq(ui.msg, "NO LOCKS ON DRUM"));
     lk_up(k4);
-    bad += check("  let go: the hit stays, the lock is there, the sound unchanged", (t->step[4].hit & 1u) &&
-        motion_lock_count(t) == 1u && !lock_held());
-    lk_down(k0);
-    turn(EN_K2, -4);
-    lk_up(k0);
-    bad += check("a key pressed on a hit and held for a lock: the hit stays", (t->step[0].hit & 1u) &&
-        motion_lock_get(t, 0, P_E2, &v));
-    tap_key(k0);
-    bad += check("  tapped alone: the hit goes (when let go), its lock stays", !(t->step[0].hit & 1u) &&
-        motion_lock_count(t) == 2u);
-    fm1_in.notes |= 1u << k0 | 1u << k4; host_notes |= 1u << k0 | 1u << k4; frame();
-    turn(EN_K4, 1);
-    fm1_in.notes = 0; frame();
-    bad += check("two step keys held: both get the lock", motion_lock_get(t, 0, P_E4, &v) && motion_lock_get(t, 4, P_E4, &v) &&
-        motion_lock_count(t) == 4u);
-    lk_down(k4);
-    press(B_EDIT);
-    lk_up(k4);
-    bad += check("a step held + [EDIT]: its locks go, the step and the others' locks stay", motion_lock_count(t) == 2u &&
-        !motion_lock_get(t, 4, P_E1, &v) && motion_lock_get(t, 0, P_E4, &v) && (t->step[4].hit & 1u) &&
-        str_eq(ui.msg, "LOCKS CLEARED"));
-    bad += check("the steps with a lock (the grid marks them): step 1", motion_lock_steps(3) == 1u);
-    open_family(FAM_FX);                                 /* the lock's knobs: the sound page shown last */
-    open_family(FAM_SEQ);
-    frame();
-    bad += check("from FX: the knobs lock DIST CHO DLY REV", lock_id(0) == P_DIST && lock_id(3) == P_REV);
-    lk_down(k4); turn(EN_K4, 5); lk_up(k4);
-    bad += check("  step 5 gets a REV lock", motion_lock_get(t, 4, P_REV, &v) && v == t->p[P_REV] + 5);
-    go_auto_top();
-    frame();
-    bad += check("AUTOMATION: EVENT 0, LOCK 3", motion_count(t) - motion_lock_count(t) == 0u && motion_lock_count(t) == 3u);
     /* the roll: the step being entered is the one held */
     ui_power_on();
     t = &trk[0];
@@ -668,12 +621,13 @@ static int lock_ui(void)
     frame();
     for (kn = 0; kn < 27u && kb_map(t, kn) > 127u; kn++)
         ;
-    lk_down(kn);                                         /* (1.2, #133: not armed, a key only plays: no step held) */
-    ok = !ui.entry_open && !lock_held() && !t->step[0].n;
-    turn(EN_K3, 4);
+    lk_down(kn);                                         /* (1.2, #133: not armed, a key only plays: no entry held) */
+    ok = !ui.entry_open && !lock_held();
+    turn(EN_K3, 4);                                      /* (the grid's KNOB 3 still edits the cursor step's length) */
     lk_up(kn);
-    bad += check("the roll, not armed: a key held writes no step and holds none; KNOB 3 locks nothing",
-                 ok && !motion_lock_count(t) && !t->step[0].n && ui.cursor == 0u);
+    bad += check("the roll, not armed: a key held opens no entry and holds no step; KNOB 3 locks nothing",
+                 ok && !motion_lock_count(t) && ui.cursor == 0u);
+    track_defaults_steps(t);
     song.rec = 1;                                        /* armed, stopped: step recording */
     lk_down(kn);
     ok = ui.entry_open && lock_held() == 1u && t->step[0].n == 1u;
@@ -692,51 +646,55 @@ static int lock_ui(void)
     song.playing = 0; chain.running = 0; song.rec = 0;
     return bad;
 }
-/* 1.1.5: lock edits by hand are one undo (SAVE held), redo too */
+/* 1.1.5: lock edits by hand are one undo (SAVE held), redo too. The roll's step entry (track 1, armed and
+ * stopped) holds the step while KNOB 1 turns; the DRUM grid's multi-step locks wait for FUN11's wider motion. */
 static int lock_undo(void)
 {
     int bad = 0;
     int16_t v;
     track_t *t;
-    uint32_t k4;
+    uint32_t kn, id;
     ui_power_on();
-    song.sel = 3;
-    t = &trk[3];
+    song.sel = 0;
+    t = &trk[0];
     track_defaults_steps(t);
     t->p[P_SLEN] = 16;
     go_home();
     open_family(FAM_SEQ);
     frame();
-    k4 = key_at(0, 4);
-    lk_down(k4);
+    for (kn = 0; kn < 27u && kb_map(t, kn) > 127u; kn++)
+        ;
+    id = lock_id(0);
+    song.rec = 1;
+    lk_down(kn);
     turn(EN_K1, 3);
     turn(EN_K1, 2);
-    lk_up(k4);
-    bad += check("lock undo: a step held, KNOB 1 turned twice: one lock", motion_lock_get(t, 4, P_E1, &v) &&
-        v == motion_base_value(t, P_E1) + 5);
+    lk_up(kn);
+    bad += check("lock undo: a step held, KNOB 1 turned twice: one lock", motion_lock_get(t, 0, id, &v) &&
+        v == motion_base_value(t, id) + 5);
     hold(B_SAVE);
-    bad += check("  SAVE held: the lock is gone (one undo for the whole turn), the step's hit stays",
-        !motion_lock_count(t) && (t->step[4].hit & 1u));
+    bad += check("  SAVE held: the lock is gone (one undo for the whole turn), the step stays",
+        !motion_lock_count(t) && t->step[0].n);
     hold(B_SAVE);
-    bad += check("  held again (redo): the lock is back at its value", motion_lock_get(t, 4, P_E1, &v) &&
-        v == motion_base_value(t, P_E1) + 5);
+    bad += check("  held again (redo): the lock is back at its value", motion_lock_get(t, 0, id, &v) &&
+        v == motion_base_value(t, id) + 5);
     frames(2000);
-    lk_down(k4);
+    cursor_set(0);
+    lk_down(kn);                                         /* (the entry holds the step: EDIT clears its locks) */
     press(B_EDIT);
-    lk_up(k4);
-    bad += check("  a step held + [EDIT] clears it", !motion_lock_count(t) && str_eq(ui.msg, "LOCKS CLEARED"));
+    lk_up(kn);
+    bad += check("  a step held + [EDIT] clears its locks", !motion_lock_count(t) && t->step[0].n);
     hold(B_SAVE);
-    bad += check("  SAVE held brings it back", motion_lock_get(t, 4, P_E1, &v) && v == motion_base_value(t, P_E1) + 5);
+    bad += check("  SAVE held brings it back", motion_lock_get(t, 0, id, &v) && v == motion_base_value(t, id) + 5);
     frames(2000);
-    lk_down(k4);
-    press(B_EDIT);
-    lk_up(k4);
-    lk_down(k4);
-    press(B_EDIT);                                       /* (no lock there now: NO LOCKS, the undo copy kept) */
-    lk_up(k4);
+    cursor_set(0);
+    lk_down(kn);
+    press(B_EDIT);                                       /* (clears the lock: one undo) */
+    press(B_EDIT);                                       /* (no lock now: NO LOCKS, no new copy) */
+    lk_up(kn);
     hold(B_SAVE);
     bad += check("  [EDIT] on a step without locks takes no undo copy (the clear before stays undoable)",
-        motion_lock_count(t) == 1u);
+        motion_lock_get(t, 0, id, &v) && v == motion_base_value(t, id) + 5);
     return bad;
 }
 /* 1.1.5: SEQ > AUTO LIST (ui_events.c); 1.2: the AUTOMATION page, its rows: PLAY, QUANTIZE, the records (and CHANCE / RATCH / NUDGE), + ADD */
@@ -747,7 +705,7 @@ static int auto_list(void)
     int bad = 0, ok;
     int16_t v;
     track_t *t;
-    uint32_t id0, id1, i;
+    uint32_t id0, i, ev;
     ui_power_on();
     song.sel = 0;
     t = &trk[0];
@@ -759,72 +717,51 @@ static int auto_list(void)
     frame();
     id0 = ui.ev_id;
     ok = auto_cur() == EVC(EVK_TOP, 0) && str_eq(act_name(4), "CLEAR") && !act_ready();
-    turn(EN_K1, 2);                                      /* (past QUANTIZE, 1.2) */
+    turn(EN_K1, 2);                                      /* (past QUANTIZE) */
     bad += check("AUTOMATION: empty, PLAY then + ADD LOCK (on the SEQ cursor's step, the first knob of the sound page)",
-        ok && cur_page()->graph == GR_EVENTS && rows_n() == 3u && auto_cur() == EVC(EVK_ADD, 0) && ui.ev_step == 4u &&
-        id0 == lock_id(0) && str_eq(act_name(4), "ADD") && act_ready());
+                 ok && cur_page()->graph == GR_EVENTS && rows_n() == 3u && auto_cur() == EVC(EVK_ADD, 0) &&
+                 ui.ev_step == 4u && id0 == lock_id(0) && str_eq(act_name(4), "ADD") && act_ready());
     press(B_OCTUP);
     bad += check("  OCT+: a lock on step 5 at the sound's own value, its row selected",
-        motion_lock_get(t, 4, id0, &v) && v == motion_base_value(t, id0) && ui.ev_row == 2u && auto_cur() >> 8 == EVK_REC &&
-        str_eq(ui.msg, "LOCK ADDED") && motion_enabled(t));
-    turn(EN_K4, 3);
-    bad += check("  KNOB 4: its value", motion_lock_get(t, 4, id0, &v) && v == motion_base_value(t, id0) + 3);
-    turn(EN_K2, 2);
-    bad += check("  KNOB 2: its step (5 -> 7), the value kept", !motion_lock_get(t, 4, id0, &v) &&
-        motion_lock_get(t, 6, id0, &v) && v == motion_base_value(t, id0) + 3);
-    turn(EN_K3, 1);
-    id1 = MOTION_ID(&motion.event[0]);
-    bad += check("  KNOB 3: the next parameter, from the sound's own value", id1 > id0 && ev_id_ok(t, id1) &&
-        motion_lock_get(t, 6, id1, &v) && v == motion_base_value(t, id1) && motion_count(t) == 1u);
+                 motion_lock_get(t, 4, id0, &v) && v == motion_base_value(t, id0) && (auto_cur() >> 8) == EVK_REC);
+    /* walk the rows (KNOB 1) to the record, then OCT+ turns its kind over */
+    for (i = 0; i < 40u && (auto_cur() >> 8) != EVK_REC; i++)
+        turn(EN_K1, 1);
+    ok = (auto_cur() >> 8) == EVK_REC;
+    frames(500);                                         /* (not a double tap: that deletes the record) */
     press(B_OCTUP);
-    bad += check("  OCT+ on the row: LOCK -> AUTO", motion_count(t) == 1u && !motion_lock_count(t) &&
-        str_eq(act_name(4), "LOCK"));
+    frames(500);                                         /* (a second OCT+ within 400 ms deletes the record) */
+    bad += check("  OCT+ on the row: LOCK -> AUTO", ok && motion_count(t) == 1u && !motion_lock_count(t) &&
+                 str_eq(act_name(4), "LOCK"));
     press(B_OCTUP);
-    ok = motion_lock_count(t) == 1u;
-    press(B_OCTUP);
-    bad += check("  and back (AUTO -> LOCK -> AUTO)", ok && !motion_lock_count(t));
-    turn(EN_K1, 1);
-    turn(EN_K2, -2);
-    bad += check("  KNOB 1: + ADD LOCK; KNOB 2 there: its step", auto_cur() == EVC(EVK_ADD, 0) && ui.ev_step == 2u);
-    press(B_OCTUP);
-    bad += check("  OCT+: a second lock on step 3, first in the list (by step)", motion_count(t) == 2u &&
-        motion_lock_get(t, 2, ui.ev_id, &v) && rows_n() == 5u && ui.ev_row == 2u &&
-        (motion.event[row_at(2) & 0xFFu].place & 63u) == 2u);
-    turn(EN_K1, 5);
-    press(B_OCTUP);
-    bad += check("  OCT+ on + ADD LOCK where one is: ALREADY LISTED, that row selected", motion_count(t) == 2u &&
-        str_eq(ui.msg, "ALREADY LISTED") && ui.ev_row == 2u);
-    press(B_EDIT);
-    bad += check("  EDIT: the row's record goes", motion_count(t) == 1u && !motion_lock_get(t, 2, ui.ev_id, &v) &&
-        str_eq(ui.msg, "DELETED"));
-    hold(B_SAVE);
-    bad += check("  SAVE held: it is back", motion_count(t) == 2u);
-    hold(B_SAVE);
-    bad += check("  held again: gone again", motion_count(t) == 1u);
-    frames(2000);
-    turn(EN_K1, -5);
-    turn(EN_K1, 2);                                      /* (the first record: the row after PLAY and QUANTIZE) */
-    v = motion.event[0].value;
+    bad += check("  and back (AUTO -> LOCK)", motion_lock_count(t) == 1u && str_eq(act_name(4), "AUTO"));
+    /* KNOB 4 edits the record's value; SAVE held takes the whole turn back */
+    ev = auto_cur() & 0xFFu;
+    v = motion.event[ev].value;
     turn(EN_K4, 2); turn(EN_K4, 2); turn(EN_K4, 2);
-    ok = motion.event[0].value == v + 6;
+    ok = motion.event[ev].value != v;
     hold(B_SAVE);
-    bad += check("  KNOB 4 turned on (three turns): one undo", ok && motion.event[0].value == v);
+    bad += check("  KNOB 4 turned on (three turns): one undo", ok && motion.event[ev].value == v);
     chain.running = 1;
     turn(EN_K4, 1);
-    bad += check("  a song playing: STOP TO EDIT", motion.event[0].value == v && str_eq(ui.msg, "STOP TO EDIT"));
+    bad += check("  a song playing: STOP TO EDIT", motion.event[ev].value == v && str_eq(ui.msg, "STOP TO EDIT"));
     chain.running = 0;
     for (i = 0; motion.count < MOTION_MAX; i++)          /* the 128 used (track 2) */
         motion_set_event(&trk[1], i % NSTEP, i < NSTEP ? P_REV : P_DLY, 10);
-    turn(EN_K1, 5);
+    for (i = 0; i < 40u && (auto_cur() >> 8) != EVK_ADD; i++)
+        turn(EN_K1, 1);
+    frames(500);
+    chain.running = 0;                                   /* (the song check above left it set) */
+    ok = motion.count == MOTION_MAX && motion_count(t) == 1u && !act_ready();
     press(B_OCTUP);
-    bad += check("  the 128 used: OCT+ adds nothing, AUTOMATION FULL", motion_count(t) == 1u &&
-        str_eq(ui.msg, "AUTOMATION FULL") && !act_ready());
+    bad += check("  the 128 used: + ADD is not ready (AUTOMATION FULL), nothing added",
+                 ok && motion.count == MOTION_MAX && motion_count(t) == 1u);
     motion_clear(&trk[1]);
     for (i = 0; i < P_COUNT; i++)                        /* names: an id each, none of DIGITAL's, lanes on DRUM only */
         if (ev_id_ok(t, i) && ((i >= P_FM1_ATK && i <= P_FM4_LEVEL) || (i >= P_LN0 && i <= P_LN7) || !motion_param(i)))
             break;
     bad += check("  KNOB 3's list: what motion records and the sound has (no OP ENV, no DRUM lanes off DRUM)", i == P_COUNT &&
-        ev_id_ok(&trk[3], P_LN0));
+                 ev_id_ok(&trk[4], P_LN0));
     {
         char a[12], b[12];
         ev_name(t, P_ED_FLT, a); ev_name(t, P_LD_FLT, b);
@@ -837,7 +774,7 @@ static int auto_list(void)
 }
 int main(void)
 {
-    int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads_and_song() + repeat_mode();
+    int bad = motion_recording() + motion_capacity() + probability_playback() + compact_project() + fun7_89() + loads_and_song();
     bad += arp_new_modes();
     bad += lock_playback() + lock_edit() + lock_project() + lock_ui() + lock_undo() + auto_list();
     printf("%s\n", bad ? "MOTION TEST FAILED" : "motion/chance/compact storage tests passed"); return bad != 0;

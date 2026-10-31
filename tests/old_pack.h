@@ -21,7 +21,7 @@ static uint32_t old_pack(uint8_t *b, const project_t *q, uint32_t magic, uint32_
     memcpy(b, &magic, 4);
     memcpy(b + 4, &st, 4);
     memcpy(b + 8, q->g, sizeof q->g);
-    b[62] = q->sel; b[63] = q->parts; b[64] = q->phys; b[66] = (uint8_t)np;
+    b[62] = q->sel; b[63] = NPART; b[64] = q->phys; b[66] = (uint8_t)np;   /* (the four-track format) */
     for (t = 0; t < 4u; t++) {                       /* the four tracks every old format stored */
         for (i = 0; i < np; i++) {
             uint32_t id = i < np - 8u ? i : P_E0 + i - (np - 8u);
