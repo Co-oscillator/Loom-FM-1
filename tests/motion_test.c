@@ -638,8 +638,8 @@ static int lock_ui(void)
     bad += check("  let go: the note and the lock on step 1, the cursor on", ui.cursor == 1u && t->step[0].n == 1u &&
         motion_lock_count(t) == 1u && motion_lock_steps(0) == 1u);
     cursor_set(0);
-    press(B_EDIT);
-    bad += check("  [EDIT] alone clears the step and its locks", !t->step[0].n && !motion_lock_count(t));
+    seq_clear_step();
+    bad += check("  SEQ TOOLS > CLR STEP clears the step and its locks", !t->step[0].n && !motion_lock_count(t));
     song.playing = 1; chain.running = 1;
     lk_down(kn); turn(EN_K3, 1); lk_up(kn);
     bad += check("  a song playing: STOP TO EDIT, no lock", !motion_lock_count(t));
@@ -680,21 +680,19 @@ static int lock_undo(void)
         v == motion_base_value(t, id) + 5);
     frames(2000);
     cursor_set(0);
-    lk_down(kn);                                         /* (the entry holds the step: EDIT clears its locks) */
-    press(B_EDIT);
-    lk_up(kn);
-    bad += check("  a step held + [EDIT] clears its locks", !motion_lock_count(t) && t->step[0].n);
+    seq_clear_step();                                    /* SEQ TOOLS > CLR STEP: the step and its locks */
+    bad += check("  SEQ TOOLS > CLR STEP clears the step and its locks", !motion_lock_count(t) && !t->step[0].n);
     hold(B_SAVE);
-    bad += check("  SAVE held brings it back", motion_lock_get(t, 0, id, &v) && v == motion_base_value(t, id) + 5);
+    bad += check("  SAVE held brings them back", motion_lock_get(t, 0, id, &v) &&
+                 v == motion_base_value(t, id) + 5 && t->step[0].n);
     frames(2000);
     cursor_set(0);
-    lk_down(kn);
-    press(B_EDIT);                                       /* (clears the lock: one undo) */
-    press(B_EDIT);                                       /* (no lock now: NO LOCKS, no new copy) */
-    lk_up(kn);
+    seq_clear_step();                                    /* (clears the restored step: one undo) */
+    cursor_set(0);
+    seq_clear_step();                                    /* (nothing there: no new undo copy) */
     hold(B_SAVE);
-    bad += check("  [EDIT] on a step without locks takes no undo copy (the clear before stays undoable)",
-        motion_lock_get(t, 0, id, &v) && v == motion_base_value(t, id) + 5);
+    bad += check("  CLR STEP on an empty step takes no undo copy (the clear before stays undoable)",
+                 motion_lock_get(t, 0, id, &v) && v == motion_base_value(t, id) + 5 && t->step[0].n);
     return bad;
 }
 /* 1.1.5: SEQ > AUTO LIST (ui_events.c); 1.2: the AUTOMATION page, its rows: PLAY, QUANTIZE, the records (and CHANCE / RATCH / NUDGE), + ADD */

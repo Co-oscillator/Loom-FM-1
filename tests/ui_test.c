@@ -61,6 +61,7 @@ static int fm1_led_idle_on(void) { return host_idle; }
 static void fm1_led_anim_stop(void) { host_anim = host_idle = 0; }
 #define FM1_TICKS_PER_US 1u
 static uint32_t host_ticks, host_pressed, host_notes;
+static void seq_clear_step(void);
 static int32_t host_enc[7];
 static uint32_t fm1_ticks(void) { return host_ticks; }
 static uint32_t fm1_input_edges(int x) { uint32_t p = host_pressed; (void)x; host_pressed = 0; return p; }
@@ -272,6 +273,8 @@ static void press(uint32_t label)                 /* a tap: down, a frame, up, a
     frame();
 }
 static void frames(uint32_t ms) { uint32_t i; for (i = 0; i < ms / 16u; i++) frame(); }
+/* AUTOMATION: two OCT+ on the selected row within 400 ms delete it (the old EDIT delete) */
+static void auto_delete_row(void) { press(B_OCTUP); press(B_OCTUP); }
 static void btn_down(uint32_t label) { fm1_in.buttons |= 1u << panel.btn[label]; host_pressed |= 1u << panel.btn[label]; }
 static void btn_up(uint32_t label) { fm1_in.buttons &= ~(1u << panel.btn[label]); }
 static void hold(uint32_t label)                  /* held 0.8 s, then let go */
@@ -1258,9 +1261,10 @@ static int test_grid(void)
     turn(EN_K2, -1);
     ok &= ui.bank == 0u && ui.cursor == 2u;
     bad += check("4x4 STEP: K1 step, K2 bank (the cursor follows)", ok);
-    press(B_EDIT);
-    bad += check("EDIT: the cursor step cleared, on to the next", t->step[2].time == ST_REST && !t->step[2].hit && ui.cursor == 3u &&
-                 grid_on());
+    t->step[2] = (step_t){{60}, 1, ST_NOTE, 0, 100};    /* (a note there to clear) */
+    seq_clear_step();                                    /* SEQ TOOLS > CLR STEP (EDIT's old job) */
+    bad += check("SEQ TOOLS > CLR STEP: the cursor step cleared, on to the next", t->step[2].time == ST_REST &&
+                 !t->step[2].hit && ui.cursor == 3u && grid_on());
     /* a step's GM notes on their lanes */
     t->step[8] = (step_t){{41, 49, 36, 0}, 3, ST_NOTE, SF_ACCENT, 96, 0, 0};
     ok = step_lanes(&t->step[8]) == ((1u << DV_TOM) | (1u << DV_BELL) | (1u << DV_KICK)) &&
@@ -1560,7 +1564,7 @@ static int test_categories(void)
     list_set(0);
     go_page(GR_USER);
     ui.uslot = 4;
-    press(B_EDIT);
+    press(B_OCTDN);
     ok = name_on() && nm.kind == NK_USER_RENAME && nm.cat == CAT_LEAD;
     turn(EN_K3, 3);                                        /* LEAD -> KEYS */
     press(B_OCTUP);
@@ -2839,12 +2843,12 @@ static int test_page_cycles(void)
     want = ref[6]; step_set_ratchet(&want, 2);
     ok &= steps_but(TSEL, ref, 6, &want);
     hold(B_SAVE);
-    press(B_EDIT);                                      /* EDIT: back to x1 */
+    auto_delete_row();                                  /* OCT+ twice: back to x1 */
     ok &= steps_but(TSEL, ref, 0xFFu, 0) && msg_is("DELETED");
     hold(B_SAVE);
     want = ref[6]; step_set_ratchet(&want, 4);
     ok &= steps_but(TSEL, ref, 6, &want);
-    bad += check("AUTOMATION RATCH: + ADD x2, KNOB 4 to x4, EDIT x1; each one undo (SAVE held), the step's flags only", ok);
+    bad += check("AUTOMATION RATCH: + ADD x2, KNOB 4 to x4, OCT+ x2 to x1; each one undo (SAVE held), the step's flags only", ok);
     {   /* the order: PLAY, QUANTIZE, then by step (CHANCE, RATCH, NUDGE, the records), + ADD; a lock on the same step
          * after them */
         go_auto_add(EV_CHANCE, 6); frame(); press(B_OCTUP);
@@ -2860,14 +2864,14 @@ static int test_page_cycles(void)
         bad += check("  the rows: PLAY, QUANTIZE, by step (CHANCE, RATCH, NUDGE, then its locks / events), + ADD; one there: "
                      "ALREADY LISTED", ok);
         auto_pick(EVC(EVK_NUDGE, 6));
-        press(B_EDIT);                                  /* (the NUDGE out again: the rest as before) */
+        auto_delete_row();                              /* (the NUDGE out again: the rest as before) */
         ok = step_nudge(&TSEL->step[6]) == 0;
-        bad += check("  EDIT on the NUDGE row: back to 0", ok);
+        bad += check("  OCT+ x2 on the NUDGE row: back to 0", ok);
     }
     memcpy(ref, TSEL->step, sizeof ref);
     chain.running = 1;
     auto_pick(EVC(EVK_CHANCE, 6));
-    turn(EN_K4, 5); press(B_EDIT);
+    turn(EN_K4, 5); auto_delete_row();
     ok = steps_but(TSEL, ref, 0xFFu, 0) && msg_is("STOP TO EDIT");
     chain.running = 0;
     bad += check("  while a song plays: STOP TO EDIT, nothing changes", ok);
@@ -3126,6 +3130,13 @@ static uint32_t gates(void)                        /* voices of every track with
     return n;
 }
 static uint32_t white(uint32_t w) { return key_at(0, w); }
+/* 1.8.4.4: EDIT's old step clear is SEQ TOOLS' CLR STEP (place 7, G4); it clears the cursor step and its locks */
+static void seq_clear_step(void)
+{
+    btn_down(B_SEQ); frames(500);
+    key_down(white(7)); frame(); key_up(white(7)); frame();
+    btn_up(B_SEQ); frame();
+}
 
 /* a layer's key LEDs as the old 250 ms blink read them: lit, and the breathing ones (#119) "on" at even quarters,
  * so (a ^ b) over ms 0 and 250 = the ones that can be pressed, (a & b) = lit */
@@ -3360,7 +3371,8 @@ static int test_layer(void)
     btn_down(B_EDIT); frame();
     ok = step_on(&TSEL->step[0]) && ui.cursor == 0;
     btn_up(B_EDIT); frame();
-    bad += check("EDIT on STEP clears the step when let go (not on press)", ok && !step_on(&TSEL->step[0]) && ui.cursor == 1);
+    bad += check("EDIT on STEP opens the EDIT page when let go (no step clear)",
+                 ok && step_on(&TSEL->step[0]) && ui.cursor == 0 && cur_page()->fam == FAM_EDIT);
     ui_power_on(); hold(B_HOME);
     ok = ui.menu == 1; hold(B_HOME); ok &= !ui.menu;
     go_home(); hold(B_SEQ); ok &= ui.home && !ui.layer;
@@ -3554,20 +3566,20 @@ static int test_name(void)
     press(B_OCTDN);
     /* rename: EDIT on USER */
     ui.uslot = 5;
-    press(B_EDIT);
-    bad += check("  EDIT on an empty slot: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT") && cur_page()->graph == GR_USER);
+    press(B_OCTDN);
+    bad += check("  OCT- on an empty slot: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT") && cur_page()->graph == GR_USER);
     ui.uslot = 2;
     up_load(2);                                   /* (the sound now comes from U03) */
     trk[0].p[P_E0] = 33;                          /* an edit: a rename must not store it */
-    press(B_EDIT);
-    bad += check("  EDIT on a used slot: NAME (rename) with its name", name_on() && nm.kind == NK_USER_RENAME && str_eq(nm.s, "CB 2"));
+    press(B_OCTDN);
+    bad += check("  OCT- on a used slot: NAME (rename) with its name", name_on() && nm.kind == NK_USER_RENAME && str_eq(nm.s, "CB 2"));
     nm_tap(nm_black_key(NB_DEL, 0));
     nm_tap(white(10)); nm_tap(white(10));          /* VW: W */
     press(B_OCTUP);
     up_name(2, b);
     bad += check("  OCT+: renamed (CB W), the sound stored there unchanged", !name_on() && str_eq(b, "CB W") &&
                  up_value(up_rec(2), P_E0) != 33 && msg_is("RENAMED (RAM)"));
-    press(B_EDIT);
+    press(B_OCTDN);
     for (i = 0; i < 12u; i++) nm_tap(nm_black_key(NB_DEL, 0));
     press(B_OCTUP);
     {
@@ -3600,20 +3612,20 @@ static int test_name(void)
     project_load(1);
     bad += check("  loading it brings its name back (the next save's prefill)", str_eq(proj_name, "PNPNPNPN"));
     trk[0].p[P_LEVEL] = 7;
-    press(B_EDIT);
+    press(B_OCTDN);
     for (i = 0; i < 4u; i++) nm_tap(nm_black_key(NB_DEL, 1));
     press(B_OCTUP);
     {
         char pn[16];
         project_name(1, pn);
-        bad += check("  EDIT renames a project (PNPN); its music unchanged", str_eq(pn, "PNPN") && stored_param(1, 0, P_LEVEL) != 7 &&
+        bad += check("  OCT- renames a project (PNPN); its music unchanged", str_eq(pn, "PNPN") && stored_param(1, 0, P_LEVEL) != 7 &&
                      msg_is("RENAMED (RAM)"));
     }
     song.g[G_SLOT] = 4;
-    press(B_EDIT);
-    bad += check("  EDIT on an empty project slot: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT"));
+    press(B_OCTDN);
+    bad += check("  OCT- on an empty project slot: EMPTY SLOT", !name_on() && msg_is("EMPTY SLOT"));
     song.g[G_SLOT] = 2;
-    press(B_EDIT);
+    press(B_OCTDN);
     hold(B_HOME);
     bad += check("  HOME held in NAME: the menu, NAME closed", ui.menu && !name_on());
     hold(B_HOME);
@@ -4392,12 +4404,12 @@ static int test_bughunt_ui(void)
     up_ui(2, 0);
     go_page(GR_USER); ui.uslot = 0; frame();
     ui.msg_t = 0;
-    press(B_EDIT);
+    press(B_OCTDN);
     ok = name_on() && !msg_is("HOLD [EDIT] QUICK");
     ui_power_on();
     layer_seen = 0;
     press(B_EDIT);
-    bad += check("EDIT tap = RENAME on USER: no layer hint over NAME (elsewhere the hint as before)",
+    bad += check("OCT- = RENAME on USER: no layer hint over NAME (elsewhere the hint as before)",
                  ok && msg_is("HOLD [EDIT] QUICK"));
     return bad;
 }
@@ -4737,9 +4749,10 @@ static int test_step_preview_chord_entry(void)
     key_down(7); frame(); key_down(11); frame();       /* keys held together: each adds */
     key_up(7); key_up(11); frame();
     ok = ui.cursor == 8u && t->step[8].n == 2u;
-    press(B_EDIT);
-    ok &= !t->step[8].n && ui.cursor == 9u;             /* (EDIT still clears the step and moves on) */
-    bad += check("#155 ADD: keys held together add each; EDIT clears the step and moves on as before", ok);
+    seq_clear_step();
+    printf("  dbg clr: layer=%u cursor=%u n=%u msg=%s\n", ui.layer, ui.cursor, t->step[8].n, ui.msg);
+    ok &= !t->step[8].n && ui.cursor == 9u;             /* (SEQ TOOLS > CLR STEP still clears and moves on) */
+    bad += check("#155 ADD: keys held together add each; CLR STEP clears the step and moves on", ok);
     song.rec = 0;
     memcpy(before, t->step, sizeof before);
     tap_k(7);
@@ -4881,7 +4894,7 @@ static int test_bughunt_ui2(void)
         ok = str_eq(proj_name, "OLD");
         project_rename(2, "ELSE");
         ok &= str_eq(proj_name, "OLD");                               /* another slot: the music's name stays */
-        press(B_EDIT);                                                /* rename B on the slot list */
+        press(B_OCTDN);                                               /* rename B on the slot list */
         while (nm.len) { nm_do(NB_DEL); }
         nm_white(13); frames(900);
         str_cpy(nm.s, "NEW", sizeof nm.s); nm.len = nm.cur = 3; nm.key = 0;
@@ -6848,7 +6861,7 @@ static int test_seq_tools(void)
     ok &= tl_count(TSEL, DV_TOM) >= 1u && tl_lanes_of(TSEL, DV_KICK) == 0x1111u;
     bad += check("  A4 / G4 / C5: the lane reversed (its accents with it), cleared, at random; the others stay", ok);
     a = leds_at(0); b2 = leds_at(250);
-    ok = ((a ^ b2) >> white(0)) & 1u && ((a ^ b2) >> white(11)) & 1u && !(((a | b2) >> white(7)) & 1u) &&
+    ok = ((a ^ b2) >> white(0)) & 1u && ((a ^ b2) >> white(11)) & 1u && ((a ^ b2) >> white(7)) & 1u &&
          ((a & b2) >> black(DV_TOM)) & 1u && ((a ^ b2) >> black(0)) & 1u && !(((a | b2) >> black(8)) & 1u);
     btn_up(B_SEQ); frame();
     ui_power_on();
@@ -7074,8 +7087,8 @@ static int test_layer_lock(void)
         go_page(GR_ROLL); frame();
         ui.cursor = 0;
         press(B_EDIT); press(B_EDIT); frames(100);
-        bad += check("  EDIT on STEP (it clears the step): two quick taps clear two steps, no lock",
-                     !ui.lock && !ui.layer && ui.cursor == 2u && t->step[0].time == ST_REST);
+        bad += check("  EDIT on STEP: two quick taps lock the EDIT layer, no step clear",
+                     ui.lock == LAYER_EDIT && t->step[0].time == ST_NOTE);
     }
     return bad;
 }
@@ -9144,7 +9157,7 @@ static int test_help(void)
     frames(2200);
     ok &= ui.help_t == 0u;
     press(B_SAVE);
-    ok &= ui.help_t > 0u && cur_page()->graph == GR_USER && str_eq(help_page(), "[K1]SLOT[OCT+]SAVE[SAVE]PRESETS");
+    ok &= ui.help_t > 0u && cur_page()->graph == GR_USER && str_eq(help_page(), "[K1]SLOT[OCT-]NAME[SAVE]PRESETS");
     press(B_HOME);
     ok &= ui.home && ui.help_t > 0u && str_eq(help_page(), H_HOME);
     menu_put(MI_HOME, HV_LEVELS);

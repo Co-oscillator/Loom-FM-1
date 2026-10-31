@@ -114,6 +114,17 @@ Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware v
   (everything but the FM6 voice bank: keep its .syx file);
   return to the official firmware; Felucca itself running in the browser
 
+## New in 1.8.4.4
+
+- **EDIT is a page button again.** Tapping EDIT always opens the EDIT page (or locks its layer on a double tap); it no longer clears a step, deletes an automation row, resets DETAIL or renames a slot.
+- **New shortcuts for the old EDIT actions:**
+  - **SEQ TOOLS > CLR STEP** (G4) clears the cursor step and its locks, then moves to the next step. It is one undo (SAVE held).
+  - **AUTOMATION:** **OCT+ twice** on the selected row deletes it (the existing gesture, now the only one).
+  - **DETAIL:** **OCT-** resets the held / cursor steps' CHANCE, RATCH, NUDGE and VEL.
+  - **SAVE > USER / PROJECT:** **OCT-** renames the selected slot.
+- **The DRUM track's EDIT picker shows one DRUM cell** (track 5 is DRUM-only) instead of 13 identical DRUM cells.
+- **HELP** hints name the new gestures.
+
 ## New in 1.8.4.3
 
 - **DRUM kits ANLG / FM render one lane per voice.** The Loom drum voices used to render the whole kit once per sounding voice, so eight lanes played eight copies, the envelopes ran eight times too fast and a muted lane silenced the whole kit. Each voice now renders its own lane; the kit's level, decay and lane mutes are correct.

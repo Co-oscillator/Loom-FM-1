@@ -4,6 +4,7 @@
  * keys from F3 (TL_*):
  *   F3 CLEAR  G3 REVERSE  A3 SHIFT <  B3 SHIFT >       the whole sequence
  *   C4 RANDOM D4 COOK     E4 BEAT (DRUM)                 new / a little changed
+ *   G4 CLR STEP                                         the cursor step and its locks (1.8.4.4: EDIT's old job)
  *   G4 CLEAR  A4 REVERSE  B4 FILL  C5 RANDOM             the selected lane (DRUM: ui.lane, black keys 1..8 pick it)
  * Each works on the selected track's steps 1..LEN (the steps past LEN stay) and is one undo: SAVE held swaps back
  * the copy taken just before it (ui.c undo, UNDO_PAT; unlike a load the track's automation stays), so after a few
@@ -11,8 +12,8 @@
  * A step that held something and is empty after loses its locks (as EDIT's step clear); REVERSE and SHIFT move the
  * steps' automation and locks with them. RANDOM and COOK draw from libc.c rng(): no seed is kept, each press
  * differs. A sequence of ties reversed keeps its note first: N T T -> N T T at the mirrored place */
-enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_BEAT, TL_GAP, TL_LCLR, TL_LREV, TL_LFILL, TL_LRND,
-       TL_N };
+enum { TL_CLEAR, TL_REV, TL_LEFT, TL_RIGHT, TL_RANDOM, TL_COOK, TL_BEAT, TL_CLRSTEP, TL_LCLR, TL_LREV, TL_LFILL,
+       TL_LRND, TL_N };
 
 /* the track as the layer opened (OCT-): in the pool (RAM's .bss is tight), taken by layer_opened */
 static struct { step_t step[NSTEP]; motion_store_t mo; } tl_open __attribute__((section(".pool")));
@@ -22,7 +23,7 @@ static uint32_t tl_rnd(uint32_t n) { return n ? rng() % n : 0u; }
 static int tl_gate(const step_t *s) { return s->time == ST_NOTE && s->n; }
 static uint32_t tl_lane(const step_t *s, uint32_t l) { return (step_lanes(s) >> l) & 1u; }
 /* place p's action is there for this track (the lane row and BEAT: DRUM only) */
-static int tl_cell(const track_t *t, uint32_t p) { return p < TL_N && p != TL_GAP && (p < TL_BEAT || drum_track(t)); }
+static int tl_cell(const track_t *t, uint32_t p) { return p < TL_N && (p < TL_BEAT || p == TL_CLRSTEP || drum_track(t)); }
 
 /* the undo copy of t as it is now (ui.c load_begin, but the automation is copied and stays): one action */
 static void tl_undo_take(track_t *t)
@@ -339,6 +340,19 @@ static const char *tl_do(track_t *t, uint32_t p, uint32_t l)
     int drum = drum_track(t);
     const char *msg = 0;
     l %= NLANE;
+    if (p == TL_CLRSTEP) {                              /* the cursor step and its locks, one undo */
+        const step_t *s = &t->step[ui.cursor];
+        if (s->time == ST_REST && !s->hit && !(motion_lock_steps(trk_index(t)) & (1ull << ui.cursor))) {
+            ui_message("NOTHING TO CLEAR");
+            return 0;
+        }
+        step_undo_take(t, 0);
+        step_clear(&t->step[ui.cursor]);
+        motion_clear_locks(t, ui.cursor);
+        cursor_set(ui.cursor + 1);                      /* (as EDIT did: on to the next step) */
+        motion_undo_done(t);
+        return "STEP CLEARED";
+    }
     if (p == TL_COOK) {                                 /* (nothing there: nothing to cook, no undo copy) */
         for (i = 0; i < len; i++)
             n += drum ? (uint32_t)__builtin_popcount(step_lanes(&t->step[i])) : (uint32_t)tl_gate(&t->step[i]);

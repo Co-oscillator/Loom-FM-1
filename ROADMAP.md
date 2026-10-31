@@ -6,13 +6,13 @@ Phase 2 product scope is intentionally left open until it is defined.
 
 ## Current state
 
-- Device firmware: **v1.8.4.3** (built; flash + hardware checklist pending)
+- Device firmware: **v1.8.4.4** (built; flash + hardware checklist pending)
 - Repository: `main` at `a99b49b` (v1.8.4.2 package built)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- v1.8.4.3 package: **built** (`build/loom-groovebox-1.8.4.3.fswc`); v1.8.4.2 was flashed.
+- v1.8.4.4 package: **built** (`build/loom-groovebox-1.8.4.4.fswc`); v1.8.4.3 was flashed.
 - Web workbench/updater: **v1.8.4.2 published to `gh-pages`**.
 - Hardware validation: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md) (delta; v1.8.4.2 still applies).
 - Legacy suites: **green** — `fun10_test`, `motion_test`, `upreset_test`, `drum_test`.
@@ -59,7 +59,13 @@ still green.
 - [x] Write the FUN11 format/migration spec: [`docs/FUN11-FORMAT.md`](docs/FUN11-FORMAT.md).
 - [ ] Widen the motion record to five tracks (FUN11: the place byte has two track bits today).
 
-## 4. FUN11 — the fifth track joins SONG
+## 4. Backlog (after FUN11)
+
+- **Modulator learn (LFO / ENV):** hold LFO or ENV, turn the knob of the parameter on the active page, release to assign that parameter as the modulator's destination. It replaces the fixed destination list and works for any knob-bearing page (FX, engine, etc.). Design note: [`docs/MIDI-LEARN.md`](docs/MIDI-LEARN.md).
+- **ANLG kit character:** tune the default punch/snap/brightness after the next listening pass.
+- **Remaining red suites:** `midi_control_test`, `fm4_test` / `fm4_div0_test`, `fm_sample`, `theme_test` (gfx include).
+
+## 5. FUN11 — the fifth track joins SONG
 
 The README’s SONG section states: “The DRUM track joins SONG with the next chain
 format.” That is the FUN11 gate.
@@ -87,7 +93,7 @@ format.” That is the FUN11 gate.
 - [ ] Keep the existing FUN10/older reads and the dedicated fifth track’s
       migration rules.
 
-## 5. Web editor (`web/editor.html`)
+## 6. Web editor (`web/editor.html`)
 
 - [ ] Teach the editor this firmware’s 114-parameter table so its grouped pages
       (ENV, ARP, …) return instead of one flat list; add the new ENV pages and
@@ -98,7 +104,7 @@ format.” That is the FUN11 gate.
 - [ ] Installer: the progress bar is fixed; the “device did not come back”
       false failure after a successful flash is still unfixed.
 
-## 6. Loom Groovebox / Android (separate repository)
+## 7. Loom Groovebox / Android (separate repository)
 
 Status from the v1.7 notes; re-check the separate repository before starting.
 
@@ -109,7 +115,7 @@ Status from the v1.7 notes; re-check the separate repository before starting.
 - [ ] Launchkey testing.
 - [ ] Pitch-tracker melody sequencer.
 
-## 7. Phase 2 — product features
+## 8. Phase 2 — product features
 
 Not yet specified in this repository. Add the agreed phase-2 scope here before
 starting implementation so the test/release gates stay explicit.

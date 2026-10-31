@@ -1720,37 +1720,9 @@ static void layer_lock_input(uint32_t pressed);
 static int page_tap(uint32_t b)
 {
     uint32_t f;
-    if (b == B_EDIT && song.seq_mode && !ui.home && cur_page()->graph == GR_ROLL) {   /* STEP: EDIT clears the step */
-        uint64_t held = lock_held();
-        if (chain_busy()) {
-            ui_message("STOP TO EDIT");
-            return 1;
-        }
-        if (held) {                                     /* a step held: its locks (the step stays) */
-            lock_clear(held);
-            return 1;
-        }
-        step_clear(&TSEL->step[ui.cursor]);
-        (void)motion_clear_locks(TSEL, ui.cursor);
-        cursor_set(ui.cursor + 1);
-        ui_message("STEP CLEARED");
-        return 1;
-    }
-    if (b == B_EDIT && !ui.home && cur_page()->graph == GR_EVENTS) {   /* AUTOMATION: EDIT deletes the row's record */
-        ev_delete();
-        return 1;
-    }
-    if (b == B_EDIT && detail_on()) {                    /* DETAIL (1.5.1): the step's CHANCE RATCH NUDGE VEL back */
-        if (chain_busy())
-            ui_message("STOP TO EDIT");
-        else
-            sd_reset();
-        return 1;
-    }
-    if (b == B_EDIT && !ui.home && (cur_page()->graph == GR_USER || cur_page()->graph == GR_SLOTS)) {
-        name_rename();                                  /* SAVE > USER / PROJECT: EDIT renames the slot */
-        return 1;
-    }
+    /* EDIT is a page button now: its old actions moved to SEQ TOOLS > CLR STEP (the cursor step and its
+     * locks), AUTOMATION's OCT+ twice (delete the row), DETAIL's OCT- (reset its four fields), and
+     * USER / PROJECT's OCT- (rename the slot). */
     for (f = FAM_HOME + 1u; f < FAM_COUNT; f++)        /* (GLO SEQ SAVE ..: HOME is ui_input's, home_tap) */
         if (FAM_BTN[f] == b && b != B_HOME) {
             open_family(f);
@@ -2109,7 +2081,7 @@ static void ui_input(void)
         case B_OCTDN:
         case B_OCTUP: {
             uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
-            if (act_cols() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); SET layers: OCT-; */
+            if (act_cols() || detail_on() || layer_set_open() || ui.ml.on)   /* action pages: enter / back (below); DETAIL: OCT- resets; SET layers: OCT-; */
                 break;                                  /* MIDI LEARN: clear / done (below) */
             if ((fm1_in.buttons & both) == both) {
                 song.octave = 0;
@@ -2139,6 +2111,18 @@ static void ui_input(void)
     for (id = 0; b; id++, b >>= 1)
         if (b & 1u)
             page_tap(panel_btn_of(id));
+    if (oct && !ui.menu && !ui.confirm && !ui.layer && !name_on()) {
+        if ((oct & 1u) && detail_on()) {                /* DETAIL: the held / cursor steps' four fields back */
+            if (chain_busy())
+                ui_message("STOP TO EDIT");
+            else
+                sd_reset();
+            oct &= ~1u;
+        } else if ((oct & 1u) && (cur_page()->graph == GR_USER || cur_page()->graph == GR_SLOTS)) {
+            name_rename();                              /* SAVE > USER / PROJECT: OCT- names the slot */
+            oct &= ~1u;
+        }
+    }
     if (act_cols() && (oct & 2u)) {                     /* action pages: OCT+ does the picked action, */
         act_do();
     } else if (act_cols() && (oct & 1u)) {              /* OCT- drops it, or (none picked) goes HOME */
