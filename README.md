@@ -21,6 +21,8 @@
 
 Current release, test and FUN11 planning: [`ROADMAP.md`](ROADMAP.md). Hardware validation for v1.8.4.3: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md).
 
+> **Hardware caution — read before flashing.** The FM-1 has **no recovery button**. A normal reboot is safe, but **do not move the laptop, the FM-1, or the USB cable during a flash**. An interrupted write can leave the unit black and absent from USB (`Felucca`, `WL80UBOOT` and `4C4A:8057` all missing); software cannot recover that state, and the documented recovery needs the [FM-1 Transporter](https://github.com/kurogedelic/FM-1-transporter) wired to the USB data lines. **Opening the case can tear the small SMD power switch off the board** — the external slider engages it directly. Back up projects first, and keep the unit still until the install says done. A real failure and photos are documented in [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
+
 ---
 
 ## Upstream Felucca Documentation & Reference
@@ -476,9 +478,17 @@ the FM-1 can be brought back:
 
 - First try another USB data cable, and close every other app that uses MIDI, then run the web installer again.
 - If it stays in boot mode, [FM-1 Transporter](https://github.com/kurogedelic/FM-1-transporter) reads and
-  writes the FM-1's flash from a Mac through a Seeed XIAO RP2040 (three wires to the FM-1's USB lines). Back up
-  the flash first, then write the official firmware (M-VAVE's FM-1.fwsc).
-- Questions: [Issues](https://github.com/hugelton/Felucca/issues).
+  writes the FM-1's flash from a Mac through a Seeed XIAO RP2040 or Raspberry Pi Pico (three wires to the FM-1's
+  USB D+/D-/GND; **do not connect VBUS**). Back up the flash first, then write the official firmware
+  (M-VAVE's FM-1.fwsc).
+- If no USB device appears at all, the normal installer cannot help: the loader is not enumerating and the ROM
+  boot mode has not presented itself. The Transporter is the documented recovery.
+- **Do not open the case just to "check" the board.** The external power slider engages a small SMD switch; lifting
+  the board can tear the switch off. If you do open it, move the slider to the least-engaged position and lift evenly.
+  See [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md) for the failure this caused on a real unit.
+
+The FM-1 has no hardware recovery button. A normal reboot is safe; the dangerous case is losing the cable during a
+write. Keep the laptop and unit still until the installer reports done.
 
 ## Support
 

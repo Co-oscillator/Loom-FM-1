@@ -135,3 +135,8 @@ cd /tmp/felucca-site && python3 -m http.server 8000
 
 Installing firmware is at your own risk. If an install fails and the FM-1 no longer
 starts, recovery needs [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter).
+
+> **Do not move the laptop or disturb the USB cable while a flash is writing.** The FM-1 has no recovery button;
+> an interrupted write can leave it black and non-enumerating. Also, the case is not designed for disassembly:
+> the external power slider engages a small SMD switch, and lifting the board can tear the switch off.
+> See [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
