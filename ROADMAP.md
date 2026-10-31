@@ -6,15 +6,15 @@ Phase 2 product scope is intentionally left open until it is defined.
 
 ## Current state
 
-- Device firmware: **v1.8.4.4** (built; flash + hardware checklist pending)
-- Repository: `main` at `a99b49b` (v1.8.4.2 package built)
+- Device firmware: **none** — the FM-1 was lost during the v1.8.4.4 flash (interrupted write, then the power switch was torn off during the recovery attempt). Hardware validation is paused; see [`docs/HARDWARE-FAILURE.md`](docs/HARDWARE-FAILURE.md).
+- Repository: `main` at `c3f6f25` (v1.8.4.4 published; hardware caution added)
 - Host tests:
   - `tests/project_test.c`: **passing**
   - `tests/regress.c`: **passing** (goldens, health, voices/routing, CPU budget)
   - `tests/ui_test.c`: **passing**
-- v1.8.4.4 package: **built** (`build/loom-groovebox-1.8.4.4.fswc`); v1.8.4.3 was flashed.
-- Web workbench/updater: **v1.8.4.2 published to `gh-pages`**.
-- Hardware validation: [`docs/VALIDATION-1.8.4.3.md`](docs/VALIDATION-1.8.4.3.md) (delta; v1.8.4.2 still applies).
+- v1.8.4.4 package: **built and published** (`build/loom-groovebox-1.8.4.4.fswc`); not flashed (the unit failed during the attempt).
+- Web workbench/updater: **v1.8.4.4 published to `gh-pages`**.
+- Hardware validation: **paused** (no working unit). The checklist remains at [`docs/VALIDATION-1.8.4.4.md`](docs/VALIDATION-1.8.4.4.md).
 - Legacy suites: **green** — `fun10_test`, `motion_test`, `upreset_test`, `drum_test`.
 
 ## 1. Finish the visual/test pass (release gate for v1.8.4)
