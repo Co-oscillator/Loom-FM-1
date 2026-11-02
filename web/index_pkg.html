@@ -32,6 +32,7 @@
   <h1>Felucca</h1>
   <p data-t="intro"></p>
   <p data-t="warn"></p>
+  <p class="small" data-t="firstFlash"></p>
   <p class="small" data-t="direct"></p>
   <p class="small" data-t="beta"></p>
   <p class="small"><span data-t="brick"></span>
@@ -63,6 +64,7 @@ const TEXT = {
   ja: {
     intro: "FM-1 を USB で接続してください。（Chrome か Edge で使えます）",
     warn: "書き込み中は USB を抜かないでください。",
+    firstFlash: "初回インストール（公式ファームウェアから）は書き込みローダーも更新します。先にバックアップしてください。以降のアップデートはアプリだけを書き換えるため、リスクは低くなります。アップデート中は画面が赤です（抜かないでください）。緑になれば安全です。",
     install: "インストール", other: "English",
     editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
     direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
@@ -94,6 +96,7 @@ const TEXT = {
   en: {
     intro: "Connect the FM-1 by USB. (Works in Chrome or Edge.)",
     warn: "Do not unplug the USB cable while writing.",
+    firstFlash: "The first install (from stock firmware) also rewrites the update loader — back up first. Later updates change only the app, so they are lower risk. During an update the FM-1 screen is red (do not unplug); green means it is safe.",
     install: "Install", other: "日本語",
     editor: "Editor (after installing: edit sounds and sequences from the computer)",
     direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",

@@ -13,6 +13,12 @@
 #define FELUCCA_OTA_DRYRUN 0
 #define FELUCCA_USB_PID 0x0002
 #define FELUCCA_ID "ota-FM-1_900"
+/* Loader interface contract (see docs/HARDWARE-FAILURE.md): bump only when a
+ * package needs something the installed loader cannot do (app region, package
+ * format, chip key, update protocol, boot handoff). App-content-only releases
+ * leave it alone, so the loader binary is never rewritten for them. */
+#define LDR_ABI 1
+#define LDR_RECONNECT_TIMEOUT_MS 30000u        /* no host for this long -> mask-ROM UBOOT */
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
 #include "fm1_time.h"
 #include "fm1_sys.h"
@@ -20,6 +26,7 @@
  * [0x97000, 0xE0000) (user data, never a record: ldr_core.c) */
 #define FL_RANGE_OK(off, n) (FL_IN(off, n, 0x4000u, 0x97000u) || FL_IN(off, n, 0xE0000u, 0xFC000u))
 #include "fm1_flash.h"
+#include "ldr_lcd.h"
 #include "../src/libc.c"
 #include "../src/usb.c"
 
@@ -77,10 +84,55 @@ static void ldr_progress(uint32_t done, uint32_t total) { (void)done; (void)tota
 
 extern uint32_t _bss_start[], _bss_end[];
 
+/* the host vanished mid-write (unplugged, or its updater closed): the bus went
+ * idle. usb.suspended is set ~100 ms after the SOF frames stop; !usb.config
+ * means a bus reset (a replug or the host dropped the device). */
+static int ldr_usb_lost(void)
+{
+    return usb.suspended || !usb.config;
+}
+
+/* flashing red + "RECONNECT" until the host resumes, or the mask-ROM UBOOT
+ * recovery (the Transporter path) after LDR_RECONNECT_TIMEOUT_MS. */
+static void ldr_reconnect(void)
+{
+    uint32_t t0 = ldr_ms(), last = 0, on = 0;
+    ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_RED);
+    ldr_lcd_text(66, 104, "RECONNECT", LDR_LCD_WHITE);
+    for (;;) {
+        ldr_poll();
+        usb_retry(ldr_ms());
+        if (usb.uboot_req) {
+            usb_detach();
+            fm1_delay_ms(30);
+            fm1_enter_uboot();
+        }
+        ota_service();
+        if (usb.ota_req)
+            return;                              /* the host resumed: caller re-runs ldr_session */
+        if (ldr_ms() - last >= 400u) {
+            last = ldr_ms();
+            on = !on;
+            if (on) {
+                ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_RED);
+                ldr_lcd_text(66, 104, "RECONNECT", LDR_LCD_WHITE);
+            } else {
+                ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_BLACK);
+            }
+        }
+        if (ldr_ms() - t0 > LDR_RECONNECT_TIMEOUT_MS)
+            fm1_enter_uboot();                   /* documented recovery: force mask-ROM UBOOT */
+    }
+}
+
 void ldr_main(void)
 {
+    int rc;
     fm1_wdt_arm(0x0D);                              /* ~8 s, fed by ldr_poll */
     fm1_time_init();
+    ldr_lcd_init();                                 /* red before USB even enumerates */
+    ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_RED);
+    ldr_lcd_text(72, 104, "UPDATING", LDR_LCD_WHITE);
     usb_start();
     for (;;) {
         ldr_poll();
@@ -91,14 +143,23 @@ void ldr_main(void)
             fm1_enter_uboot();
         }
         ota_service();                              /* handshake */
-        if (usb.ota_req) {
-            usb.ota_req = 0;
-            if (ldr_session() == 0) {
-                fm1_delay_ms(200);                  /* the "success" reply leaves */
-                usb_detach();
-                fm1_delay_ms(500);                  /* let the host see the disconnect before the reset */
-                fm1_core_reset();                   /* the SPL boots the new app */
-            }
+        if (!usb.ota_req)
+            continue;
+        usb.ota_req = 0;
+        rc = ldr_session();
+        if (rc == 0) {
+            ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_GREEN);
+            ldr_lcd_text(96, 104, "DONE", LDR_LCD_BLACK);
+            fm1_delay_ms(1500);                     /* let the user see green before the reset */
+            usb_detach();
+            fm1_delay_ms(500);                      /* let the host see the disconnect before the reset */
+            fm1_core_reset();                       /* the SPL boots the new app */
+        }
+        if (ldr_usb_lost())
+            ldr_reconnect();
+        else {
+            ldr_lcd_fill(0, 0, 240, 240, LDR_LCD_RED);
+            ldr_lcd_text(84, 104, "FAILED", LDR_LCD_WHITE);
         }
     }
 }

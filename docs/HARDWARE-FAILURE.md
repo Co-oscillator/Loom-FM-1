@@ -71,6 +71,31 @@ blocks that path.
   available to the owner. The FM-1 is one of the few hackable devices in this
   class, which makes the missing recovery path more significant, not less.
 
+## Safety improvements since this failure
+
+The update loader has been hardened so a cable pull or a stalled host no longer
+leaves the unit in an ambiguous state:
+
+- **Red/green screen.** The loader now drives the panel: solid red while the
+  update is in flight (do not disconnect), solid green only after every sector
+  is written, verified and the update record cleared (safe). The running
+  firmware shows the same red screen before it hands off to the loader, so the
+  whole update is visibly "unsafe" until it is done.
+- **Flashing red "RECONNECT".** If the host disappears mid-write, the loader
+  stops writing, flashes the red screen, and waits for the host to resume (the
+  update record is kept, so a re-run finishes the install). After 30 seconds
+  with no host it drops into the mask-ROM UBOOT recovery path on its own.
+- **App-only writes, head untouched.** The loader still writes only the app
+  area and never the flash head (SPL / `isd_config`), and it verifies the whole
+  package before erasing anything. A damaged, truncated or foreign-key package
+  is refused with nothing erased.
+- **Frozen loader.** `LDR_ABI` marks the loader's interface contract. The loader
+  code is the same frozen bytes in every release (it is staged fresh on each
+  update, because it is erased after a successful boot), and it still writes
+  only the app area, never the flash head. Only the first install (stock →
+  Loom) first brings the Loom loader onto the device; later updates change only
+  the app.
+
 ## Warnings for other users
 
 - **Do not move the laptop, the FM-1, or the USB cable during a flash.** Put the
@@ -86,6 +111,9 @@ blocks that path.
   `4C4A:8057` first. If it is absent, the normal installer cannot help; the
   Transporter is the documented recovery.
 - **A normal reboot is not the risk.** The risk is an interrupted write.
+- **Watch the screen.** Newer loaders show red while writing, green when done,
+  and a flashing red "RECONNECT" if the cable comes loose. Green is the only
+  "safe to unplug" signal.
 
 ## Status
 
