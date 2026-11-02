@@ -193,7 +193,18 @@ if (typeof registerProcessor === "function") {
         this.sentWrites = writes;
         msg.sectors = storeSectors(new Uint8Array(mem, ex.web_nor(), ex.web_nor_size()));
       }
-      if (msg.leds || msg.fb || msg.sectors || msg.load !== undefined) this.port.postMessage(msg, transfer);
+      // MIDI out: the firmware's queued USB-MIDI packets (CIN, status, d1, d2), drained here and sent
+      // by the page to a Web MIDI output. A packet is never 0: its low byte is the cable/CIN.
+      const mo = [];
+      if (ex.web_midi_out) {
+        for (let i = 0; i < 64; i++) {
+          const p = ex.web_midi_out();
+          if (!p) break;
+          mo.push([p & 0xff, (p >> 8) & 0xff, (p >> 16) & 0xff, (p >> 24) & 0xff]);
+        }
+      }
+      if (mo.length) msg.midi_out = mo;
+      if (msg.leds || msg.fb || msg.sectors || msg.midi_out || msg.load !== undefined) this.port.postMessage(msg, transfer);
     }
 
     // A click's down and up can arrive within one render quantum, but the FM-1's contacts never close for less than
