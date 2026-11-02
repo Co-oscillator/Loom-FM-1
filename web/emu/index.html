@@ -84,6 +84,23 @@ kbd { font: 600 11px ui-monospace, Menlo, monospace; border: 1px solid var(--rul
 footer { margin-top: 12px; font-size: 12px; }
 footer nav a { margin: 0 6px; }
 footer small { font-size: 11px; opacity: .8; }
+/* MIDI performance: XY pad + control-surface bridge */
+.perf-panel { display: flex; gap: 16px; align-items: stretch; margin: 14px 0 0; padding: 14px;
+              background: #1d1d1f; border: 1px solid #2c2c2e; border-radius: 16px; color: #ececee; }
+.perf-xy-wrap { position: relative; flex: 0 0 auto; }
+#xy-pad { width: 220px; height: 220px; border-radius: 14px; background: #111; border: 1px solid #3a3a3e;
+          touch-action: none; cursor: crosshair; display: block; }
+.perf-xy-cap { position: absolute; left: 10px; top: 8px; font-size: 10px; letter-spacing: 1px; color: #8e8e93; pointer-events: none; }
+.perf-side { flex: 1 1 auto; min-width: 220px; display: flex; flex-direction: column; gap: 9px; }
+.perf-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: #5fe08a; font-weight: 700; }
+.perf-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d6d6d8; }
+.perf-line select, .perf-line input[type=number] { background: #141415; color: #ececee; border: 1px solid #3a3a3e;
+              border-radius: 8px; padding: 6px 8px; font: inherit; }
+.perf-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.perf-row label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c7c7cc; }
+.perf-hint { font-size: 11.5px; line-height: 1.5; color: #9a9a9e; }
+@media (max-width: 700px) { .perf-panel { flex-direction: column; } #xy-pad { width: 100%; height: auto; aspect-ratio: 1; } }
+
 /* Loom Workbench Navigation & Panels */
 .wb-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
           background: #1d1d1f; color: #ececee; padding: 10px 16px; border-radius: 14px; margin-bottom: 16px;
@@ -666,6 +683,27 @@ footer small { font-size: 11px; opacity: .8; }
   <span><kbd>←</kbd> <kbd>→</kbd> ALGORITHM</span>
   <span><kbd>Shift</kbd>-click holds a button</span>
 </p>
+
+<!-- MIDI PERFORMANCE: XY pad + control-surface bridge -->
+<section class="perf-panel" aria-label="MIDI performance">
+  <div class="perf-xy-wrap">
+    <canvas id="xy-pad" width="240" height="240" aria-label="XY modulation pad. Drag to send CC X/Y."></canvas>
+    <div class="perf-xy-cap">XY MOD</div>
+  </div>
+  <div class="perf-side">
+    <div class="perf-title">MIDI link</div>
+    <label class="perf-line">Out
+      <select id="midi-out"><option value="">(no output)</option></select>
+    </label>
+    <div class="perf-row">
+      <label>X CC <input id="xy-cc-x" type="number" min="0" max="127" value="74"></label>
+      <label>Y CC <input id="xy-cc-y" type="number" min="0" max="127" value="71"></label>
+    </div>
+    <label class="perf-line"><input type="checkbox" id="ctl-surface"> Control surface (FM-1 → app)</label>
+    <div class="perf-hint">Drag the pad: CCs go to the emulated FM-1 (and the MIDI out above). Default 74 = cutoff, 71 = resonance.</div>
+    <div class="perf-hint" id="perf-ctl-hint" hidden></div>
+  </div>
+</section>
 
 <!-- PARAMETER QUICK-INSPECT BAR (UNDERNEATH EMULATED FM-1) -->
 <nav class="wb-nav wb-nav-inspect" aria-label="Loom Parameter Quick-Inspect Bar">
@@ -1356,10 +1394,51 @@ function build(name) {
 }
 
 // ------------------------------------------------------------------ input
+// ---- MIDI out + control-surface state (runs before build() first calls syncButtons) ----
+let midiAccess = null, midiOutPort = null;
+let ctlSurface = false, lastCtlBtn = 0, lastCtlKey = 0;
+const ctlKnobVal = [64, 64, 64, 64];
+const CTL_BTN_CC = { FX: 102, HOME: 103, SAVE: 104, ENV: 105, LFO: 106, EDIT: 107, GLO: 108, ARP: 109, PLAY: 110, REC: 111 };
+function midiSend(status, d1, d2) {
+  if (!midiOutPort) return;
+  try { midiOutPort.send([status & 0xFF, d1 & 0x7F, d2 & 0x7F]); } catch {}
+}
+function midiSendPacket(p) {                    // [cable/CIN, status, d1, d2] from the firmware
+  if (!midiOutPort) return;
+  const cin = p[0] & 0x0F;
+  if (cin >= 0x2 && cin <= 0xE) midiSend(p[1], p[2], p[3]);
+  else if (cin === 0xF) { try { midiOutPort.send([p[1] & 0xFF]); } catch {} }
+}
+function ctlButtons(m) {
+  if (!ctlSurface) { lastCtlBtn = m; return; }
+  for (const b of buttons) {
+    const on = !!(m & (1 << b.bit)), was = !!(lastCtlBtn & (1 << b.bit));
+    if (on !== was) {
+      const cc = CTL_BTN_CC[(b.name || "").split(" ")[0]];
+      if (cc) midiSend(0xB0, cc, on ? 127 : 0);
+    }
+  }
+  lastCtlBtn = m;
+}
+function ctlKeys(m) {
+  if (!ctlSurface) { lastCtlKey = m; return; }
+  for (let i = 0; i < 27; i++) {
+    const on = !!(m & (1 << i)), was = !!(lastCtlKey & (1 << i));
+    if (on !== was) { const n = 53 + i; if (on) midiSend(0x90, n, 100); else midiSend(0x80, n, 0); }
+  }
+  lastCtlKey = m;
+}
+function ctlKnob(role, n) {
+  if (!ctlSurface || role < 3 || role > 6) return;
+  const idx = role - 3;
+  const cc = (btnMask & (1 << 1) ? 26 : 22) + idx;    // SCL held: the shifted bank
+  ctlKnobVal[idx] = Math.max(0, Math.min(127, ctlKnobVal[idx] + n * 4));
+  midiSend(0xB0, cc, ctlKnobVal[idx]);
+}
 function syncButtons(redraw) {
   let m = latched;
   for (const b of btnBy.values()) m |= 1 << b;
-  if (m !== btnMask) { btnMask = m; send({ type: "buttons", mask: m }); }
+  if (m !== btnMask) { ctlButtons(m); btnMask = m; send({ type: "buttons", mask: m }); }
   else if (!redraw) return;
   for (const b of buttons) {
     const on = !!(m & (1 << b.bit));
@@ -1371,7 +1450,7 @@ function syncButtons(redraw) {
 function syncKeys(redraw) {
   let m = 0;
   for (const k of keyBy.values()) m |= 1 << k;
-  if (m !== keyMask) { keyMask = m; send({ type: "keys", mask: m }); }
+  if (m !== keyMask) { ctlKeys(m); keyMask = m; send({ type: "keys", mask: m }); }
   else if (!redraw) return;
   keys.forEach((k, i) => k.g.classList.toggle("held", !!(m & (1 << i))));
 }
@@ -1414,6 +1493,7 @@ function turn(k, n) {
   } else {
     angle[k.name] = (angle[k.name] + n * 18) % 360;            // 20 detents a turn
     send({ type: "enc", role: k.role, n });
+    ctlKnob(k.role, n);
   }
   drawKnob(k);
 }
@@ -1554,19 +1634,104 @@ function saveFlash(sectors) {
 async function midiOn() {
   if (!navigator.requestMIDIAccess) return;
   try {
-    const access = await navigator.requestMIDIAccess();
+    midiAccess = await navigator.requestMIDIAccess();
     const bind = () => {
-      for (const input of access.inputs.values()) {
+      for (const input of midiAccess.inputs.values()) {
         input.onmidimessage = (e) => {
           const d = e.data;
           if (d.length >= 2 && d[0] >= 0x80 && d[0] < 0xF0) send({ type: "midi", data: [d[0], d[1], d[2] || 0] });
         };
       }
+      bindMidiOuts();
     };
-    access.onstatechange = bind;
+    midiAccess.onstatechange = bind;
     bind();
+    const sel = document.getElementById("midi-out");
+    if (sel) sel.addEventListener("change", () => {
+      midiOutPort = midiAccess.outputs.get(sel.value) || null;
+    });
   } catch { /* no permission: the panel only */ }
 }
+
+// fill the output picker; keep the chosen port, else take the first one (the FM-1 when it is the only one)
+function bindMidiOuts() {
+  const sel = document.getElementById("midi-out");
+  if (!sel || !midiAccess) return;
+  const outs = [...midiAccess.outputs.values()];
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">(no output)</option>' +
+    outs.map((o) => `<option value="${o.id}">${o.name || o.id}</option>`).join("");
+  const pick = outs.find((o) => o.id === cur) || outs[0] || null;
+  sel.value = pick ? pick.id : "";
+  midiOutPort = pick;
+}
+
+// ---- XY modulation pad: CCs to the emulated FM-1 and to the MIDI out ----
+(function initXY() {
+  const cv = document.getElementById("xy-pad");
+  if (!cv) return;
+  const ctx = cv.getContext("2d"), W = 240, H = 240;
+  const paint = (x, y) => {
+    ctx.fillStyle = "#111"; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#2c2c2e"; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      ctx.beginPath(); ctx.moveTo(i * W / 4, 0); ctx.lineTo(i * W / 4, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * H / 4); ctx.lineTo(W, i * H / 4); ctx.stroke();
+    }
+    if (x !== null) {
+      ctx.strokeStyle = "#5fe08a"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      ctx.fillStyle = "#5fe08a"; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+    }
+  };
+  paint(null);
+  const ccs = () => [+document.getElementById("xy-cc-x").value & 127, +document.getElementById("xy-cc-y").value & 127];
+  const emit = (x, y) => {
+    const [cx, cy] = ccs();
+    const vx = Math.round(x / W * 127), vy = Math.round((1 - y / H) * 127);
+    send({ type: "midi", data: [0xB0, cx, vx] });
+    send({ type: "midi", data: [0xB0, cy, vy] });
+    midiSend(0xB0, cx, vx);
+    midiSend(0xB0, cy, vy);
+  };
+  let down = false;
+  const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+  cv.addEventListener("pointerdown", (e) => { e.preventDefault(); down = true; cv.setPointerCapture(e.pointerId); const [x, y] = at(e); paint(x, y); emit(x, y); });
+  cv.addEventListener("pointermove", (e) => { if (!down) return; const [x, y] = at(e); paint(x, y); emit(x, y); });
+  const end = () => {
+    if (!down) return;
+    down = false; paint(null);
+    const [cx, cy] = ccs();
+    send({ type: "midi", data: [0xB0, cx, 64] });
+    send({ type: "midi", data: [0xB0, cy, 64] });
+    midiSend(0xB0, cx, 64);
+    midiSend(0xB0, cy, 64);
+  };
+  cv.addEventListener("pointerup", end);
+  cv.addEventListener("pointercancel", end);
+  cv.addEventListener("lostpointercapture", end);
+})();
+
+// ---- control-surface toggle ----
+(function initCtl() {
+  const chk = document.getElementById("ctl-surface");
+  const hint = document.getElementById("perf-ctl-hint");
+  if (!chk) return;
+  const upd = () => {
+    ctlSurface = chk.checked;
+    lastCtlBtn = btnMask;
+    lastCtlKey = keyMask;
+    if (hint) {
+      hint.hidden = !ctlSurface;
+      hint.innerHTML = ctlSurface
+        ? "Control surface: buttons → CC 102–111, K1–K4 → CC 22–25 (SCL held: 26–29), keys → notes. Pick a MIDI out above."
+        : "";
+    }
+  };
+  chk.addEventListener("change", upd);
+  upd();
+})();
 
 // ------------------------------------------------------------------ switching on & Live Audio Resampler
 let audioCtx = null, resampleActive = false, resampleChunksL = [], resampleChunksR = [], resampleProc = null;
@@ -1666,6 +1831,7 @@ async function switchOn() {
         else if (m.type === "frame") {
           if (m.fb) drawScreen(m.fb);
           if (m.leds) drawLights(lastLeds = m.leds, m.anim);
+          if (m.midi_out) for (const p of m.midi_out) midiSendPacket(p);
           if (m.sectors && !saveFlash(m.sectors) && !warned) {
             warned = true;
             console.warn("Felucca: this browser does not keep the saves; they last until the page closes.");

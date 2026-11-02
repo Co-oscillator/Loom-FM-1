@@ -255,6 +255,8 @@ static void web_power_on(void)
     persist_boot();
     settings_init();
     usb_serial_apply();
+    usb.config = 1;                       /* the emulator has no USB: treat the host as configured so
+                                           * midi_out_event queues (the page polls web_midi_out) */
     lcd_init();
     draw_splash();                        /* main.c: the splash (ui_draw.c) */
     memset(&felucca_dbg, 0, sizeof felucca_dbg);
@@ -394,6 +396,18 @@ EXPORT uint32_t web_midi(uint32_t status, uint32_t d1, uint32_t d2)
     if (status < 0x80u || status >= 0xF0u)
         return 1;
     return (uint32_t)midi_enqueue((status >> 4) | status << 8 | (d1 & 127u) << 16 | (d2 & 127u) << 24, 1);
+}
+/* one queued USB-MIDI event packet from the firmware (notes, CCs, clock), or 0 when the ring is empty.
+ * The page polls this and sends the packet to a Web MIDI output; 0 is never a packet (its low byte is
+ * the cable/CIN, 2..0xE for channel messages and 0xF for clock). */
+EXPORT uint32_t web_midi_out(void)
+{
+    uint32_t pkt;
+    if (mo_r == mo_w)
+        return 0;
+    pkt = midi_out_q[mo_r % MQ];
+    mo_r++;
+    return pkt;
 }
 
 /* the LEDs: bit b = the button labelled b lit (bit 14: PLAY's green), keys bit k; the dim glow and the breath alike */

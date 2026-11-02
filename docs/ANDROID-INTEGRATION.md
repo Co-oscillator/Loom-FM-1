@@ -142,3 +142,21 @@ sides know the mode took; the MENU setting persists it, the handshake overrides 
 - The FM-1 maps them with the existing MIDI-learn (CC 20 → parameter, CC 21 → parameter),
   so feature 1 needs **no new FM-1 code**. A later nicety: a dedicated "XY" parameter pair
   (like the momentary macro) instead of MIDI-learn.
+
+## Test rig (browser emulator)
+
+The workbench has a **MIDI LINK** panel under the device:
+
+- **MIDI out** — pick a Web MIDI output. The emulator forwards the firmware's queued MIDI
+  (`web_midi_out`: notes/CC/clock) plus the control-surface CCs/notes to it. Point the phone's
+  Loom app at the computer's MIDI port (BLE or network MIDI) to test the link.
+- **XY MOD pad** — drag to send CCs to the emulated FM-1 (via `web_midi`) and to the MIDI out.
+  Defaults: X = CC 74 (cutoff), Y = CC 71 (resonance); set them to 20/21 for the reserved
+  contract.
+- **Control surface (FM-1 → app)** — when on, the emulator's buttons emit CC 102–111, K1–K4
+  emit CC 22–25 (SCL held: 26–29), and the keys emit notes F3 (53)..G5 (79), all to the MIDI out.
+
+The emulator implements the control-surface mapping in the page (`web/emu/index.html`), so the
+Android app can be exercised without hardware. The firmware-side emission uses the same CC map
+(`midi_out_event` on the encoder/button/note edges behind a `ctl_surface` flag); that is the next
+step and needs a working FM-1 to validate. The CC map above is the contract both sides share.
