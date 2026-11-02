@@ -23,14 +23,13 @@
         --led-breath-hi: #d8cfb6; --led-breath-slit-hi: #c8c8ca; --led-breath-lo: #aca592; --led-breath-slit-lo: #a1a1a3;
         --led-mid: #9a9a9e; --led-mid-lo: #8a8a8e;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
-/* FM-1 case-color skins: set data-theme on <html> (the skin picker / ?skin=). */
-html[data-theme="white"]    { --body:#f1ede4; --tray:#e6e0d2; --part:#faf8f3; --edge:#c8c2b2; --label:#2b2a26; --key:#ded8c8; --key-slit:#b8b1a0; --bezel:#151412; --bg:#c9c4b8; }
-html[data-theme="whiteblue"]{ --body:#eef2f6; --tray:#e0e8ef; --part:#fbfdfe; --edge:#bccad4; --label:#22323e; --key:#d8e2ea; --key-slit:#a9bcc9; --bezel:#11181d; --bg:#b9c6cf; }
-html[data-theme="orange"]   { --body:#f07b1f; --tray:#d9641a; --part:#fb9444; --edge:#b64f12; --label:#ffffff; --key:#7a3d0a; --key-slit:#5c2e07; --bezel:#2a1204; --bg:#d98a4f; }
-html[data-theme="purple"]   { --body:#7b46b0; --tray:#66358f; --part:#8f57c6; --edge:#522a78; --label:#ffffff; --key:#3c1d5c; --key-slit:#2c1544; --bezel:#170a28; --bg:#9a72c4; }
-html[data-theme="blue"]     { --body:#2c6bb4; --tray:#24568f; --part:#3b7ec9; --edge:#1c4472; --label:#ffffff; --key:#143157; --key-slit:#0f2542; --bezel:#081524; --bg:#7aa3cf; }
-html[data-theme="green"]    { --body:#1d7a45; --tray:#176238; --part:#279355; --edge:#124d2c; --label:#ffffff; --key:#0d3a20; --key-slit:#0a2c18; --bezel:#05170d; --bg:#5fa37a; }
-html[data-theme="brown"]    { --body:#6f6151; --tray:#5a4d40; --part:#7f7160; --edge:#463a2f; --label:#ffffff; --key:#332a20; --key-slit:#261f18; --bezel:#120e0a; --bg:#9b8e7c; }
+/* FM-1 case-color skins: each model is a case (--body..--label) + a keybed (--key/--key-slit). */
+html[data-theme="green"]    { --body:#1d1d1f; --tray:#141415; --part:#2a2a2d; --edge:#3a3a3e; --label:#d6d6d8; --key:#84ccc0; --key-slit:#5a9a92; --bezel:#0b0b0c; --bg:#5f8f88; }
+html[data-theme="orange"]   { --body:#c06c48; --tray:#a8543c; --part:#d07854; --edge:#8a4830; --label:#ffffff; --key:#b4603c; --key-slit:#7a3c28; --bezel:#2a1204; --bg:#d98a4f; }
+html[data-theme="white"]    { --body:#e8e2da; --tray:#d8d2c8; --part:#f0ece4; --edge:#c0b8a8; --label:#2a2a28; --key:#0c0c0d; --key-slit:#3a3a3c; --bezel:#151412; --bg:#c9c4b8; }
+html[data-theme="pink"]     { --body:#a884c0; --tray:#8c6cac; --part:#b890cc; --edge:#70548c; --label:#ffffff; --key:#6c4884; --key-slit:#4a3060; --bezel:#170a28; --bg:#9a72c4; }
+html[data-theme="whiteblue"]{ --body:#e8e8e0; --tray:#d8d8d0; --part:#f0f0e8; --edge:#c0c0b8; --label:#22323e; --key:#546c84; --key-slit:#3a4c60; --bezel:#11181d; --bg:#b9c6cf; }
+html[data-theme="purple"]   { --body:#e8e2da; --tray:#d8d2c8; --part:#f0ece4; --edge:#c0b8a8; --label:#2a2a28; --key:#6c4884; --key-slit:#4a3060; --bezel:#151412; --bg:#c9c4b8; }
 html, body { background: var(--bg); }
 body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
@@ -636,13 +635,12 @@ footer small { font-size: 11px; opacity: .8; }
       <span>🎨</span>
       <select id="skin" aria-label="FM-1 case color" style="background:#1d1d1f;color:#ececee;border:1px solid #3a3a3e;border-radius:8px;padding:6px 10px;font:inherit;">
         <option value="black">Black</option>
-        <option value="white">White / Cream</option>
-        <option value="whiteblue">White / Blue</option>
-        <option value="orange">Orange</option>
-        <option value="purple">Pink / Purple</option>
-        <option value="blue">Blue</option>
         <option value="green">Dark Green</option>
-        <option value="brown">Gray / Brown</option>
+        <option value="orange">Orange</option>
+        <option value="white">White</option>
+        <option value="pink">Pink</option>
+        <option value="whiteblue">White / Blue</option>
+        <option value="purple">Purple</option>
       </select>
     </label>
   </div>
@@ -1220,7 +1218,7 @@ const STORE = "loom-emu-flash-v2";
 try { localStorage.removeItem("felucca-emu-flash"); localStorage.removeItem("loom-emu-flash"); } catch {}
 
 // FM-1 case-color skin (the picker in the workbench nav; ?skin= deep-link; remembered)
-const SKINS = ["black", "white", "whiteblue", "orange", "purple", "blue", "green", "brown"];
+const SKINS = ["black", "green", "orange", "white", "pink", "whiteblue", "purple"];
 const SKIN_KEY = "loom-emu-skin";
 function applySkin(name) {
   if (!SKINS.includes(name)) name = "black";
