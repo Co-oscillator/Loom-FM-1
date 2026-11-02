@@ -17,7 +17,20 @@
 @font-face { font-family: "DotGothic16"; src: url("fonts/DotGothic16-subset.woff") format("woff"); font-display: swap; }
 :root { --bg: #8e8e93; --fg: #111; --dim: #2c2c2e; --rule: #5a5a5e;
         --body: #1d1d1f; --tray: #141415; --part: #2a2a2d; --edge: #3a3a3e; --label: #d6d6d8;
+        --key: #0c0c0d; --key-slit: #3a3a3c; --bezel: #0b0b0c;
+        --rec: #ff453a; --latched: #79b8ff;
+        --led-dim: #3a3934; --led-dim-slit: #77777b; --led-lit-slit: #ececee; --led-lit-text: #1d1d1f; --green-text: #0d2414;
+        --led-breath-hi: #d8cfb6; --led-breath-slit-hi: #c8c8ca; --led-breath-lo: #aca592; --led-breath-slit-lo: #a1a1a3;
+        --led-mid: #9a9a9e; --led-mid-lo: #8a8a8e;
         --lit: #fff4d6; --green: #5fe08a; color-scheme: light; }
+/* FM-1 case-color skins: set data-theme on <html> (the skin picker / ?skin=). */
+html[data-theme="white"]    { --body:#f1ede4; --tray:#e6e0d2; --part:#faf8f3; --edge:#c8c2b2; --label:#2b2a26; --key:#ded8c8; --key-slit:#b8b1a0; --bezel:#151412; --bg:#c9c4b8; }
+html[data-theme="whiteblue"]{ --body:#eef2f6; --tray:#e0e8ef; --part:#fbfdfe; --edge:#bccad4; --label:#22323e; --key:#d8e2ea; --key-slit:#a9bcc9; --bezel:#11181d; --bg:#b9c6cf; }
+html[data-theme="orange"]   { --body:#f07b1f; --tray:#d9641a; --part:#fb9444; --edge:#b64f12; --label:#ffffff; --key:#7a3d0a; --key-slit:#5c2e07; --bezel:#2a1204; --bg:#d98a4f; }
+html[data-theme="purple"]   { --body:#7b46b0; --tray:#66358f; --part:#8f57c6; --edge:#522a78; --label:#ffffff; --key:#3c1d5c; --key-slit:#2c1544; --bezel:#170a28; --bg:#9a72c4; }
+html[data-theme="blue"]     { --body:#2c6bb4; --tray:#24568f; --part:#3b7ec9; --edge:#1c4472; --label:#ffffff; --key:#143157; --key-slit:#0f2542; --bezel:#081524; --bg:#7aa3cf; }
+html[data-theme="green"]    { --body:#1d7a45; --tray:#176238; --part:#279355; --edge:#124d2c; --label:#ffffff; --key:#0d3a20; --key-slit:#0a2c18; --bezel:#05170d; --bg:#5fa37a; }
+html[data-theme="brown"]    { --body:#6f6151; --tray:#5a4d40; --part:#7f7160; --edge:#463a2f; --label:#ffffff; --key:#332a20; --key-slit:#261f18; --bezel:#120e0a; --bg:#9b8e7c; }
 html, body { background: var(--bg); }
 body { margin: 0; color: var(--fg); font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 32px; }
@@ -31,35 +44,35 @@ a { color: inherit; }
 .hit.knob { cursor: ns-resize; border-radius: 50%; }
 .hit:focus-visible { outline: 2px solid var(--lit); outline-offset: 2px; }
 .face { transition: fill .05s; }
-.dim .face.btn { fill: #3a3934; }
+.dim .face.btn { fill: var(--led-dim); }
 .lit .face.btn { fill: var(--lit); }
-.lit text { fill: #1d1d1f; }
+.lit text { fill: var(--led-lit-text); }
 .green .face.btn { fill: var(--green); }
-.green text { fill: #0d2414; }
-.face.key { fill: #0c0c0d; stroke: var(--edge); stroke-width: 1.5; }
-.slit { fill: #3a3a3c; transition: fill .05s; }
-.dim .slit { fill: #77777b; }
-.lit .slit { fill: #ececee; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .6)); }
+.green text { fill: var(--green-text); }
+.face.key { fill: var(--key); stroke: var(--edge); stroke-width: 1.5; }
+.slit { fill: var(--key-slit); transition: fill .05s; }
+.dim .slit { fill: var(--led-dim-slit); }
+.lit .slit { fill: var(--led-lit-slit); filter: drop-shadow(0 0 3px rgba(255, 255, 255, .6)); }
 /* #119: what can be pressed breathes, dark .. ~60 % of lit and back (hal/fm1_input.h fm1_led_breath, ~1.1 s; MENU >
  * LEDS DIM LO ~30 %): the peaks between dark and lit at ~0.8 / ~0.58 on screen (the LED's share, gamma-encoded) */
-@keyframes breath-btn { 0%, 100% { fill: #3a3934; } 50% { fill: #d8cfb6; } }
-@keyframes breath-slit { 0%, 100% { fill: #3a3a3c; } 50% { fill: #c8c8ca; } }
-@keyframes breath-btn-lo { 0%, 100% { fill: #3a3934; } 50% { fill: #aca592; } }
-@keyframes breath-slit-lo { 0%, 100% { fill: #3a3a3c; } 50% { fill: #a1a1a3; } }
+@keyframes breath-btn { 0%, 100% { fill: var(--led-dim); } 50% { fill: var(--led-breath-hi); } }
+@keyframes breath-slit { 0%, 100% { fill: var(--key-slit); } 50% { fill: var(--led-breath-slit-hi); } }
+@keyframes breath-btn-lo { 0%, 100% { fill: var(--led-dim); } 50% { fill: var(--led-breath-lo); } }
+@keyframes breath-slit-lo { 0%, 100% { fill: var(--key-slit); } 50% { fill: var(--led-breath-slit-lo); } }
 .breath .face.btn { animation: breath-btn 1.13s ease-in-out infinite; }
 .breath .slit { animation: breath-slit 1.13s ease-in-out infinite; }
 .dimlo .breath .face.btn { animation-name: breath-btn-lo; }
 .dimlo .breath .slit { animation-name: breath-slit-lo; }
 @media (prefers-reduced-motion: reduce) {
   .breath .face.btn, .breath .slit { animation: none; }
-  .breath .face.btn { fill: #aca592; }
-  .breath .slit { fill: #a1a1a3; }
+  .breath .face.btn { fill: var(--led-breath-lo); }
+  .breath .slit { fill: var(--led-breath-slit-lo); }
 }
 /* the DRUM grid's beats (hal/fm1_input.h fm1_led_mid): a steady level between the glow and lit, ~15 % (DIM LO ~10 %) */
-.mid .slit { fill: #9a9a9e; }
-.dimlo .mid .slit { fill: #8a8a8e; }
+.mid .slit { fill: var(--led-mid); }
+.dimlo .mid .slit { fill: var(--led-mid-lo); }
 .held .face { stroke: var(--lit); stroke-width: 3; }
-.latched .face { stroke: #79b8ff; stroke-width: 3; }
+.latched .face { stroke: var(--latched); stroke-width: 3; }
 .start { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
          background: rgba(0, 0, 0, .5); border-radius: 4% / 6%; }
 .start[hidden] { display: none; }
@@ -619,6 +632,19 @@ footer small { font-size: 11px; opacity: .8; }
   <div class="wb-actions">
     <a href="video.html" class="wb-btn" target="_blank" style="text-decoration:none; display:inline-flex; align-items:center; gap:5px;" title="Watch or export 1080p 60fps Loom FM-1 Video Overview">🎬 Video Tour</a>
     <button id="resample-btn" class="wb-btn" type="button" disabled title="Record emulator audio output to a 16-bit WAV file that you can load into USR1..3 in Editor & Samples">● Resample Audio</button>
+    <label title="FM-1 case color" style="display:inline-flex;align-items:center;gap:6px;">
+      <span>🎨</span>
+      <select id="skin" aria-label="FM-1 case color" style="background:#1d1d1f;color:#ececee;border:1px solid #3a3a3e;border-radius:8px;padding:6px 10px;font:inherit;">
+        <option value="black">Black</option>
+        <option value="white">White / Cream</option>
+        <option value="whiteblue">White / Blue</option>
+        <option value="orange">Orange</option>
+        <option value="purple">Pink / Purple</option>
+        <option value="blue">Blue</option>
+        <option value="green">Dark Green</option>
+        <option value="brown">Gray / Brown</option>
+      </select>
+    </label>
   </div>
 </nav>
 
@@ -1193,6 +1219,24 @@ const BLACK_AFTER = [0, 1, 2, 4, 5, 7, 8, 9, 11, 12, 14];      // the white key 
 const STORE = "loom-emu-flash-v2";
 try { localStorage.removeItem("felucca-emu-flash"); localStorage.removeItem("loom-emu-flash"); } catch {}
 
+// FM-1 case-color skin (the picker in the workbench nav; ?skin= deep-link; remembered)
+const SKINS = ["black", "white", "whiteblue", "orange", "purple", "blue", "green", "brown"];
+const SKIN_KEY = "loom-emu-skin";
+function applySkin(name) {
+  if (!SKINS.includes(name)) name = "black";
+  document.documentElement.dataset.theme = name;
+  const sel = document.getElementById("skin");
+  if (sel) sel.value = name;
+  try { localStorage.setItem(SKIN_KEY, name); } catch {}
+}
+const skinSel = document.getElementById("skin");
+if (skinSel) skinSel.addEventListener("change", () => applySkin(skinSel.value));
+(() => {
+  let s = new URLSearchParams(location.search).get("skin");
+  if (!s) { try { s = localStorage.getItem(SKIN_KEY); } catch {} }
+  applySkin(s || "black");
+})();
+
 // ------------------------------------------------------------------ the panel
 // Two drawings of the same controls: WIDE after the FM-1's own layout, TALL for a phone held upright (the
 // screen larger, the keys across the whole width). Rebuilt when the orientation changes; the state stays.
@@ -1249,7 +1293,7 @@ function build(name) {
   el("rect", { x: 4, y: 4, width: L.w - 8, height: L.h - 8, rx: 40, fill: "var(--body)" });
   for (const [x, y, w, h] of L.trays) el("rect", { x, y, width: w, height: h, rx: 14, fill: "var(--tray)" });
   const [sx, sy, ss] = L.screen;
-  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "#0b0b0c" });
+  el("rect", { x: sx, y: sy, width: ss, height: ss, rx: 18, fill: "var(--bezel)" });
   const inset = ss / 32;                                         // the 240 x 240 panel inside its bezel
   Object.assign(canvas.style, { left: `${(sx + inset) / L.w * 100}%`, top: `${(sy + inset) / L.h * 100}%`,
                                 width: `${(ss - 2 * inset) / L.w * 100}%`, height: `${(ss - 2 * inset) / L.h * 100}%` });
@@ -1265,7 +1309,7 @@ function build(name) {
   const button = ([x, y, w, h], n, sub) => {
     const g = el("g", {});
     el("rect", { x, y, width: w, height: h, rx: 8, fill: "var(--part)", stroke: "var(--edge)", "stroke-width": 1.5, class: "face btn" }, g);
-    const ink = n === "REC" ? "#ff453a" : undefined;
+    const ink = n === "REC" ? "var(--rec)" : undefined;
     if (sub) { label(g, x + w / 2, y + h / 2 - 2, n, 10.8, SANS, ink); label(g, x + w / 2, y + h / 2 + 11, sub, 9.9); }
     else label(g, x + w / 2, y + h / 2 + 4.5, n, 12.6, SANS, ink);
     buttons.push({ g, bit: B[n], name: sub ? `${n} / ${sub}` : n });
