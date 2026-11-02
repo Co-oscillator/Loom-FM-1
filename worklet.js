@@ -70,6 +70,7 @@ if (typeof registerProcessor === "function") {
       else if (m.type === "enc") ex.web_enc(m.role, m.n | 0);
       else if (m.type === "master") ex.web_master(m.value | 0);
       else if (m.type === "midi") ex.web_midi(m.data[0] | 0, m.data[1] | 0, m.data[2] | 0);
+      else if (m.type === "ctl_surface") { if (ex.web_ctl_surface) ex.web_ctl_surface(m.on ? 1 : 0); }
       else if (m.type === "visible") this.period = m.on ? 1 / 30 : 1 / 4;
       else if (m.type === "smp_slot") {
         const k = m.slot | 0;
