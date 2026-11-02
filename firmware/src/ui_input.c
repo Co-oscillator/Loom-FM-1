@@ -1778,6 +1778,10 @@ static void ui_input(void)
 {
     uint32_t pressed = fm1_input_edges(0), notes = fm1_input_note_edges(), now = fm1_ticks(), id, b, k;
     uint32_t home, rec, save;
+#ifdef FELUCCA_CTL
+    ctl_surface_buttons(pressed);
+    ctl_surface_notes(notes);
+#endif
     uint32_t oct;
     uint32_t lay, combo = 0, lytap, lkeys, glo, kq = 0;
     int32_t s, sel = 0, ks[4] = {0, 0, 0, 0};

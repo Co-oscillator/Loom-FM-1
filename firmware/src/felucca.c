@@ -21,6 +21,7 @@
 #endif
 #ifndef FELUCCA_UAC
 #define FELUCCA_UAC 1            /* USB audio input: the master output, 16-bit stereo 44.1 kHz (usb.c) */
+#define FELUCCA_CTL 1            /* control-surface mode: notes/CCs out, no local synth (panel.c) */
 #endif
 #ifndef FELUCCA_UAC_TONE
 #define FELUCCA_UAC_TONE 0       /* bench: the USB input sends test triangles instead of the music */

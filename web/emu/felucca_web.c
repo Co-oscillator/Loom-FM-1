@@ -25,6 +25,7 @@
 #define FELUCCA_CDC 1                    /* as src/felucca.c: MENU > USB SERIAL is there (nothing behind it) */
 #endif
 #define FELUCCA_FLASH 1
+#define FELUCCA_CTL 1                       /* control-surface mode (panel.c, docs/ANDROID-INTEGRATION.md) */
 #define FELUCCA_OTA 0
 #define FELUCCA_UAC 0
 #define FELUCCA_UART 0
@@ -409,6 +410,8 @@ EXPORT uint32_t web_midi_out(void)
     mo_r++;
     return pkt;
 }
+/* control-surface mode: the firmware sends notes/CCs (web_midi_out) and stops playing locally */
+EXPORT void web_ctl_surface(uint32_t on) { ctl_surface_set(on != 0); }
 
 /* the LEDs: bit b = the button labelled b lit (bit 14: PLAY's green), keys bit k; the dim glow and the breath alike */
 static uint32_t led_on(const uint8_t *l, uint32_t id)

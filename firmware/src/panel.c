@@ -49,13 +49,81 @@ static uint32_t panel_btn_of(uint32_t matrix_id)        /* label of a matrix but
     return NB;
 }
 
+/* Control-surface mode (docs/ANDROID-INTEGRATION.md): the FM-1 sends notes/CCs to a host and
+ * stops playing locally. Off by default; the emulator sets it with web_ctl_surface(), the
+ * hardware host will set it with the mode handshake. CC map: KNOB 1..4 = 22..25, SCL held =
+ * 26..29; FX 102, HOME 103, SAVE 104, ENV 105, LFO 106, EDIT 107, GLO 108, ARP 109, PLAY 110,
+ * REC 111; keys = notes 53..79 (F3..G5). FELUCCA_CTL: felucca.c / felucca_web.c define it;
+ * the host tests that include panel.c do not, so the code compiles out there. */
+#ifdef FELUCCA_CTL
+static uint16_t ctl_knob[4] = {64, 64, 64, 64};
+static uint32_t ctl_notes;
+static void ctl_cc(uint32_t cc, uint32_t v)
+{
+    midi_out_event(0x0Bu | 0xB0u << 8 | (cc & 0x7Fu) << 16 | (v & 0x7Fu) << 24);
+}
+static void ctl_note(uint32_t note, uint32_t on)
+{
+    midi_out_event(on ? (0x09u | 0x90u << 8 | (note & 0x7Fu) << 16 | 100u << 24)
+                      : (0x08u | 0x80u << 8 | (note & 0x7Fu) << 16));
+}
+static void ctl_surface_set(uint32_t on) { ctl_surface = on != 0; }
+static void ctl_surface_enc(uint32_t role, int32_t steps)
+{
+    int32_t v;
+    uint32_t k;
+    if (!ctl_surface || role < EN_K1 || role > EN_K4 || !steps)
+        return;
+    k = role - EN_K1;
+    v = (int32_t)ctl_knob[k] + steps * 4;
+    if (v < 0) v = 0;
+    if (v > 127) v = 127;
+    ctl_knob[k] = (uint16_t)v;
+    ctl_cc(((fm1_in.buttons & (1u << panel.btn[B_SCL])) ? 26u : 22u) + k, (uint32_t)v);
+}
+static uint32_t ctl_btn_prev;
+static void ctl_surface_buttons(uint32_t pressed)
+{
+    static const uint8_t CC[NB] = {102, 0, 105, 106, 107, 108, 103, 104, 109, 0, 110, 111, 0, 0};
+    uint32_t b, now = fm1_in.buttons, released = ctl_btn_prev & ~now;
+    if (!ctl_surface) {
+        ctl_btn_prev = now;
+        return;
+    }
+    for (b = 0; b < NB; b++) {
+        if (!CC[b])
+            continue;
+        if ((pressed >> b) & 1u) ctl_cc(CC[b], 127);
+        if ((released >> b) & 1u) ctl_cc(CC[b], 0);
+    }
+    ctl_btn_prev = now;
+}
+static void ctl_surface_notes(uint32_t pressed)
+{
+    uint32_t k, now, off;
+    if (!ctl_surface)
+        return;
+    now = fm1_in.notes;
+    off = ctl_notes & ~now;
+    for (k = 0; k < 27u; k++)
+        if ((off >> k) & 1u) ctl_note(53u + k, 0);
+    for (k = 0; k < 27u; k++)
+        if ((pressed >> k) & 1u) ctl_note(53u + k, 1);
+    ctl_notes = now;
+}
+#endif
+
 /* steps of a role, + = clockwise */
 static uint8_t panel_moved;                     /* a knob turned since ui.c scr_input last looked (SCREEN OFF) */
 static int32_t panel_enc(uint32_t role)
 {
     int32_t s = fm1_enc_take(panel.enc[role]) * panel.dir[role];
-    if (s)
+    if (s) {
         panel_moved = 1;
+#ifdef FELUCCA_CTL
+        ctl_surface_enc(role, s);
+#endif
+    }
     return s;
 }
 

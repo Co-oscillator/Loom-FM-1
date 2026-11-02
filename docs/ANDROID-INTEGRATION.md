@@ -156,7 +156,9 @@ The workbench has a **MIDI LINK** panel under the device:
 - **Control surface (FM-1 → app)** — when on, the emulator's buttons emit CC 102–111, K1–K4
   emit CC 22–25 (SCL held: 26–29), and the keys emit notes F3 (53)..G5 (79), all to the MIDI out.
 
-The emulator implements the control-surface mapping in the page (`web/emu/index.html`), so the
-Android app can be exercised without hardware. The firmware-side emission uses the same CC map
-(`midi_out_event` on the encoder/button/note edges behind a `ctl_surface` flag); that is the next
-step and needs a working FM-1 to validate. The CC map above is the contract both sides share.
+The **firmware side is implemented** behind `FELUCCA_CTL` (`firmware/src/panel.c`,
+`ui_input.c`, `voice.c`): with `ctl_surface` set, the button, encoder and note edges emit the
+CCs/notes above through `midi_out_event`, and `trk_note_on` stops the local synth. The emulator's
+toggle sends `{type:"ctl_surface"}` to the worklet, which calls `web_ctl_surface()` — so the
+emulator exercises the real firmware path. The hardware-side trigger (a MENU setting plus the
+SysEx handshake) is still to be wired; the CC map above is the contract both sides share.
