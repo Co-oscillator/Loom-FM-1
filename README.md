@@ -541,3 +541,5 @@ ported DSP keep their own licences ([LICENSES/](LICENSES/)); details in [LICENSI
 M-VAVE and FM-1 are trademarks of their respective owners. Felucca is not affiliated with or endorsed by them.
 
 Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+
+You can also try Loom FM-1 in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
